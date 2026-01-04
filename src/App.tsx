@@ -317,20 +317,14 @@ const App: React.FC = () => {
   useEffect(() => {
     setTranscriptBuffer(sttTranscript);
 
-    // [점진적 매칭] 현재 구절에서 최적의 매칭 끝점 검색
+    // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
     if (currentTargetVerseForSession && sttTranscript) {
-      if (normalizeText(sttTranscript).length >= 2) {
-        // 구절 전체를 검색하여 가장 멀리 매칭된 지점(끝점)을 찾음
-        const newMatchedCount = findMatchedPrefixLength(
-          currentTargetVerseForSession.text,
-          sttTranscript,
-          isIOS ? 80 : 70
-        );
-        if (newMatchedCount > 0) {
-          // Android/iOS 공통: 이전 지점보다 후퇴하지 않게 하며 화면 반영
-          setMatchedCharCount(prev => Math.max(prev, newMatchedCount));
-        }
-      }
+      const matchedCount = findMatchedPrefixLength(
+        currentTargetVerseForSession.text,
+        sttTranscript,
+        isIOS ? 55 : 50 // iOS는 약간 더 엄격한 임계값 사용
+      );
+      setMatchedCharCount(matchedCount);
     }
 
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
@@ -397,11 +391,7 @@ const App: React.FC = () => {
     const verseHasDifficultWord = containsDifficultWord(normalizedTargetVerseText);
     const adjustedSimilarityThreshold = verseHasDifficultWord ? (similarityThreshold - 20) : similarityThreshold;
 
-    // 1. 기존의 전체 텍스트 유사도 기반 매칭
-    // 2. 점진적 매칭(취소선)이 구절의 90% 이상 도달했는지 확인
-    const isMatchedByProgress = (matchedCharCount / currentTargetVerseForSession.text.length) >= 0.90;
-
-    let isMatch = (similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff)) || isMatchedByProgress;
+    let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
     if (isIOS && isMatch && normalizedTargetVerseText.length > LONG_VERSE_CHAR_COUNT) {
       const targetEnd = normalizedTargetVerseText.slice(-END_PORTION_LENGTH);
@@ -419,10 +409,6 @@ const App: React.FC = () => {
     if (isMatch) {
       console.log(`[App.tsx] Verse matched! Index: ${currentVerseIndexInSession}`);
       const transitionDelay = isIOS ? 600 : 0;
-
-      // 즉시 취소선 리셋하여 다음 구절에 잔상이 남지 않게 함
-      setMatchedCharCount(0);
-      setTranscriptBuffer('');
 
       setTimeout(() => {
         setMatchedVersesContentForSession(prev => prev + `${currentTargetVerseForSession.book} ${currentTargetVerseForSession.chapter}:${currentTargetVerseForSession.verse} - ${currentTargetVerseForSession.text}\n`);
@@ -544,7 +530,6 @@ const App: React.FC = () => {
       setMatchedVersesContentForSession('');
       setTranscriptBuffer('');
       resetTranscript();
-      setMatchedCharCount(0); // 새 세션 시작 시 리셋
       setSessionProgress({
         totalVersesInSession: verses.length,
         sessionCompletedVersesCount: initialSkip,
@@ -649,7 +634,6 @@ const App: React.FC = () => {
     setTranscriptBuffer('');
     setAppError(null);
     resetTranscript();
-    setMatchedCharCount(0); // 다시 읽기 시 리셋
     stopListening();
     setIsRetryingVerse(true);
   }, [resetTranscript, stopListening]);
@@ -785,33 +769,6 @@ const App: React.FC = () => {
             </form>
           </div>
         )}
-
-        <header className="flex flex-col sm:flex-row items-center justify-between mb-8 border-b border-gray-300 pb-4">
-          <div className="flex items-center mb-4 sm:mb-0">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg mr-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-purple-500 drop-shadow-md">
-                말씀 원정대
-              </h1>
-              <div className="text-xs sm:text-sm text-gray-500 font-serif">Bible Reading Companion</div>
-            </div>
-          </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="text-sm font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 shadow-sm">{currentUser.username} 원정대원</span>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-full hover:bg-gray-100 hover:text-red-600 transition-all duration-200 shadow-sm"
-              >
-                로그아웃
-              </button>
-            </div>
-          </div>
-        </header>
 
         {/* Dashboard View */}
         {readingState === ReadingState.IDLE && (
