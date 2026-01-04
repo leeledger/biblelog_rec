@@ -81,27 +81,8 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     recognition.interimResults = true;
     recognition.lang = lang;
 
-    // 디버그 로그 전송 함수 (iOS 문제 해결용)
-    const sendDebugLog = async (event: string, data: any) => {
-      try {
-        await fetch('/api/debug-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event,
-            data,
-            userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString()
-          })
-        });
-      } catch (e) {
-        console.error('[Debug log failed]', e);
-      }
-    };
-
     recognition.onstart = () => {
       console.log('[useSpeechRecognition] onstart event fired');
-      if (isIOS) sendDebugLog('onstart', { isListening: true });
       setIsListening(true);
       intentionalStopRef.current = false;
       lastRecognitionEventTimeRef.current = Date.now();
@@ -112,14 +93,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       const currentTime = Date.now();
       lastRecognitionEventTimeRef.current = currentTime;
 
-      // iOS 디버그 로그 전송
-      if (isIOS) {
-        sendDebugLog('onresult', {
-          resultIndex: event.resultIndex,
-          resultsLength: event.results?.length,
-          firstTranscript: event.results?.[0]?.[0]?.transcript?.substring(0, 50)
-        });
-      }
+
 
       // 이벤트에 대한 고유 ID 생성 (시간 기반)
       const resultId = `${event.timeStamp}-${event.resultIndex}`;
@@ -175,7 +149,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         const displayText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
         setTranscript(displayText);
         console.log(`[useSpeechRecognition] iOS - Immediate display: "${displayText}"`);
-        sendDebugLog('setTranscript', { displayText: displayText.substring(0, 50) });
+
       }
       // Android 및 기타 플랫폼
       else {
@@ -192,7 +166,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
-      if (isIOS) sendDebugLog('onerror', { error: event.error, message: event.message });
+
       let specificError = `오류: ${event.error}`;
       if (event.error === 'no-speech') specificError = '음성이 감지되지 않았습니다.';
       else if (event.error === 'audio-capture') specificError = '마이크를 찾을 수 없습니다.';
@@ -204,7 +178,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     recognition.onend = () => {
       console.log('[useSpeechRecognition] onend fired');
-      if (isIOS) sendDebugLog('onend', { intentionalStop: intentionalStopRef.current });
+
 
       // iOS에서 마지막 인식 이벤트와 현재 시간의 차이 계산
       const timeSinceLastEvent = Date.now() - lastRecognitionEventTimeRef.current;
