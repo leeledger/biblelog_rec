@@ -12,7 +12,11 @@
             "headers": [
                 {
                     "key": "Permissions-Policy",
-                    "value": "microphone=self, speech-recognition=self"
+                    "value": "microphone=(*), camera=(*)"
+                },
+                {
+                    "key": "Feature-Policy",
+                    "value": "microphone *; camera *"
                 }
             ]
         }
