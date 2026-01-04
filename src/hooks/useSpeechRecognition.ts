@@ -93,33 +93,6 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       const currentTime = Date.now();
       lastRecognitionEventTimeRef.current = currentTime;
 
-
-
-      // 이벤트에 대한 고유 ID 생성 (시간 기반)
-      const resultId = `${event.timeStamp}-${event.resultIndex}`;
-
-      // 이미 처리된 결과인지 확인 (iOS에서 중복 결과 방지)
-      if (isIOS && resultId === lastProcessedResultIdRef.current) {
-        console.log('[useSpeechRecognition] iOS - Skipping duplicate result');
-        return;
-      }
-
-      // iOS에서 ignoreResultsRef가 true면 결과 무시
-      if (isIOS && ignoreResultsRef.current) {
-        console.log('[useSpeechRecognition] iOS - Ignoring results during transition');
-        return;
-      }
-
-      // iOS에서 구절 전환 후 MAX_RESULT_DELAY_MS보다 오래된 결과는 무시 (지연된 결과)
-      const MAX_RESULT_DELAY_MS = 1500; // 1.5초
-      if (isIOS && (currentTime - verseTransitionTimeRef.current < MAX_RESULT_DELAY_MS)) {
-        // 구절 전환 직후에는 로그만 남기고 결과 처리는 계속함 (디버깅용)
-        console.log(`[useSpeechRecognition] iOS - Processing result after verse transition, ${currentTime - verseTransitionTimeRef.current}ms since transition`);
-      }
-
-      // 결과 ID 업데이트
-      lastProcessedResultIdRef.current = resultId;
-
       let interimTranscript = '';
       let finalTranscript = '';
       let hasFinalResult = false;
@@ -138,18 +111,19 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       console.log(`[useSpeechRecognition] onresult - hasFinal: ${hasFinalResult}, final: "${finalTranscript}", interim: "${interimTranscript}"`);
 
-      // iOS 기기 - 단순화된 로직 (디버깅용)
+      // iOS 기기 - 모든 필터링 제거, 항상 결과 표시
       if (isIOS) {
         // 최종 결과가 있으면 기존 최종 결과에 추가
         if (hasFinalResult) {
           finalTranscriptRef.current = (finalTranscriptRef.current || '') + finalTranscript;
         }
 
-        // 바로 결과 표시 (딜레이 제거)
-        const displayText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
-        setTranscript(displayText);
-        console.log(`[useSpeechRecognition] iOS - Immediate display: "${displayText}"`);
-
+        // 바로 결과 표시
+        const displayText = (finalTranscriptRef.current || '') + (interimTranscript ? ' ' + interimTranscript : '');
+        if (displayText) {
+          setTranscript(displayText);
+          console.log(`[useSpeechRecognition] iOS - Display: "${displayText}"`);
+        }
       }
       // Android 및 기타 플랫폼
       else {
