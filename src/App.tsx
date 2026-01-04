@@ -894,6 +894,48 @@ const App: React.FC = () => {
                 </div>
               )}
 
+              {/* Church Custom Solution Promotion */}
+              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-50 text-left space-y-6">
+                <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+                  <span className="text-3xl">⛪</span>
+                  <div>
+                    <h4 className="text-lg font-black text-gray-900 leading-tight">우리 교회만을 위한 <span className="text-indigo-600">특별한 통독 서비스</span></h4>
+                    <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Church Custom Solutions</p>
+                  </div>
+                </div>
+
+                <ul className="space-y-4">
+                  <li className="flex gap-3">
+                    <span className="text-indigo-500 font-bold">01</span>
+                    <div>
+                      <strong className="text-sm text-gray-800 block mb-1">교회용 관리자 대시보드</strong>
+                      <p className="text-xs text-gray-500 leading-relaxed">전 성도의 통독 현황을 통계로 한눈에 관리하고 엑셀로 다운로드하여 심방 및 양육 자료로 활용하세요.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-indigo-500 font-bold">02</span>
+                    <div>
+                      <strong className="text-sm text-gray-800 block mb-1">특별 통독 캠페인 패키지</strong>
+                      <p className="text-xs text-gray-500 leading-relaxed">사순절, 연말연시 등 주제별 캠페인을 개설하고 달성도에 따른 자동 수료증 발급 솔루션을 제공합니다.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-indigo-500 font-bold">03</span>
+                    <div>
+                      <strong className="text-sm text-gray-800 block mb-1">교회 전용 브랜딩 및 커스텀</strong>
+                      <p className="text-xs text-gray-500 leading-relaxed">교회 로고 적용은 물론, 주간 광고와 말씀 요약을 노출하는 전용 커뮤니티 페이지를 구성해 드립니다.</p>
+                    </div>
+                  </li>
+                </ul>
+
+                <a
+                  href="mailto:luxual8@gmail.com"
+                  className="w-full flex items-center justify-center py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 group"
+                >
+                  문의하기 <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                </a>
+              </div>
+
               {/* Legal & Credits Section */}
               <div className="space-y-6">
                 <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
