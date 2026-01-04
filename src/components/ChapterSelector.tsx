@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AVAILABLE_BOOKS } from '../constants';
-import { BookChapterInfo } from '../types'; 
+import { BookChapterInfo } from '../types';
 
 interface ChapterSelectorProps {
   onStartReading: (book: string, startChapter: number, endChapter: number, startVerse?: number) => void;
@@ -9,15 +9,18 @@ interface ChapterSelectorProps {
   defaultEndChapter?: number;
   defaultStartVerse?: number;
   completedChapters?: string[];
+  isLoading?: boolean;
 }
 
-const ChapterSelector: React.FC<ChapterSelectorProps> = ({ 
-    onStartReading, 
-    defaultBook = "창세기",
-    defaultStartChapter = 1,
-    defaultEndChapter = 1,
-    defaultStartVerse = 1,
-    completedChapters = [],
+
+const ChapterSelector: React.FC<ChapterSelectorProps> = ({
+  onStartReading,
+  defaultBook = "창세기",
+  defaultStartChapter = 1,
+  defaultEndChapter = 1,
+  defaultStartVerse = 1,
+  completedChapters = [],
+  isLoading = false,
 }) => {
   const [selectedBookName, setSelectedBookName] = useState<string>(defaultBook);
   const [selectedBookInfo, setSelectedBookInfo] = useState<BookChapterInfo | undefined>(
@@ -87,7 +90,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       if (endChapter > selectedBookInfo.chapterCount) setEndChapter(selectedBookInfo.chapterCount);
       return;
     }
-    
+
     if (startChapter > endChapter) {
       // Auto-correct the state to prevent invalid ranges, which cause NaN errors.
       // This is more robust than just setting an error and disabling the button.
@@ -111,8 +114,8 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       setAlreadyReadMessage(`선택한 범위(${startChapter}장 ~ ${endChapter}장)는 이미 모두 읽으셨습니다.`);
     } else if (readChapters.length > 0) {
       // 일부 장을 읽은 경우
-      const readChaptersText = readChapters.length === 1 
-        ? `${readChapters[0]}장` 
+      const readChaptersText = readChapters.length === 1
+        ? `${readChapters[0]}장`
         : readChapters.join(', ').replace(/,([^,]*)$/, ', $1') + '장';
       setAlreadyReadMessage(`선택한 범위 중 ${readChaptersText}을(를) 이미 읽으셨습니다.`);
     } else {
@@ -148,7 +151,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   return (
     <div className="p-6 bg-white shadow-md rounded-lg space-y-4">
       <h3 className="text-xl font-semibold text-gray-800 text-center">읽을 범위 선택</h3>
-      
+
       <div>
         <label htmlFor="book-select" className="block text-sm font-medium text-gray-700">성경:</label>
         <select
@@ -164,7 +167,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       </div>
 
       {renderChapterWarning()}
-      
+
       {/* Chapter selectors are always rendered but may be disabled */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -193,15 +196,15 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
         </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-600 text-center">{error}</p>}
-      
+
       <button
         onClick={handleStart}
-        disabled={!selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <=0 || startChapter > endChapter}
+        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter}
         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
-        선택 범위 읽기 시작
+        {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
       </button>
-      
+
       {/* 라이센스 안내 문구를 하단으로 이동 */}
       <div className="mt-8 text-sm text-amber-800 bg-amber-50 p-2 rounded-md border border-amber-200 text-center">
         <span className="font-medium">개역한글</span> 성경 번역본 사용 안내

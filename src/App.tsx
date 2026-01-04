@@ -66,6 +66,9 @@ const App: React.FC = () => {
   // 점진적 매칭: 현재 구절에서 매칭된 글자 수
   const [matchedCharCount, setMatchedCharCount] = useState(0);
 
+  // 데이터 로딩 상태
+  const [isProgressLoading, setIsProgressLoading] = useState(true);
+
 
   // Prevent pull-to-refresh on mobile during speech recognition
   useEffect(() => {
@@ -134,6 +137,7 @@ const App: React.FC = () => {
 
     const fetchAndSetFullProgress = async () => {
       if (currentUser && currentUser.username) {
+        setIsProgressLoading(true);
         setTotalBibleChapters(TOTAL_CHAPTERS_IN_BIBLE);
         try {
           const progressData = await progressService.loadUserProgress(currentUser.username);
@@ -143,11 +147,14 @@ const App: React.FC = () => {
           console.error('[Overall Progress Effect] Error fetching full user progress:', error);
           setUserOverallProgress(null);
           setOverallCompletedChaptersCount(0);
+        } finally {
+          setIsProgressLoading(false);
         }
       } else {
         setUserOverallProgress(null);
         setOverallCompletedChaptersCount(0);
         setTotalBibleChapters(0);
+        setIsProgressLoading(false);
       }
     };
 
@@ -595,8 +602,12 @@ const App: React.FC = () => {
         const bookInfo = AVAILABLE_BOOKS.find(b => b.name === book);
         if (bookInfo) {
           const lastVerseInChapter = bookInfo.versesPerChapter[chapterNum - 1];
-          const readLastVerse = versesReadInSession.some(v => v.book === book && v.chapter === chapterNum && v.verse === lastVerseInChapter);
-          if (readLastVerse) {
+          // 특정 장의 마지막 절이 이번 세션에서 읽은 구절 목록에 포함되어 있는지 확인
+          const readLastVerseOfThisChapter = versesReadInSession.some(
+            v => v.book === book && v.chapter === chapterNum && v.verse === lastVerseInChapter
+          );
+
+          if (readLastVerseOfThisChapter) {
             newCompletedChaptersInSession.add(chapterKey);
           }
         }
@@ -790,6 +801,7 @@ const App: React.FC = () => {
             currentView={currentView}
             setCurrentView={setCurrentView}
             bibleResetLoading={bibleResetLoading}
+            isLoading={isProgressLoading}
           />
         )}
 

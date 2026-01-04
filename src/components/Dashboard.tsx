@@ -10,25 +10,27 @@ interface DashboardProps {
   userOverallProgress: UserProgress | null;
   totalBibleChapters: number;
   overallCompletedChaptersCount: number;
-  
+
   // Chapter Selector Props
   selectedBookForSelector: string;
   startChapterForSelector: number;
   endChapterForSelector: number;
   // Handler for chapter selection update might be needed if ChapterSelector controls are lifted, 
   // but ChapterSelector manages its own internal state mostly, except for defaults.
-  
+
   onStartReading: (book: string, startCh: number, endCh: number) => void;
   onShowHallOfFame: () => void;
   onBibleReset: () => void;
-  
+
   // View State
   showBookCompletionStatus: boolean;
   setShowBookCompletionStatus: (show: boolean) => void;
   currentView: 'IDLE_SETUP' | 'LEADERBOARD';
   setCurrentView: (view: 'IDLE_SETUP' | 'LEADERBOARD') => void;
   bibleResetLoading: boolean;
+  isLoading: boolean;
 }
+
 
 const Dashboard: React.FC<DashboardProps> = ({
   currentUser,
@@ -45,7 +47,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   setShowBookCompletionStatus,
   currentView,
   setCurrentView,
-  bibleResetLoading
+  bibleResetLoading,
+  isLoading
 }) => {
   return (
     <>
@@ -94,6 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         defaultStartChapter={startChapterForSelector}
         defaultEndChapter={endChapterForSelector}
         completedChapters={userOverallProgress?.completedChapters}
+        isLoading={isLoading}
       />
 
       {/* Control Buttons */}
@@ -107,11 +111,11 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-2xl mr-1">📖</span>
             {showBookCompletionStatus ? '권별 완독 현황 숨기기' : '권별 완독 현황 보기'}
           </button>
-          
+
           {showBookCompletionStatus && (
-            <BookCompletionStatus 
-              userProgress={userOverallProgress} 
-              availableBooks={AVAILABLE_BOOKS} 
+            <BookCompletionStatus
+              userProgress={userOverallProgress}
+              availableBooks={AVAILABLE_BOOKS}
             />
           )}
 
@@ -123,14 +127,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-2xl mr-1">👣</span>
             {currentView === 'LEADERBOARD' ? '함께 걷는 여정 숨기기' : '함께 걷는 여정 보기'}
           </button>
-          
+
           {currentView === 'LEADERBOARD' && (
             <div className="my-4 p-4 bg-gray-50 rounded-lg shadow w-full">
               <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">👣 함께 걷는 말씀의 발자국</h3>
               <Leaderboard key={userOverallProgress ? `lb-${userOverallProgress.lastReadBook}-${userOverallProgress.lastReadChapter}-${userOverallProgress.lastReadVerse}` : 'lb-no-progress'} />
             </div>
           )}
-          
+
           {/* 명예의 전당 버튼 */}
           <button
             onClick={onShowHallOfFame}
