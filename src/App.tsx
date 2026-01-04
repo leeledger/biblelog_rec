@@ -880,13 +880,12 @@ const App: React.FC = () => {
                   <h4 className="text-indigo-900 font-black mb-2 flex items-center justify-center gap-2">
                     <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
                   </h4>
-                  <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed">
-                    성도님들의 따뜻한 후원은 더 나은 바이블로그<br />
-                    서비스 운영을 지속하는 큰 힘이 됩니다.
+                  <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed break-keep">
+                    성도님들의 따뜻한 후원은 더 나은 바이블로그 서비스 운영을 지속하는 큰 힘이 됩니다.
                   </p>
-                  <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex justify-between items-center shadow-md shadow-indigo-50">
+                  <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-center gap-2 shadow-md shadow-indigo-50">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">후원</span>
-                    <span className="text-sm font-black text-indigo-900 select-all">토스뱅크 1234-5678-0000 (이종림)</span>
+                    <span className="text-sm font-black text-indigo-900 select-all text-center sm:text-right">토스뱅크 1234-5678-0000 (이종림)</span>
                   </div>
                   <p className="mt-4 text-[10px] text-indigo-300 italic">
                     *후원금은 전액 서버 유지비로 사용됩니다.

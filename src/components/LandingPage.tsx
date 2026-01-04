@@ -63,9 +63,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-800 leading-tight">
                         눈으로만 보던 말씀을 <br /> <span className="text-purple-600 border-b-4 border-purple-200">입술의 고백</span>으로
                     </h2>
-                    <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed px-4">
-                        더 이상 기록의 번거로움 때문에 멈추지 마세요. <br className="hidden md:block" />
-                        음성 인식 기술이 당신의 신앙적 여정을 <br className="md:hidden" /> 묵묵히 기록합니다.
+                    <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed px-4 break-keep">
+                        더 이상 기록의 번거로움 때문에 멈추지 마세요.
+                        음성 인식 기술이 당신의 신앙적 여정을 묵묵히 기록합니다.
                     </p>
                 </div>
 
@@ -77,8 +77,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                             <img src="/images/landing/voice_icon.png" alt="Voice icon" className="w-20 h-20 mx-auto" />
                             <div className="space-y-3">
                                 <h3 className="text-xl font-bold text-gray-800 text-center">고백과 선포의 가치</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed text-center">
-                                    "눈으로만 보던 말씀을 입술의 고백으로 선포하세요." <br />
+                                <p className="text-gray-600 text-sm leading-relaxed text-center break-keep">
+                                    "눈으로만 보던 말씀을 입술의 고백으로 선포하세요."
                                     당신의 목소리가 들리는 순간, 소중한 고백을 놓치지 않고 기록합니다.
                                 </p>
                             </div>
@@ -92,8 +92,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                             <img src="/images/landing/progress_icon.png" alt="Journey icon" className="w-20 h-20 mx-auto" />
                             <div className="space-y-3">
                                 <h3 className="text-xl font-bold text-gray-800 text-center">낭독의 여정</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed text-center">
-                                    "당신의 목소리가 머무는 곳마다, 성경 통독의 길에 불이 켜집니다." <br />
+                                <p className="text-gray-600 text-sm leading-relaxed text-center break-keep">
+                                    "당신의 목소리가 머무는 곳마다, 성경 통독의 길에 불이 켜집니다."
                                     막연했던 통독의 과정이 따뜻한 빛의 여정으로 바뀝니다.
                                 </p>
                             </div>
@@ -107,9 +107,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                             <img src="/images/landing/immersion_icon.png" alt="Immersion icon" className="w-20 h-20 mx-auto" />
                             <div className="space-y-3">
                                 <h3 className="text-xl font-bold text-gray-800 text-center">기록과 습관</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed text-center">
-                                    "당신의 사모함이 쌓여 <br className="md:hidden" /> 흔들리지 않는 습관이 됩니다." <br />
-                                    음성 인식은 그저 당신의 성실한 발걸음을 <br className="md:hidden" /> 기록해 주는 도구입니다.
+                                <p className="text-gray-600 text-sm leading-relaxed text-center break-keep">
+                                    "당신의 사모함이 쌓여 흔들리지 않는 습관이 됩니다."
+                                    음성 인식은 그저 당신의 성실한 발걸음을 기록해 주는 도구입니다.
                                 </p>
                             </div>
                         </div>
