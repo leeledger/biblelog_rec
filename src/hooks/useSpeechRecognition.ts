@@ -89,46 +89,36 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
-      // 현재 타임스탬프
-      const currentTime = Date.now();
-      lastRecognitionEventTimeRef.current = currentTime;
-
-      let interimTranscript = '';
-      let finalTranscript = '';
-      let hasFinalResult = false;
-
-      // Combine all results
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0].transcript;
-        if (result.isFinal) {
-          finalTranscript += transcript;
-          hasFinalResult = true;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      console.log(`[useSpeechRecognition] onresult - hasFinal: ${hasFinalResult}, final: "${finalTranscript}", interim: "${interimTranscript}"`);
-
-      // 공통 로직: 최종 결과와 중간 결과를 분리하여 처리
       // ignoreResultsRef가 활성 상태면(구절 전환 직후 등) 결과를 무시함
       if (ignoreResultsRef.current) {
         console.log('[useSpeechRecognition] Result ignored due to ignoreResultsRef');
         return;
       }
 
-      // 최종 결과가 있으면 기존 세션의 최종 결과에 추가
-      if (hasFinalResult) {
-        finalTranscriptRef.current += finalTranscript;
+      // 현재 타임스탬프 업데이트
+      lastRecognitionEventTimeRef.current = Date.now();
+
+      let currentSessionFinal = '';
+      let currentSessionInterim = '';
+
+      // Android/iOS 공통: 현재 인식 세션(start~stop)의 모든 결과를 0부터 다시 합산
+      // 이는 Android의 resultIndex 버그나 중복 보고를 방지하는 가장 안전한 방법임
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
+        if (result.isFinal) {
+          currentSessionFinal += transcript;
+        } else {
+          currentSessionInterim += transcript;
+        }
       }
 
-      // 현재 세션의 전체 텍스트 (누적된 최종 결과 + 현재의 중간 결과)
-      const currentDisplayText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
+      // 최종 표시 텍스트 = [이전 세션들에서 보존된 텍스트] + [현재 세션의 최종 결과] + [현재 세션의 중간 결과]
+      const totalTranscript = finalTranscriptRef.current + currentSessionFinal + (currentSessionInterim ? ' ' + currentSessionInterim : '');
 
-      if (currentDisplayText) {
-        setTranscript(currentDisplayText);
-        console.log(`[useSpeechRecognition] Display updated: "${currentDisplayText}"`);
+      if (totalTranscript) {
+        setTranscript(totalTranscript);
+        // App.tsx에서 참조할 수 있도록 전역 ref는 아니지만 내부적으로 현재 "완료된" 전체 텍스트를 추적 (선택사항)
       }
 
       setError(null);
