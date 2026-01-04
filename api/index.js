@@ -285,4 +285,11 @@ app.post('/api/bible-reset', async (req, res) => {
     }
 });
 
+// Debug logging endpoint for iOS Safari speech recognition
+app.post('/api/debug-log', async (req, res) => {
+    const { event, data, userAgent, timestamp } = req.body;
+    console.log(`[iOS DEBUG] ${timestamp} | Event: ${event} | UserAgent: ${userAgent?.substring(0, 50)} | Data:`, JSON.stringify(data));
+    res.json({ received: true });
+});
+
 export default app;
