@@ -96,25 +96,24 @@ export function calculateSimilarity(targetText: string, bufferTextToSearch: stri
 
 /**
  * 구절 텍스트에서 인식된 텍스트와 매칭되는 prefix 길이를 찾습니다.
- * 인식된 텍스트가 구절의 **시작 부분**과 일치해야 합니다.
+ * calculateSimilarity를 사용하여 오타나 노이즈에 강하게 대응합니다.
  * 
  * @param verseText 원본 구절 텍스트
  * @param recognizedText 인식된 텍스트
- * @param similarityThreshold 유사도 임계값 (기본 70%)
+ * @param similarityThreshold 유사도 임계값 (기본 60%)
  * @returns 원본 구절에서 매칭된 글자 수 (공백 포함)
  */
 export function findMatchedPrefixLength(
   verseText: string,
   recognizedText: string,
-  similarityThreshold: number = 70
+  similarityThreshold: number = 60
 ): number {
   if (!verseText || !recognizedText) return 0;
 
   const normalizedVerse = normalizeText(verseText);
   const normalizedRecognized = normalizeText(recognizedText);
 
-  if (normalizedRecognized.length === 0) return 0;
-  if (normalizedVerse.length === 0) return 0;
+  if (normalizedRecognized.length === 0 || normalizedVerse.length === 0) return 0;
 
   // 원본 텍스트에서 공백/문장부호를 제외한 글자 인덱스 매핑
   const charToOriginalIndex: number[] = [];
@@ -125,36 +124,29 @@ export function findMatchedPrefixLength(
     }
   }
 
-  // 인식된 텍스트가 구절 **시작 부분**과 일치하는지 확인
-  // 인식된 텍스트 전체가 구절의 prefix와 유사해야 함
   let bestMatchOriginalLength = 0;
 
-  // 인식된 텍스트 길이만큼 구절 prefix와 비교
-  const checkLength = Math.min(normalizedVerse.length, normalizedRecognized.length);
+  // 인식된 텍스트의 길이에 비례하여 구절의 어느 부분까지 읽었는지 체크
+  // 오나 노이즈를 고려하여 인식 텍스트 길이의 1.2배 정도까지 탐색
+  const maxCheckLen = Math.min(normalizedVerse.length, Math.floor(normalizedRecognized.length * 1.2) + 2);
 
-  // 직접 prefix 비교 - 인식된 텍스트가 구절 시작과 얼마나 일치하는지
-  for (let prefixLen = 1; prefixLen <= checkLength; prefixLen++) {
+  for (let prefixLen = 1; prefixLen <= maxCheckLen; prefixLen++) {
     const versePrefix = normalizedVerse.substring(0, prefixLen);
-    const recognizedPrefix = normalizedRecognized.substring(0, prefixLen);
 
-    // 두 prefix가 같은지 확인 (정확한 일치)
-    let matchCount = 0;
-    for (let i = 0; i < prefixLen; i++) {
-      if (versePrefix[i] === recognizedPrefix[i]) {
-        matchCount++;
-      }
-    }
+    // 인식된 텍스트 전체와 구절의 prefix를 비교
+    // calculateSimilarity는 buffer(recognized) 내에서 target(versePrefix)을 찾음
+    const similarity = calculateSimilarity(versePrefix, normalizedRecognized);
 
-    const accuracy = (matchCount / prefixLen) * 100;
-
-    if (accuracy >= similarityThreshold) {
-      // 정규화된 인덱스 → 원본 인덱스로 변환
+    if (similarity >= similarityThreshold) {
       if (prefixLen <= charToOriginalIndex.length) {
         bestMatchOriginalLength = charToOriginalIndex[prefixLen - 1] + 1;
       }
     } else {
-      // 더 이상 일치하지 않으면 중단
-      break;
+      // 유사도가 급격히 떨어지면 매칭 범위를 벗어난 것으로 간주
+      // 단, 아주 짧은 구간에서는 노이즈가 심할 수 있으므로 최소 5글자 이상일 때만 break
+      if (prefixLen > 5 && similarity < similarityThreshold - 15) {
+        break;
+      }
     }
   }
 

@@ -322,7 +322,7 @@ const App: React.FC = () => {
       const matchedCount = findMatchedPrefixLength(
         currentTargetVerseForSession.text,
         sttTranscript,
-        isIOS ? 55 : 50 // iOS는 약간 더 엄격한 임계값 사용
+        60 // 임계값 60으로 통일하여 정확성 향상
       );
       setMatchedCharCount(matchedCount);
     }
@@ -530,6 +530,7 @@ const App: React.FC = () => {
       setMatchedVersesContentForSession('');
       setTranscriptBuffer('');
       resetTranscript();
+      setMatchedCharCount(0); // 세션 시작 시 리셋
       setSessionProgress({
         totalVersesInSession: verses.length,
         sessionCompletedVersesCount: initialSkip,
@@ -634,6 +635,7 @@ const App: React.FC = () => {
     setTranscriptBuffer('');
     setAppError(null);
     resetTranscript();
+    setMatchedCharCount(0); // 다시 읽기 시 리셋
     stopListening();
     setIsRetryingVerse(true);
   }, [resetTranscript, stopListening]);
