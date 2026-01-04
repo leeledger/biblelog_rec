@@ -127,11 +127,15 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       }
       // Android 및 기타 플랫폼 - Web Speech API가 이미 누적된 결과를 반환함
       else {
-        // 최종 결과와 중간 결과를 함께 표시 (추가 누적 없이)
-        if (hasFinalResult || interimTranscript) {
-          const newTranscript = (hasFinalResult ? finalTranscript : '') + (interimTranscript ? ' ' + interimTranscript : '');
-          setTranscript(newTranscript);
-          console.log('[useSpeechRecognition] Android - Display:', newTranscript);
+        // Android에서는 더 정확한 실시간 업데이트를 위해 0번 인덱스부터 다시 조합
+        let fullAndroidTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          fullAndroidTranscript += event.results[i][0].transcript;
+        }
+
+        if (fullAndroidTranscript && !ignoreResultsRef.current) {
+          setTranscript(fullAndroidTranscript);
+          console.log('[useSpeechRecognition] Android - Display:', fullAndroidTranscript);
         }
       }
 
@@ -307,10 +311,13 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       // 음성 인식 재시작 - 기존 인식 중단 및 재시작
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current.stop();
-
-        console.log('[useSpeechRecognition] iOS recognition forcefully stopped for reset');
+        try {
+          // abort()는 내부 버퍼를 즉시 삭제함
+          recognitionRef.current.abort();
+          console.log('[useSpeechRecognition] iOS recognition forcefully aborted for reset');
+        } catch (e) {
+          console.error('[useSpeechRecognition] Error aborting recognition:', e);
+        }
 
         // 재시작을 위한 짧은 지연
         setTimeout(() => {
@@ -322,7 +329,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
               console.error('[useSpeechRecognition] Error restarting iOS recognition:', error);
             }
           }
-        }, 50);
+        }, 100);
       }
 
       // 잠시 후 다시 처리 가능하게 (구절 전환 직후 결과만 동작)
@@ -351,23 +358,29 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     // 현재 인식이 진행 중이면 잠시 중지하고 다시 시작하여 인식 결과를 초기화
     if (isListening && recognitionRef.current) {
       try {
-        console.log('[useSpeechRecognition] Force resetting recognition by stop/start cycle');
-        // 현재 인식 중지
-        recognitionRef.current.stop();
+        console.log('[useSpeechRecognition] Force resetting recognition by abort/start cycle');
+        // 현재 인식 즉시 중단 (버퍼 파괴)
+        recognitionRef.current.abort();
 
         // 잠시 후 다시 시작 (onend 이벤트가 자동으로 호출되며 새로운 인식 세션 시작)
         setTimeout(() => {
           if (recognitionRef.current && isListening) {
-            // iOS에서는 의도적인 초기화 시에만 ignoreResultsRef를 true로 유지
-            if (isIOS) {
-              console.log('[useSpeechRecognition] iOS - Restarting with cleared transcript');
-              // 이전 결과와의 구분을 위해 마지막 처리된 결과 ID 초기화
-              lastProcessedResultIdRef.current = '';
+            // 이전 결과와의 구분을 위해 마지막 처리된 결과 ID 초기화
+            lastProcessedResultIdRef.current = '';
+
+            try {
+              recognitionRef.current.start();
+              console.log('[useSpeechRecognition] Recognition restarted after reset');
+            } catch (e) {
+              console.error('[useSpeechRecognition] Error starting after reset:', e);
             }
-            recognitionRef.current.start();
-            console.log('[useSpeechRecognition] Recognition restarted after reset');
           }
-        }, isIOS ? 250 : 100); // iOS에서는 지연 시간을 더 늘려 안정성 확보
+
+          // 리셋 후 잠시 동안 들어오시는 결과 무시 해제
+          setTimeout(() => {
+            ignoreResultsRef.current = false;
+          }, 300);
+        }, 200);
       } catch (e) {
         console.error('[useSpeechRecognition] Error during force reset:', e);
       }
