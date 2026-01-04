@@ -96,17 +96,17 @@ export function calculateSimilarity(targetText: string, bufferTextToSearch: stri
 
 /**
  * 구절 텍스트에서 인식된 텍스트와 매칭되는 prefix 길이를 찾습니다.
- * 예: verseText="태초에 하나님이", recognizedText="태초에" → 최소 3 반환 (공백 제외 시)
+ * 인식된 텍스트가 구절의 **시작 부분**과 일치해야 합니다.
  * 
  * @param verseText 원본 구절 텍스트
  * @param recognizedText 인식된 텍스트
- * @param similarityThreshold 유사도 임계값 (기본 50%)
+ * @param similarityThreshold 유사도 임계값 (기본 70%)
  * @returns 원본 구절에서 매칭된 글자 수 (공백 포함)
  */
 export function findMatchedPrefixLength(
   verseText: string,
   recognizedText: string,
-  similarityThreshold: number = 50
+  similarityThreshold: number = 70
 ): number {
   if (!verseText || !recognizedText) return 0;
 
@@ -114,11 +114,7 @@ export function findMatchedPrefixLength(
   const normalizedRecognized = normalizeText(recognizedText);
 
   if (normalizedRecognized.length === 0) return 0;
-
-  // 점진적으로 구절의 prefix를 늘려가며 인식 텍스트와 비교
-  // 가장 많이 매칭되는 위치를 찾음
-  let bestMatchLength = 0;
-  let bestMatchOriginalLength = 0;
+  if (normalizedVerse.length === 0) return 0;
 
   // 원본 텍스트에서 공백/문장부호를 제외한 글자 인덱스 매핑
   const charToOriginalIndex: number[] = [];
@@ -129,23 +125,36 @@ export function findMatchedPrefixLength(
     }
   }
 
-  // 인식된 텍스트 길이까지만 비교 (과도한 계산 방지)
-  const maxCheckLength = Math.min(normalizedVerse.length, normalizedRecognized.length + 10);
+  // 인식된 텍스트가 구절 **시작 부분**과 일치하는지 확인
+  // 인식된 텍스트 전체가 구절의 prefix와 유사해야 함
+  let bestMatchOriginalLength = 0;
 
-  for (let prefixLen = 1; prefixLen <= maxCheckLength; prefixLen++) {
+  // 인식된 텍스트 길이만큼 구절 prefix와 비교
+  const checkLength = Math.min(normalizedVerse.length, normalizedRecognized.length);
+
+  // 직접 prefix 비교 - 인식된 텍스트가 구절 시작과 얼마나 일치하는지
+  for (let prefixLen = 1; prefixLen <= checkLength; prefixLen++) {
     const versePrefix = normalizedVerse.substring(0, prefixLen);
+    const recognizedPrefix = normalizedRecognized.substring(0, prefixLen);
 
-    // 인식된 텍스트가 이 prefix를 포함하거나 비슷한지 확인
-    // 인식 텍스트의 끝 부분과 비교
-    const recognizedEnd = normalizedRecognized.slice(-prefixLen);
-    const similarity = calculateSimilarity(versePrefix, recognizedEnd);
+    // 두 prefix가 같은지 확인 (정확한 일치)
+    let matchCount = 0;
+    for (let i = 0; i < prefixLen; i++) {
+      if (versePrefix[i] === recognizedPrefix[i]) {
+        matchCount++;
+      }
+    }
 
-    if (similarity >= similarityThreshold) {
-      bestMatchLength = prefixLen;
+    const accuracy = (matchCount / prefixLen) * 100;
+
+    if (accuracy >= similarityThreshold) {
       // 정규화된 인덱스 → 원본 인덱스로 변환
       if (prefixLen <= charToOriginalIndex.length) {
         bestMatchOriginalLength = charToOriginalIndex[prefixLen - 1] + 1;
       }
+    } else {
+      // 더 이상 일치하지 않으면 중단
+      break;
     }
   }
 

@@ -358,6 +358,7 @@ const App: React.FC = () => {
 
           if (currentVerseIndexInSession < sessionTargetVerses.length - 1) {
             setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
+            setMatchedCharCount(0); // 구절 전환 시 리셋
           } else {
             handleStopReadingAndSave(sessionTargetVerses.length, true);
           }
@@ -485,6 +486,7 @@ const App: React.FC = () => {
         setCurrentVerseIndexInSession(prevIdx => prevIdx + 1);
         setTranscriptBuffer('');
         resetTranscript();
+        setMatchedCharCount(0); // 구절 전환 시 리셋
 
         if (isIOS) {
           setTimeout(() => {
