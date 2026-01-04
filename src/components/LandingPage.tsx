@@ -21,17 +21,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     <img
                         src="/images/landing/hero.png"
                         alt="Bible reading journey background"
-                        className="w-full h-full object-cover opacity-90 scale-105 animate-pulse-slow"
+                        className="w-full h-full object-cover opacity-100 scale-105 animate-pulse-slow"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-slate-50"></div>
+                    <div className="absolute inset-0 bg-black/50"></div>
                 </div>
 
                 <div className="relative z-10 max-w-4xl mx-auto space-y-8 animate-fade-in-up">
                     <header>
-                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-2xl mb-4">
-                            말씀 원정대 <span className="text-amber-400">함께해요</span>
+                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-4">
+                            바이블로그 <span className="text-amber-400">함께해요</span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-white/90 font-light italic opacity-90 font-serif">
+                        <p className="text-xl md:text-2xl text-white font-medium drop-shadow-md font-serif">
                             "말씀이 내 목소리가 되고, 내 목소리가 기록이 되는 시간."
                         </p>
                     </header>

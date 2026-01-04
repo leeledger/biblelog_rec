@@ -26,8 +26,8 @@ export default defineConfig(({ mode }) => {
         },
         includeAssets: ['images/favicon.svg', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: '말씀의 열매',
-          short_name: '성경읽기 동행',
+          name: '바이블로그',
+          short_name: '바이블로그',
           description: '음성 인식을 통한 성경 읽기 동행',
           theme_color: '#8856ec',
           background_color: '#e9d5ff',

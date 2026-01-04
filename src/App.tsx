@@ -685,6 +685,10 @@ const App: React.FC = () => {
         <LandingPage
           authForm={
             <div className="space-y-4">
+              <div className="mb-6 text-center">
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-purple-500 drop-shadow-sm">바이블로그</h2>
+                <p className="text-sm text-gray-500 font-medium">BibleLog Journey</p>
+              </div>
               <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
               {appError && <p className="mt-4 text-red-500 text-center">{appError}</p>}
 
