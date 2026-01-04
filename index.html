@@ -61,7 +61,7 @@
 
     // 카카오톡 인앱 브라우저이고 아이폰이 아닐 경우에만 리디렉션
     if (isKakao && !isIphone) {
-      window.location.href = 'intent://biblelog.kr#Intent;scheme=https;end';
+      window.location.href = `intent://${window.location.hostname}#Intent;scheme=https;end`;
     }
   </script>
   <script>
