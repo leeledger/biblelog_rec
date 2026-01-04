@@ -238,15 +238,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
             </h4>
             <p className="text-sm text-indigo-700 opacity-80 mb-4 leading-relaxed">
-              성도님들의 따뜻한 후원은 더 나은 서비스 운영과<br />
-              말씀 통독 사역을 지속하는 큰 힘이 됩니다.
+              성도님들의 따뜻한 후원은 더 나은 바이블로그<br />
+              서비스 운영을 지속하는 큰 힘이 됩니다.
             </p>
             <div className="flex flex-col gap-2">
               <div className="bg-white px-4 py-3 rounded-xl border border-indigo-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest text-left">사역 후원</span>
-                <span className="text-sm font-black text-indigo-900 select-all">토스뱅크 1234-5678-0000 (이예나)</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest text-left">후원</span>
+                <span className="text-sm font-black text-indigo-900 select-all">토스뱅크 1234-5678-0000 (이종림)</span>
               </div>
-              <p className="text-[10px] text-indigo-400 italic">* 수집된 후원금은 전액 서버 유지비로 사용됩니다.</p>
+              <p className="text-[10px] text-indigo-400 italic">*후원금은 전액 서버 유지비로 사용됩니다.</p>
             </div>
           </div>
 
