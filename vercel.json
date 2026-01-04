@@ -5,5 +5,16 @@
             "source": "/api/(.*)",
             "destination": "/api/index.js"
         }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Permissions-Policy",
+                    "value": "microphone=self, speech-recognition=self"
+                }
+            ]
+        }
     ]
 }
