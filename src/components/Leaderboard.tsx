@@ -27,7 +27,11 @@ interface LeaderboardEntry {
 // Define the canonical order of Bible books (for now, only Genesis)
 const BOOK_ORDER = AVAILABLE_BOOKS.map(b => b.name);
 
-const Leaderboard: React.FC = () => {
+interface LeaderboardProps {
+  groupId?: number | null;
+}
+
+const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +39,7 @@ const Leaderboard: React.FC = () => {
     const fetchLeaderboardData = async () => {
       setIsLoading(true);
       try {
-        const usersData: UserDataForLeaderboard[] = await authService.getAllUsersWithProgress(); // Await the promise
+        const usersData: UserDataForLeaderboard[] = await authService.getAllUsersWithProgress(groupId); // Pass groupId
 
         const sortedUsers = [...usersData].sort((a, b) => {
           // Primary sort: by completionRate, descending
@@ -89,7 +93,7 @@ const Leaderboard: React.FC = () => {
     };
 
     fetchLeaderboardData();
-  }, []);
+  }, [groupId]);
 
   if (isLoading) {
     return (
@@ -110,25 +114,27 @@ const Leaderboard: React.FC = () => {
   return (
     <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-xl rounded-2xl overflow-hidden border border-indigo-100">
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 py-4 px-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-center text-white mb-1 break-keep drop-shadow-sm">✨ 완독률 순위 ✨</h2>
-        <p className="text-center text-indigo-100 text-sm">함께 걷는 말씀의 여정</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-center text-white mb-1 break-keep drop-shadow-sm">
+          {groupId ? '🏅 그룹 랭킹 🏅' : '✨ 전체 완독률 순위 ✨'}
+        </h2>
+        <p className="text-center text-indigo-100 text-sm">{groupId ? '공동체와 함께하는 여정' : '함께 걷는 말씀의 여정'}</p>
       </div>
-      
+
       {/* 모바일에서는 카드 형태로, 데스크톱에서는 테이블 형태로 표시 */}
       <div className="md:hidden">
         {/* 모바일 카드 뷰 */}
         <div className="p-4 space-y-4">
           {leaderboardData.map((entry) => (
-            <div 
-              key={entry.username} 
+            <div
+              key={entry.username}
               className={`rounded-xl p-4 shadow-md transition-all duration-300 hover:shadow-lg ${entry.rank <= 3 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200' : 'bg-white'}`}
             >
               <div className="flex items-center mb-3">
                 <div className={`
-                  ${entry.rank === 1 ? 'bg-amber-500 text-white' : 
-                    entry.rank === 2 ? 'bg-gray-400 text-white' : 
-                    entry.rank === 3 ? 'bg-amber-700 text-white' : 
-                    'bg-indigo-100 text-indigo-800'} 
+                  ${entry.rank === 1 ? 'bg-amber-500 text-white' :
+                    entry.rank === 2 ? 'bg-gray-400 text-white' :
+                      entry.rank === 3 ? 'bg-amber-700 text-white' :
+                        'bg-indigo-100 text-indigo-800'} 
                   rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm mr-3
                 `}>
                   {entry.rank}
@@ -146,7 +152,7 @@ const Leaderboard: React.FC = () => {
                   {entry.completionRate.toFixed(1)}%
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 gap-2 text-sm">
                 <div className="flex">
                   <span className="text-gray-500 w-20">최근 읽기:</span>
@@ -155,14 +161,14 @@ const Leaderboard: React.FC = () => {
                 <div className="flex">
                   <span className="text-gray-500 w-20">업데이트:</span>
                   <span className="text-gray-600">
-                    {entry.lastProgressUpdateDate 
-                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', { 
-                          month: '2-digit', 
-                          day: '2-digit', 
-                          hour: '2-digit', 
-                          minute: '2-digit', 
-                          hour12: false 
-                        }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
+                    {entry.lastProgressUpdateDate
+                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
                       : '기록 없음'}
                   </span>
                 </div>
@@ -171,7 +177,7 @@ const Leaderboard: React.FC = () => {
           ))}
         </div>
       </div>
-      
+
       {/* 데스크톱 테이블 뷰 */}
       <div className="hidden md:block">
         <div className="p-6">
@@ -187,16 +193,16 @@ const Leaderboard: React.FC = () => {
             </thead>
             <tbody>
               {leaderboardData.map((entry) => (
-                <tr 
-                  key={entry.username} 
+                <tr
+                  key={entry.username}
                   className={`border-b border-indigo-50 hover:bg-indigo-50/50 transition-colors ${entry.rank <= 3 ? 'bg-amber-50/50' : ''}`}
                 >
                   <td className="py-4 px-4">
                     <div className={`
-                      ${entry.rank === 1 ? 'bg-amber-500 text-white' : 
-                        entry.rank === 2 ? 'bg-gray-400 text-white' : 
-                        entry.rank === 3 ? 'bg-amber-700 text-white' : 
-                        'bg-indigo-100 text-indigo-800'} 
+                      ${entry.rank === 1 ? 'bg-amber-500 text-white' :
+                        entry.rank === 2 ? 'bg-gray-400 text-white' :
+                          entry.rank === 3 ? 'bg-amber-700 text-white' :
+                            'bg-indigo-100 text-indigo-800'} 
                       rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm
                     `}>
                       {entry.rank}
@@ -220,15 +226,15 @@ const Leaderboard: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-4 px-4 text-gray-600">
-                    {entry.lastProgressUpdateDate 
-                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', { 
-                          year: 'numeric', 
-                          month: '2-digit', 
-                          day: '2-digit', 
-                          hour: '2-digit', 
-                          minute: '2-digit', 
-                          hour12: false 
-                        }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
+                    {entry.lastProgressUpdateDate
+                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
                       : ''}
                   </td>
                 </tr>

@@ -22,17 +22,35 @@ export enum ReadingState {
 }
 
 export interface User {
-  id?: number; // Optional: as it might not be available immediately or in all contexts
+  id?: number;
   username: string;
-  must_change_password?: boolean; // Optional: To indicate if user needs to change password
+  must_change_password?: boolean;
+  groups?: Group[]; // 가입된 그룹 목록
+}
+
+export interface Group {
+  id: number;
+  name: string;
+  invite_code: string;
+  owner_id: number;
+  created_at: string;
+  is_owner?: boolean; // 클라이언트 편의용
+}
+
+export interface GroupMember {
+  group_id: number;
+  user_id: number;
+  joined_at: string;
+  username?: string; // 리더보드 등에서 사용
 }
 
 // Stores the user's overall last read point ("bookmark")
 export interface UserProgress {
+  groupId?: number | null; // null 또는 0은 개인 여정
   lastReadBook: string;
   lastReadChapter: number;
   lastReadVerse: number;
-  totalSkips: number;
+  totalSkips?: number;
   history?: UserSessionRecord[];
   completedChapters?: string[]; // Array of strings like "BookName:ChapterNum"
   lastProgressUpdateDate?: string; // ISO string format for when progress was last saved
@@ -91,7 +109,7 @@ export interface ISpeechRecognitionErrorEvent extends Event {
 }
 
 export interface ISpeechRecognition extends EventTarget {
-  grammars: any; 
+  grammars: any;
   lang: string;
   continuous: boolean;
   interimResults: boolean;
@@ -115,7 +133,7 @@ export interface ISpeechRecognition extends EventTarget {
 }
 
 export interface ISpeechRecognitionStatic {
-  new (): ISpeechRecognition;
+  new(): ISpeechRecognition;
 }
 
 declare global {

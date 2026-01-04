@@ -2,7 +2,8 @@ import React from 'react';
 import ChapterSelector from './ChapterSelector';
 import BookCompletionStatus from './BookCompletionStatus';
 import Leaderboard from './Leaderboard';
-import { User, UserProgress } from '../types';
+import GroupManagement from './GroupManagement';
+import { User, UserProgress, Group } from '../types';
 import { AVAILABLE_BOOKS } from '../constants';
 
 interface DashboardProps {
@@ -29,6 +30,12 @@ interface DashboardProps {
   setCurrentView: (view: 'IDLE_SETUP' | 'LEADERBOARD') => void;
   bibleResetLoading: boolean;
   isLoading: boolean;
+
+  // Group Props
+  userGroups: Group[];
+  selectedGroupId: number | null;
+  onSelectGroup: (groupId: number | null) => void;
+  onGroupAction: () => Promise<void>;
 }
 
 
@@ -48,13 +55,20 @@ const Dashboard: React.FC<DashboardProps> = ({
   currentView,
   setCurrentView,
   bibleResetLoading,
-  isLoading
+  isLoading,
+  userGroups,
+  selectedGroupId,
+  onSelectGroup,
+  onGroupAction
 }) => {
+  const [showGroupModal, setShowGroupModal] = React.useState(false);
+  const activeGroup = userGroups.find(g => g.id === selectedGroupId);
+
   return (
     <>
       {/* Overall Bible Progress Display */}
       {currentUser && totalBibleChapters > 0 && (
-        <div className="my-4 p-4 bg-sky-50 border border-sky-200 rounded-lg shadow">
+        <div className="my-4 p-4 bg-sky-50 border border-sky-200 rounded-lg shadow-sm">
           <h3 className="text-lg font-semibold text-sky-700 mb-2">성경 전체 완독 진행률</h3>
           <div className="w-full bg-gray-200 rounded-full h-4">
             <div
@@ -72,89 +86,140 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Continue Reading Section */}
-      <div className="my-4 p-4 bg-blue-50 rounded-lg shadow">
-        <h3 className="text-lg font-semibold text-blue-700">이어 읽기</h3>
-        {userOverallProgress && userOverallProgress.lastReadBook ? (
-          <p className="text-sm text-gray-600">
-            마지막 읽은 곳: {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse}절
-          </p>
-        ) : (
-          <p className="text-sm text-gray-600">
-            아직 읽기 기록이 없습니다. 아래에서 시작할 부분을 선택하세요.
-          </p>
-        )}
-        {userOverallProgress && userOverallProgress.lastReadBook && selectedBookForSelector && (
-          <p className="text-sm text-gray-500 mt-1">
-            추천 시작: {selectedBookForSelector} {startChapterForSelector}장 (아래에서 변경 가능)
-          </p>
-        )}
+      {/* 여정 및 범위 선택 카드 통합 */}
+      <div className="mt-8 mb-8 overflow-hidden rounded-3xl border border-indigo-100 shadow-xl">
+        {/* 상단: 그룹/여정 선택 영역 */}
+        <div className="p-5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-black flex items-center gap-2">
+              <span className="text-2xl">📍</span> 여정 선택
+            </h3>
+            <button
+              onClick={() => setShowGroupModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-700 text-sm font-black rounded-xl hover:bg-indigo-50 active:scale-95 transition-all shadow-lg"
+            >
+              <span>⚙️</span> 그룹 관리
+            </button>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => onSelectGroup(null)}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${selectedGroupId === null ? 'bg-white text-indigo-700 shadow-md' : 'bg-indigo-500 bg-opacity-30 text-indigo-100 hover:bg-opacity-40'}`}
+            >
+              개인 통독
+            </button>
+            {userGroups.map(group => (
+              <button
+                key={group.id}
+                onClick={() => onSelectGroup(group.id)}
+                className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-black transition-all ${selectedGroupId === group.id ? 'bg-white text-indigo-700 shadow-md' : 'bg-indigo-500 bg-opacity-30 text-indigo-100 hover:bg-opacity-40'}`}
+              >
+                🏢 {group.name}
+              </button>
+            ))}
+          </div>
+
+          {activeGroup && (
+            <div className="mt-4 bg-black bg-opacity-10 p-3 rounded-xl flex justify-between items-center text-xs">
+              <span className="font-bold">초대 코드: <strong className="select-all text-white font-mono tracking-wider ml-1">{activeGroup.invite_code}</strong></span>
+              <span className="opacity-70">그룹장: {activeGroup.owner_id === currentUser.id ? '나' : '동역자'}</span>
+            </div>
+          )}
+
+          {userGroups.length === 0 && (
+            <p className="mt-3 text-[11px] text-indigo-100 opacity-80 italic">
+              * 동역자들과 함께하고 싶다면 <strong>'그룹 관리'</strong>에서 공동체를 만드세요!
+            </p>
+          )}
+        </div>
+
+        {/* 하단: 범위 선택 (ChapterSelector) */}
+        <div className="bg-white">
+          <ChapterSelector
+            onStartReading={onStartReading}
+            defaultBook={selectedBookForSelector}
+            defaultStartChapter={startChapterForSelector}
+            defaultEndChapter={endChapterForSelector}
+            completedChapters={userOverallProgress?.completedChapters}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
-      <ChapterSelector
-        onStartReading={onStartReading}
-        defaultBook={selectedBookForSelector}
-        defaultStartChapter={startChapterForSelector}
-        defaultEndChapter={endChapterForSelector}
-        completedChapters={userOverallProgress?.completedChapters}
-        isLoading={isLoading}
+      <GroupManagement
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        currentUser={currentUser}
+        userGroups={userGroups}
+        onGroupAction={onGroupAction}
       />
 
       {/* Control Buttons */}
       {currentUser && userOverallProgress && (
-        <div className="my-8 flex flex-col gap-3 items-center w-full max-w-md mx-auto">
-          {/* 권별 완독 현황 보기 버튼 */}
+        <div className="my-8 flex flex-col gap-4 items-center w-full max-w-md mx-auto">
+          {/* 이어 읽기 퀵 정보 */}
+          <div className="w-full p-4 bg-blue-50 bg-opacity-50 rounded-2xl border border-blue-100 flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-blue-800 mb-0.5">마지막 읽은 곳</h3>
+              <p className="text-base font-black text-gray-700">
+                {userOverallProgress.lastReadBook ? `${userOverallProgress.lastReadBook} ${userOverallProgress.lastReadChapter}장` : '기록 없음'}
+              </p>
+            </div>
+            <span className="text-2xl opacity-40">📖</span>
+          </div>
+
           <button
             onClick={() => setShowBookCompletionStatus(!showBookCompletionStatus)}
-            className="w-full h-14 px-6 text-lg font-bold tracking-tight bg-gradient-to-r from-blue-400 via-blue-300 to-sky-300 text-white rounded-2xl shadow-lg border border-blue-200 flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.04] hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-blue-500 to-sky-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            <span className="text-2xl mr-1">📖</span>
-            {showBookCompletionStatus ? '권별 완독 현황 숨기기' : '권별 완독 현황 보기'}
+            <span>�</span>
+            {showBookCompletionStatus ? '현황 숨기기' : '권별 완독 현황'}
           </button>
 
           {showBookCompletionStatus && (
-            <BookCompletionStatus
-              userProgress={userOverallProgress}
-              availableBooks={AVAILABLE_BOOKS}
-            />
-          )}
-
-          {/* 함께 걷는 여정 버튼 */}
-          <button
-            onClick={() => setCurrentView(currentView === 'LEADERBOARD' ? 'IDLE_SETUP' : 'LEADERBOARD')}
-            className={`w-full h-14 px-6 text-lg font-bold tracking-tight bg-gradient-to-r from-purple-500 via-fuchsia-400 to-pink-300 text-white rounded-2xl shadow-lg border border-purple-200 flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.04] hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 ${currentView === 'LEADERBOARD' ? 'ring-2 ring-fuchsia-400' : ''}`}
-          >
-            <span className="text-2xl mr-1">👣</span>
-            {currentView === 'LEADERBOARD' ? '함께 걷는 여정 숨기기' : '함께 걷는 여정 보기'}
-          </button>
-
-          {currentView === 'LEADERBOARD' && (
-            <div className="my-4 p-4 bg-gray-50 rounded-lg shadow w-full">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">👣 함께 걷는 말씀의 발자국</h3>
-              <Leaderboard key={userOverallProgress ? `lb-${userOverallProgress.lastReadBook}-${userOverallProgress.lastReadChapter}-${userOverallProgress.lastReadVerse}` : 'lb-no-progress'} />
+            <div className="w-full animate-in slide-in-from-top duration-300">
+              <BookCompletionStatus
+                userProgress={userOverallProgress}
+                availableBooks={AVAILABLE_BOOKS}
+              />
             </div>
           )}
 
-          {/* 명예의 전당 버튼 */}
+          <button
+            onClick={() => setCurrentView(currentView === 'LEADERBOARD' ? 'IDLE_SETUP' : 'LEADERBOARD')}
+            className={`w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-purple-600 to-pink-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 ${currentView === 'LEADERBOARD' ? 'ring-4 ring-pink-200' : ''}`}
+          >
+            <span>👣</span>
+            {currentView === 'LEADERBOARD' ? '순위표 닫기' : '함께 걷는 여정'}
+          </button>
+
+          {currentView === 'LEADERBOARD' && (
+            <div className="my-4 p-4 bg-white rounded-3xl shadow-xl border border-gray-100 w-full animate-in slide-in-from-top duration-300">
+              <h3 className="text-xl font-black text-gray-800 mb-6 text-center italic">"말씀의 발자국"</h3>
+              <Leaderboard
+                key={userOverallProgress ? `lb-${selectedGroupId}-${userOverallProgress.lastReadBook}-${userOverallProgress.lastReadChapter}-${userOverallProgress.lastReadVerse}` : `lb-${selectedGroupId}`}
+                groupId={selectedGroupId}
+              />
+            </div>
+          )}
+
           <button
             onClick={onShowHallOfFame}
-            className="w-full h-14 px-6 text-lg font-bold tracking-tight bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 text-amber-900 rounded-2xl shadow-xl border-2 border-yellow-300 flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.04] hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-amber-300 drop-shadow-glow"
-            style={{ boxShadow: '0 0 16px 2px #ffe06655' }}
+            className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-950 rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 border-b-4 border-amber-500"
           >
-            <span className="text-2xl mr-1">🏆</span>
+            <span>🏆</span>
             명예의 전당
           </button>
 
-          {/* 다시 시작 버튼 */}
           {(currentUser as any).completed_count > 0 && overallCompletedChaptersCount === totalBibleChapters && (
             <button
               disabled={bibleResetLoading}
               onClick={onBibleReset}
-              className="w-full h-14 px-6 text-lg font-bold tracking-tight bg-gradient-to-r from-white via-yellow-100 to-yellow-200 text-amber-700 rounded-2xl border-2 border-amber-300 shadow-xl mt-1 flex items-center justify-center gap-2 transition-transform duration-150 hover:scale-[1.04] hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-amber-300 drop-shadow-glow disabled:opacity-60"
-              style={{ boxShadow: '0 0 14px 2px #ffe06644' }}
+              className="w-full h-16 px-6 text-xl font-black bg-white text-indigo-700 rounded-3xl border-2 border-indigo-100 shadow-xl mt-4 flex items-center justify-center gap-3 hover:bg-indigo-50 transition-all disabled:opacity-50"
             >
-              <span className="text-2xl mr-1">🔄</span>
-              {bibleResetLoading ? '재진행 중...' : '다시 말씀 원정 시작하기'}
+              <span>🔄</span>
+              {bibleResetLoading ? '준비 중...' : '새로운 원정 시작'}
             </button>
           )}
         </div>

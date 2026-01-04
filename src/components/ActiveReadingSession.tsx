@@ -141,10 +141,6 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             <p className="text-md text-gray-700 min-h-[2.5em] p-2 bg-gray-100 rounded-md border">
               {transcript || <span className="text-gray-400 italic">듣고 있습니다... (말씀해 주세요)</span>}
             </p>
-            {/* iOS 디버그 정보 */}
-            <p className="text-xs text-blue-500 mt-1">
-              [Debug] 현재 호스트: {typeof window !== 'undefined' ? window.location.hostname : 'unknown'}
-            </p>
           </div>
 
           <div>

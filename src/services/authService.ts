@@ -68,7 +68,7 @@ export const registerUser = async (username: string, password_provided: string):
       console.error('Registration failed:', responseData.message);
       return { success: false, message: responseData.message || `Registration failed with status: ${response.status}` };
     }
-    
+
     // Registration successful, backend returns user info and a message
     // The user object from register might not include must_change_password directly, or it might be true by default
     // For now, we just confirm success and message.
@@ -141,9 +141,10 @@ export interface UserWithProgress {
   completed_count: number; // 완독 횟수
 }
 
-export const getAllUsersWithProgress = async (): Promise<UserWithProgress[]> => {
+export const getAllUsersWithProgress = async (groupId?: number | null): Promise<UserWithProgress[]> => {
   try {
-    const response = await fetch('/api/users/all');
+    const url = groupId ? `/api/users/all?groupId=${groupId}` : '/api/users/all';
+    const response = await fetch(url);
     if (!response.ok) {
       console.error('Failed to fetch all users progress, status:', response.status);
       return [];
@@ -162,8 +163,8 @@ export const getAllUsersWithProgress = async (): Promise<UserWithProgress[]> => 
 
     const formattedUsers: UserWithProgress[] = usersSummaryFromApi.map((summary) => {
       // Calculate completionRate based on the entire Bible using completedChaptersCount from API
-      const completionRate = TOTAL_CHAPTERS_IN_BIBLE > 0 
-        ? (summary.completedChaptersCount / TOTAL_CHAPTERS_IN_BIBLE) * 100 
+      const completionRate = TOTAL_CHAPTERS_IN_BIBLE > 0
+        ? (summary.completedChaptersCount / TOTAL_CHAPTERS_IN_BIBLE) * 100
         : 0;
 
       return {

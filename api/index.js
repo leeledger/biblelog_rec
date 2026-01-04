@@ -2,10 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import * as db from './db.js';
 
 const app = express();
 const saltRounds = 10;
+
+// Helper: Generate a unique invite code
+const generateInviteCode = () => {
+    return crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 chars
+};
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -122,9 +128,11 @@ app.post('/api/users/change-password', async (req, res) => {
     }
 });
 
-// Get user progress
+// Get user progress (Optionally for a specific group)
 app.get('/api/progress/:username', async (req, res) => {
     const { username } = req.params;
+    const { groupId } = req.query; // groupId can be undefined, null, or a number
+
     try {
         const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
         if (userResult.rows.length === 0) {
@@ -133,8 +141,10 @@ app.get('/api/progress/:username', async (req, res) => {
         const userId = userResult.rows[0].id;
 
         const progressResult = await db.query(
-            'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1',
-            [userId]
+            groupId
+                ? 'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1 AND group_id = $2'
+                : 'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1 AND group_id IS NULL',
+            groupId ? [userId, groupId] : [userId]
         );
 
         let userProgressData = { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
@@ -149,8 +159,10 @@ app.get('/api/progress/:username', async (req, res) => {
         }
 
         const completedChaptersResult = await db.query(
-            'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1',
-            [userId]
+            groupId
+                ? 'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 AND group_id = $2'
+                : 'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 AND group_id IS NULL',
+            groupId ? [userId, groupId] : [userId]
         );
         const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
 
@@ -168,7 +180,7 @@ app.get('/api/progress/:username', async (req, res) => {
 // Save user progress
 app.post('/api/progress/:username', async (req, res) => {
     const { username } = req.params;
-    const { lastReadBook, lastReadChapter, lastReadVerse, history, completedChapters } = req.body;
+    const { lastReadBook, lastReadChapter, lastReadVerse, history, completedChapters, groupId } = req.body;
 
     const client = await db.pool.connect();
     try {
@@ -184,39 +196,39 @@ app.post('/api/progress/:username', async (req, res) => {
         }
 
         const progressQuery = `
-      INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (user_id)
+      INSERT INTO reading_progress (user_id, group_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (user_id, group_id)
       DO UPDATE SET
         last_read_book = EXCLUDED.last_read_book,
         last_read_chapter = EXCLUDED.last_read_chapter,
         last_read_verse = EXCLUDED.last_read_verse,
         updated_at = NOW();
     `;
-        await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse]);
+        await client.query(progressQuery, [userId, groupId || null, lastReadBook, lastReadChapter, lastReadVerse]);
 
         if (completedChapters && completedChapters.length > 0) {
             const chapterInsertQuery = `
-        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at)
-        VALUES ($1, $2, $3, NOW())
-        ON CONFLICT (user_id, book_name, chapter_number) DO NOTHING;
+        INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (user_id, group_id, book_name, chapter_number) DO NOTHING;
       `;
             for (const chapterStr of completedChapters) {
                 const [book, chapterNumStr] = chapterStr.split(':');
                 const chapterNum = parseInt(chapterNumStr, 10);
                 if (book && !isNaN(chapterNum)) {
-                    await client.query(chapterInsertQuery, [userId, book, chapterNum]);
+                    await client.query(chapterInsertQuery, [userId, groupId || null, book, chapterNum]);
                 }
             }
         }
 
         if (history && history.length > 0) {
             const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at)
-        VALUES ($1, $2, $3, $4, $5);
+        INSERT INTO reading_history (user_id, group_id, book_name, chapter_number, verse_number, read_at)
+        VALUES ($1, $2, $3, $4, $5, $6);
       `;
             for (const entry of history) {
-                await client.query(historyInsertQuery, [userId, entry.book, entry.startChapter, entry.startVerse, new Date(entry.date)]);
+                await client.query(historyInsertQuery, [userId, groupId || null, entry.book, entry.startChapter, entry.startVerse, new Date(entry.date)]);
             }
         }
 
@@ -231,26 +243,55 @@ app.post('/api/progress/:username', async (req, res) => {
     }
 });
 
-// Leaderboard
+// Leaderboard (Optionally filtered by group)
 app.get('/api/users/all', async (req, res) => {
+    const { groupId } = req.query;
     try {
-        const query = `
-      SELECT
-        u.username,
-        COALESCE(rp.last_read_book, '') AS "lastReadBook",
-        COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
-        COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
-        rp.updated_at AS "lastProgressUpdateDate",
-        (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id) AS "completedChaptersCount",
-        (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id) AS "completed_count"
-      FROM
-        users u
-      LEFT JOIN
-        reading_progress rp ON u.id = rp.user_id
-      ORDER BY
-        u.username;
-    `;
-        const { rows } = await db.query(query);
+        let query;
+        let params = [];
+
+        if (groupId) {
+            query = `
+          SELECT
+            u.username,
+            COALESCE(rp.last_read_book, '') AS "lastReadBook",
+            COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
+            COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
+            rp.updated_at AS "lastProgressUpdateDate",
+            (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND cc.group_id = $1) AS "completedChaptersCount",
+            (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND hf.group_id = $1) AS "completed_count"
+          FROM
+            users u
+          JOIN
+            group_members gm ON u.id = gm.user_id
+          LEFT JOIN
+            reading_progress rp ON u.id = rp.user_id AND rp.group_id = $1
+          WHERE
+            gm.group_id = $1
+          ORDER BY
+            u.username;
+        `;
+            params = [groupId];
+        } else {
+            query = `
+          SELECT
+            u.username,
+            COALESCE(rp.last_read_book, '') AS "lastReadBook",
+            COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
+            COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
+            rp.updated_at AS "lastProgressUpdateDate",
+            (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND cc.group_id IS NULL) AS "completedChaptersCount",
+            (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND hf.group_id IS NULL) AS "completed_count"
+          FROM
+            users u
+          LEFT JOIN
+            reading_progress rp ON u.id = rp.user_id AND rp.group_id IS NULL
+          ORDER BY
+            u.username;
+        `;
+        }
+
+        const { rows } = await db.query(query, params);
         res.json(rows);
     } catch (error) {
         console.error('[GET /api/users/all] Error:', error);
@@ -274,14 +315,86 @@ app.get('/api/hall-of-fame', async (req, res) => {
 });
 
 app.post('/api/bible-reset', async (req, res) => {
-    const { userId } = req.body;
+    const { userId, groupId } = req.body;
     if (!userId) return res.status(400).json({ error: 'User ID is required' });
     try {
-        const result = await db.handleBibleCompletion(userId);
+        const result = await db.handleBibleCompletion(userId, groupId || null);
         res.json(result);
     } catch (err) {
         console.error('Error resetting bible progress:', err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- Group Management APIs ---
+
+// Create a new group
+app.post('/api/groups', async (req, res) => {
+    const { name, ownerId } = req.body;
+    if (!name || !ownerId) return res.status(400).json({ message: 'Name and ownerId are required' });
+
+    try {
+        const inviteCode = generateInviteCode();
+        const groupResult = await db.query(
+            'INSERT INTO groups (name, invite_code, owner_id) VALUES ($1, $2, $3) RETURNING *',
+            [name, inviteCode, ownerId]
+        );
+        const group = groupResult.rows[0];
+
+        // Automatically join the creator
+        await db.query(
+            'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)',
+            [group.id, ownerId]
+        );
+
+        res.status(201).json(group);
+    } catch (error) {
+        console.error('[POST /api/groups] Error:', error);
+        res.status(500).json({ message: 'Error creating group' });
+    }
+});
+
+// Join a group using invite code
+app.post('/api/groups/join', async (req, res) => {
+    const { inviteCode, userId } = req.body;
+    if (!inviteCode || !userId) return res.status(400).json({ message: 'Invite code and userId are required' });
+
+    try {
+        const groupResult = await db.query('SELECT id, name FROM groups WHERE invite_code = $1', [inviteCode.toUpperCase()]);
+        if (groupResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Invalid invite code' });
+        }
+        const group = groupResult.rows[0];
+
+        // Check if already a member
+        const memberCheck = await db.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [group.id, userId]);
+        if (memberCheck.rows.length > 0) {
+            return res.status(409).json({ message: 'Already a member of this group' });
+        }
+
+        await db.query('INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)', [group.id, userId]);
+        res.status(200).json({ message: `Successfully joined ${group.name}`, group });
+    } catch (error) {
+        console.error('[POST /api/groups/join] Error:', error);
+        res.status(500).json({ message: 'Error joining group' });
+    }
+});
+
+// List groups for a user
+app.get('/api/users/:userId/groups', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await db.query(
+            `SELECT g.* FROM groups g 
+             JOIN group_members gm ON g.id = gm.group_id 
+             WHERE gm.user_id = $1 
+             ORDER BY g.created_at DESC`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[GET /api/users/:userId/groups] Error:', error);
+        res.status(500).json({ message: 'Error fetching user groups' });
     }
 });
 

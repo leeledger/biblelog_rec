@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { progressService } from './services/progressService';
-import { BibleVerse, SessionReadingProgress, ReadingState, User, UserProgress, UserSessionRecord } from './types';
+import { groupService } from './services/groupService';
+import { BibleVerse, SessionReadingProgress, ReadingState, User, UserProgress, UserSessionRecord, Group } from './types';
 import { AVAILABLE_BOOKS, getVersesForSelection, getNextReadingStart, BOOK_ABBREVIATIONS_MAP, TOTAL_CHAPTERS_IN_BIBLE } from './constants';
 import { normalizeText, calculateSimilarity, containsDifficultWord, findMatchedPrefixLength } from './utils';
 import rawBibleData from './bible_hierarchical.json';
@@ -47,6 +48,8 @@ const App: React.FC = () => {
   const [showHallOfFame, setShowHallOfFame] = useState(false);
   const [bibleResetLoading, setBibleResetLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null); // null means Private Journey
   const [userOverallProgress, setUserOverallProgress] = useState<UserProgress | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('IDLE_SETUP');
   const [sessionCount, setSessionCount] = useState(0);
@@ -133,20 +136,29 @@ const App: React.FC = () => {
     markVerseTransition
   } = useSpeechRecognition({ lang: 'ko-KR' });
 
+  const loadUserGroups = async (userId: number) => {
+    try {
+      const groups = await groupService.getUserGroups(userId);
+      setUserGroups(groups);
+    } catch (err) {
+      console.error('Failed to load user groups:', err);
+    }
+  };
+
   // Overall Bible Progress Effect
   useEffect(() => {
-    console.log('[Overall Progress Effect - Revised] Triggered. currentUser:', currentUser ? currentUser.username : 'null');
+    console.log('[Overall Progress Effect] Triggered. user:', currentUser?.username, 'group:', selectedGroupId);
 
     const fetchAndSetFullProgress = async () => {
       if (currentUser && currentUser.username) {
         setIsProgressLoading(true);
         setTotalBibleChapters(TOTAL_CHAPTERS_IN_BIBLE);
         try {
-          const progressData = await progressService.loadUserProgress(currentUser.username);
+          const progressData = await progressService.loadUserProgress(currentUser.username, selectedGroupId);
           setUserOverallProgress(progressData);
           setOverallCompletedChaptersCount(progressData?.completedChapters?.length || 0);
         } catch (error) {
-          console.error('[Overall Progress Effect] Error fetching full user progress:', error);
+          console.error('[Overall Progress Effect] Error fetching progress:', error);
           setUserOverallProgress(null);
           setOverallCompletedChaptersCount(0);
         } finally {
@@ -162,12 +174,12 @@ const App: React.FC = () => {
 
     fetchAndSetFullProgress();
 
-    if (currentUser && currentUser.must_change_password) {
+    if (currentUser?.must_change_password) {
       setShowPasswordChangePrompt(true);
     } else {
       setShowPasswordChangePrompt(false);
     }
-  }, [currentUser]);
+  }, [currentUser, selectedGroupId]);
 
   // Effect to handle retrying a verse after STT has fully stopped
   useEffect(() => {
@@ -182,6 +194,7 @@ const App: React.FC = () => {
     const user = authService.getCurrentUser();
     if (user) {
       setCurrentUser(user);
+      if (user.id) loadUserGroups(user.id);
     }
   }, []);
 
@@ -270,6 +283,7 @@ const App: React.FC = () => {
     const user = await authService.loginUser(username, password_provided);
     if (user) {
       setCurrentUser(user);
+      if (user.id) loadUserGroups(user.id);
       setShowPasswordChangePrompt(user.must_change_password === true);
       setAppError(null);
       return true;
@@ -473,6 +487,7 @@ const App: React.FC = () => {
 
           const updatedProgress: UserProgress = {
             ...userOverallProgress,
+            groupId: selectedGroupId,
             lastReadBook: lastCompletedVerse.book,
             lastReadChapter: lastCompletedVerse.chapter,
             lastReadVerse: lastCompletedVerse.verse,
@@ -613,6 +628,7 @@ const App: React.FC = () => {
       }
 
       const updatedUserProgress: UserProgress = {
+        groupId: selectedGroupId,
         lastReadBook: lastEffectivelyReadVerse.book,
         lastReadChapter: lastEffectivelyReadVerse.chapter,
         lastReadVerse: lastEffectivelyReadVerse.verse,
@@ -720,7 +736,7 @@ const App: React.FC = () => {
       const res = await fetch('/api/bible-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id }),
+        body: JSON.stringify({ userId: currentUser.id, groupId: selectedGroupId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -797,6 +813,13 @@ const App: React.FC = () => {
             setCurrentView={setCurrentView}
             bibleResetLoading={bibleResetLoading}
             isLoading={isProgressLoading}
+            // Group Props
+            userGroups={userGroups}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+            onGroupAction={async () => {
+              if (currentUser?.id) await loadUserGroups(currentUser.id);
+            }}
           />
         )}
 
