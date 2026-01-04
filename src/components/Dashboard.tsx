@@ -212,14 +212,18 @@ const Dashboard: React.FC<DashboardProps> = ({
             명예의 전당
           </button>
 
-          {(currentUser as any).completed_count > 0 && overallCompletedChaptersCount === totalBibleChapters && (
+          {/* 완독 리셋 버튼: 진행률이 100% (1189장) 일 때 노출 */}
+          {overallCompletedChaptersCount >= totalBibleChapters && totalBibleChapters > 0 && (
             <button
               disabled={bibleResetLoading}
               onClick={onBibleReset}
-              className="w-full h-16 px-6 text-xl font-black bg-white text-indigo-700 rounded-3xl border-2 border-indigo-100 shadow-xl mt-4 flex items-center justify-center gap-3 hover:bg-indigo-50 transition-all disabled:opacity-50"
+              className="w-full h-20 px-6 text-2xl font-black bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-3xl shadow-2xl mt-4 flex flex-col items-center justify-center gap-1 hover:scale-[1.05] active:scale-95 transition-all border-4 border-white animate-bounce-subtle"
             >
-              <span>🔄</span>
-              {bibleResetLoading ? '준비 중...' : '새로운 원정 시작'}
+              <div className="flex items-center gap-3">
+                <span>🔄</span>
+                {bibleResetLoading ? '차세대 원정 준비 중...' : '새로운 원정 시작'}
+              </div>
+              <span className="text-xs opacity-80 font-normal">모든 기록을 초기화하고 다음 라운드로!</span>
             </button>
           )}
         </div>
