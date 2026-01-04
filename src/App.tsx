@@ -319,12 +319,28 @@ const App: React.FC = () => {
 
     // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
     if (currentTargetVerseForSession && sttTranscript) {
-      const matchedCount = findMatchedPrefixLength(
-        currentTargetVerseForSession.text,
-        sttTranscript,
-        isIOS ? 55 : 50 // iOS는 약간 더 엄격한 임계값 사용
-      );
-      setMatchedCharCount(matchedCount);
+      // 인식된 텍스트 길이 (공백 제외)
+      const normalizedTranscriptLen = normalizeText(sttTranscript).length;
+
+      // 인식된 텍스트가 너무 짧으면 매칭하지 않음 (최소 2글자 이상)
+      if (normalizedTranscriptLen >= 2) {
+        const matchedCount = findMatchedPrefixLength(
+          currentTargetVerseForSession.text,
+          sttTranscript,
+          80 // 더 엄격한 임계값 (80%)
+        );
+
+        // 매칭된 글자 수가 인식된 텍스트 길이를 초과하지 않도록 제한
+        // (화면에 표시된 것보다 더 많이 매칭되지 않도록)
+        const limitedMatchedCount = Math.min(matchedCount, normalizedTranscriptLen + 5);
+        setMatchedCharCount(limitedMatchedCount);
+      } else {
+        // 인식된 텍스트가 너무 짧으면 매칭 초기화
+        setMatchedCharCount(0);
+      }
+    } else if (!sttTranscript) {
+      // transcript가 비어있으면 무조건 리셋
+      setMatchedCharCount(0);
     }
 
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
