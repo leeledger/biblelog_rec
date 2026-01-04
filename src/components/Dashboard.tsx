@@ -2,7 +2,6 @@ import React from 'react';
 import ChapterSelector from './ChapterSelector';
 import BookCompletionStatus from './BookCompletionStatus';
 import Leaderboard from './Leaderboard';
-import InstallPWA from './InstallPWA';
 import { User, UserProgress } from '../types';
 import { AVAILABLE_BOOKS } from '../constants';
 
@@ -72,9 +71,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
       )}
-
-      {/* PWA Install Banner */}
-      <InstallPWA />
 
       {/* Continue Reading Section */}
       <div className="my-4 p-4 bg-blue-50 rounded-lg shadow">

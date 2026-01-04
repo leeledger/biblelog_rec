@@ -14,6 +14,7 @@ import { BrowserRecommendation } from './components/BrowserRecommendation';
 // Refactored Sub-components
 import Dashboard from './components/Dashboard';
 import ActiveReadingSession from './components/ActiveReadingSession';
+import InstallPWA from './components/InstallPWA';
 
 // Define the type for the flat Bible data structure from bible_fixed.json
 type RawBibleDataType = { [key: string]: string; };
@@ -687,6 +688,9 @@ const App: React.FC = () => {
             </h1>
             <div className="text-base sm:text-lg text-gray-600 font-serif mb-2">Bible Journey Challenge</div>
           </header>
+
+          <InstallPWA />
+
           <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
           {appError && <p className="mt-4 text-red-500">{appError}</p>}
 
