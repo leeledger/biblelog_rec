@@ -15,6 +15,7 @@ import { BrowserRecommendation } from './components/BrowserRecommendation';
 import Dashboard from './components/Dashboard';
 import ActiveReadingSession from './components/ActiveReadingSession';
 import InstallPWA from './components/InstallPWA';
+import LandingPage from './components/LandingPage';
 
 // Define the type for the flat Bible data structure from bible_fixed.json
 type RawBibleDataType = { [key: string]: string; };
@@ -681,40 +682,28 @@ const App: React.FC = () => {
     return (
       <>
         <BrowserRecommendation />
-        <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 py-8 px-4 flex flex-col items-center justify-center">
-          <header className="mb-8 text-center">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-purple-500 drop-shadow-lg mb-2">
-              말씀 원정대 함께해요
-            </h1>
-            <div className="text-base sm:text-lg text-gray-600 font-serif mb-2">Bible Journey Challenge</div>
-          </header>
+        <LandingPage
+          authForm={
+            <div className="space-y-4">
+              <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
+              {appError && <p className="mt-4 text-red-500 text-center">{appError}</p>}
 
-          <InstallPWA />
+              {userOverallProgress && (userOverallProgress.lastReadChapter > 0 || userOverallProgress.lastReadVerse > 0) && readingState === ReadingState.IDLE && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-sm text-blue-700">
+                  마지막 읽은 곳: {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse}절
+                  <span className="italic block mt-1 text-xs opacity-70">(아래에서 이어서 읽거나 새로운 범위를 선택하여 읽으세요.)</span>
+                </div>
+              )}
 
-          <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
-          {appError && <p className="mt-4 text-red-500">{appError}</p>}
-
-          {userOverallProgress && (userOverallProgress.lastReadChapter > 0 || userOverallProgress.lastReadVerse > 0) && readingState === ReadingState.IDLE && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
-              마지막 읽은 곳: {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse}절
-              <span className="italic ml-2">(아래에서 이어서 읽거나 새로운 범위를 선택하여 읽으세요.)</span>
+              {!browserSupportsSpeechRecognition && (
+                <div className="mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-2xl text-sm">
+                  <p className="font-semibold">음성 인식 미지원</p>
+                  <p className="opacity-80">현재 브라우저에서는 음성 인식 기능을 지원하지 않습니다. Chrome, Safari 최신 버전을 권장합니다.</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {(appError && (readingState === ReadingState.ERROR || readingState === ReadingState.IDLE || readingState === ReadingState.SESSION_COMPLETED || readingState === ReadingState.LISTENING)) && (
-            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              <p className="font-semibold">오류 발생:</p>
-              <p>{appError}</p>
-            </div>
-          )}
-
-          {!browserSupportsSpeechRecognition && (
-            <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
-              <p className="font-semibold">음성 인식 미지원</p>
-              <p>현재 사용 중인 브라우저에서는 음성 인식 기능을 지원하지 않습니다. Chrome, Edge, Safari 최신 버전을 사용해주세요.</p>
-            </div>
-          )}
-        </div>
+          }
+        />
       </>
     );
   }
