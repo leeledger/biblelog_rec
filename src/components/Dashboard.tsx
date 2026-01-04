@@ -228,6 +228,42 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
       )}
+
+      {/* Footer Section: Support & Privacy Notice */}
+      <footer className="mt-16 pb-12 px-4 border-t border-gray-100 pt-8 text-center">
+        <div className="max-w-md mx-auto">
+          {/* Donation / Support */}
+          <div className="bg-indigo-50 rounded-2xl p-6 mb-6">
+            <h4 className="text-indigo-900 font-black mb-1 flex items-center justify-center gap-2">
+              <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
+            </h4>
+            <p className="text-sm text-indigo-700 opacity-80 mb-4 leading-relaxed">
+              성도님들의 따뜻한 후원은 더 나은 서비스 운영과<br />
+              말씀 통독 사역을 지속하는 큰 힘이 됩니다.
+            </p>
+            <div className="flex flex-col gap-2">
+              <div className="bg-white px-4 py-3 rounded-xl border border-indigo-100 flex justify-between items-center">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest text-left">사역 후원</span>
+                <span className="text-sm font-black text-indigo-900 select-all">토스뱅크 1234-5678-0000 (이예나)</span>
+              </div>
+              <p className="text-[10px] text-indigo-400 italic">* 수집된 후원금은 전액 서버 유지비로 사용됩니다.</p>
+            </div>
+          </div>
+
+          {/* Simple Privacy Policy Notice */}
+          <div className="space-y-2 opacity-60">
+            <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+              <span>개인정보 처리방침</span>
+              <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+              <span>이용약관</span>
+            </div>
+            <p className="text-[10px] text-gray-400 leading-tight">
+              바이블로그는 아이디와 비밀번호 외의 민감한 개인정보를 수집하지 않습니다.<br />
+              © 2026 BibleLog. Created with Love by Leeledger.
+            </p>
+          </div>
+        </div>
+      </footer>
     </>
   );
 };
