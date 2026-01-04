@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
-      allowedHosts: ['robotncoding.synology.me'],
+      allowedHosts: ['biblelog.kr', 'www.biblelog.kr'],
       proxy: {
         '/api': {
           target: backendTarget,
