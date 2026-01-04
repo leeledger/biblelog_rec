@@ -125,13 +125,18 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
           console.log(`[useSpeechRecognition] iOS - Display: "${displayText}"`);
         }
       }
-      // Android 및 기타 플랫폼
+      // Android 및 기타 플랫폼 - iOS와 동일하게 결과 누적
       else {
-        // 최종 결과와 중간 결과를 함께 표시
-        if (hasFinalResult || interimTranscript) {
-          const newTranscript = (hasFinalResult ? finalTranscript : '') + (interimTranscript ? ' ' + interimTranscript : '');
-          setTranscript(newTranscript);
-          console.log('[useSpeechRecognition] Android - Updated transcript:', newTranscript);
+        // 최종 결과가 있으면 기존 최종 결과에 추가 (iOS와 동일한 로직)
+        if (hasFinalResult) {
+          finalTranscriptRef.current = (finalTranscriptRef.current || '') + finalTranscript;
+        }
+
+        // 누적된 최종 결과 + 중간 결과 표시
+        const displayText = (finalTranscriptRef.current || '') + (interimTranscript ? ' ' + interimTranscript : '');
+        if (displayText) {
+          setTranscript(displayText);
+          console.log('[useSpeechRecognition] Android - Display:', displayText);
         }
       }
 
