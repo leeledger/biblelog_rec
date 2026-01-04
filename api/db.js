@@ -1,7 +1,7 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const connectionString = (process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim();
 
 if (!connectionString) {
   console.error('CRITICAL: DATABASE_URL is not defined in Vercel environment variables!');
@@ -9,7 +9,10 @@ if (!connectionString) {
 
 const pool = new Pool({
   connectionString: connectionString,
-  ssl: connectionString ? { rejectUnauthorized: false } : false
+  ssl: connectionString ? { rejectUnauthorized: false } : false,
+  max: 10, // 서버리스 환경에 적합한 최대 연결 수
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {
