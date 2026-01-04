@@ -302,6 +302,12 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // 이전 구절에서 지연 응답이 오는 문제를 방지하기 위해 잠시간 무시 플래그 설정
       ignoreResultsRef.current = true;
 
+      // 어떤 상황에서도 0.4초 후에는 무시 해제 보장
+      setTimeout(() => {
+        ignoreResultsRef.current = false;
+        console.log('[useSpeechRecognition] iOS ignoreResults released by safety timeout');
+      }, 400);
+
       // 지언 가능한 모든 인식 결과 상태 초기화
       setTranscript('');
       finalTranscriptRef.current = '';
@@ -312,6 +318,8 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // 음성 인식 재시작 - 기존 인식 중단 및 재시작
       if (recognitionRef.current) {
         try {
+          // 중복 재시작을 막기 위해 잠시 의도적 중단으로 설정
+          intentionalStopRef.current = true;
           // abort()는 내부 버퍼를 즉시 삭제함
           recognitionRef.current.abort();
           console.log('[useSpeechRecognition] iOS recognition forcefully aborted for reset');
@@ -323,13 +331,14 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         setTimeout(() => {
           if (isListening && recognitionRef.current) {
             try {
+              intentionalStopRef.current = false;
               recognitionRef.current.start();
               console.log('[useSpeechRecognition] iOS recognition restarted after verse transition');
             } catch (error) {
               console.error('[useSpeechRecognition] Error restarting iOS recognition:', error);
             }
           }
-        }, 100);
+        }, 150);
       }
 
       // 잠시 후 다시 처리 가능하게 (구절 전환 직후 결과만 동작)
@@ -359,32 +368,41 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     if (isListening && recognitionRef.current) {
       try {
         console.log('[useSpeechRecognition] Force resetting recognition by abort/start cycle');
+        // 강제 중단 시 flag를 true로 두어 onend에서의 자동 재시작 방지
+        intentionalStopRef.current = true;
         // 현재 인식 즉시 중단 (버퍼 파괴)
         recognitionRef.current.abort();
 
-        // 잠시 후 다시 시작 (onend 이벤트가 자동으로 호출되며 새로운 인식 세션 시작)
+        // 잠시 후 다시 시작
         setTimeout(() => {
           if (recognitionRef.current && isListening) {
-            // 이전 결과와의 구분을 위해 마지막 처리된 결과 ID 초기화
             lastProcessedResultIdRef.current = '';
 
             try {
+              intentionalStopRef.current = false;
               recognitionRef.current.start();
               console.log('[useSpeechRecognition] Recognition restarted after reset');
             } catch (e) {
               console.error('[useSpeechRecognition] Error starting after reset:', e);
+              setIsListening(false);
             }
           }
 
-          // 리셋 후 잠시 동안 들어오시는 결과 무시 해제
+          // 어떤 플랫폼이든 리셋 후 잠시 동안 들어오시는 결과 무시 해제 보장
           setTimeout(() => {
             ignoreResultsRef.current = false;
-          }, 300);
-        }, 200);
+            console.log('[useSpeechRecognition] ignoreResults released after reset');
+          }, 350);
+        }, 250);
       } catch (e) {
         console.error('[useSpeechRecognition] Error during force reset:', e);
       }
     } else {
+      // 리스닝 중이 아닐 때도 플래그는 해제되어야 함
+      setTranscript('');
+      finalTranscriptRef.current = '';
+      lastInterimRef.current = '';
+      ignoreResultsRef.current = false;
       console.log('[useSpeechRecognition] Transcript reset (not listening)');
     }
   }, [isIOS, isListening]);

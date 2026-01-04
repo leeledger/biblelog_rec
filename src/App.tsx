@@ -415,23 +415,20 @@ const App: React.FC = () => {
 
     if (isMatch) {
       console.log(`[App.tsx] Verse matched! Index: ${currentVerseIndexInSession}`);
-      const transitionDelay = isIOS ? 600 : 0;
+      const transitionDelay = isIOS ? 600 : 100; // Android도 100ms 정도 딜레이를 주어 버퍼가 정리될 시간을 줌
 
       setTimeout(() => {
         setMatchedVersesContentForSession(prev => prev + `${currentTargetVerseForSession.book} ${currentTargetVerseForSession.chapter}:${currentTargetVerseForSession.verse} - ${currentTargetVerseForSession.text}\n`);
         setTranscriptBuffer('');
+        setMatchedCharCount(0); // 구절 전환 시 리셋
 
-        if (isIOS && isListening) {
-          stopListening();
-          if (markVerseTransition) markVerseTransition();
-        }
+        // 구절 전환 알림 (음성 인식 라이프사이클 관리)
+        if (markVerseTransition) markVerseTransition();
 
+        // 리셋 및 다음 구절 준비
         setTimeout(() => {
           resetTranscript();
-          if (isIOS && !isListening) {
-            setTimeout(() => startListening(), 150);
-          }
-        }, 100);
+        }, 50);
       }, transitionDelay);
 
       const newTotalCompletedInSelection = currentVerseIndexInSession + 1;
@@ -645,11 +642,12 @@ const App: React.FC = () => {
     setReadingState(ReadingState.LISTENING);
     setTranscriptBuffer('');
     setAppError(null);
-    resetTranscript();
     setMatchedCharCount(0); // 다시 읽기 시 리셋
-    stopListening();
     setIsRetryingVerse(true);
-  }, [resetTranscript, stopListening]);
+
+    // resetTranscript가 내부적으로 abort/start 사이클을 수행하여 버퍼를 깨끗이 비움
+    resetTranscript();
+  }, [resetTranscript]);
 
 
 
