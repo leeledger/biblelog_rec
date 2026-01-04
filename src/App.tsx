@@ -318,30 +318,34 @@ const App: React.FC = () => {
     setTranscriptBuffer(sttTranscript);
 
     // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
+    // Android에서 잠시 쉬면 transcript가 리셋되지만, 취소선(matchedCharCount)은 유지
     if (currentTargetVerseForSession && sttTranscript) {
-      // 인식된 텍스트 길이 (공백 제외)
       const normalizedTranscriptLen = normalizeText(sttTranscript).length;
 
-      // 인식된 텍스트가 너무 짧으면 매칭하지 않음 (최소 2글자 이상)
+      // 인식된 텍스트가 최소 2글자 이상일 때만 매칭
       if (normalizedTranscriptLen >= 2) {
-        const matchedCount = findMatchedPrefixLength(
-          currentTargetVerseForSession.text,
-          sttTranscript,
-          80 // 더 엄격한 임계값 (80%)
-        );
+        // 현재 이미 매칭된 부분 이후의 구절 텍스트
+        const remainingVerseText = currentTargetVerseForSession.text.substring(matchedCharCount);
 
-        // 매칭된 글자 수가 인식된 텍스트 길이를 초과하지 않도록 제한
-        // (화면에 표시된 것보다 더 많이 매칭되지 않도록)
-        const limitedMatchedCount = Math.min(matchedCount, normalizedTranscriptLen + 5);
-        setMatchedCharCount(limitedMatchedCount);
-      } else {
-        // 인식된 텍스트가 너무 짧으면 매칭 초기화
-        setMatchedCharCount(0);
+        if (remainingVerseText.length > 0) {
+          // 남은 구절 텍스트에서 새로 인식된 부분과 매칭
+          const additionalMatchedCount = findMatchedPrefixLength(
+            remainingVerseText,
+            sttTranscript,
+            75 // 임계값
+          );
+
+          if (additionalMatchedCount > 0) {
+            // 기존 매칭 + 추가 매칭 (단, transcript 길이 제한)
+            const newTotalMatched = matchedCharCount + additionalMatchedCount;
+            const limitedMatchedCount = Math.min(newTotalMatched, matchedCharCount + normalizedTranscriptLen + 3);
+            setMatchedCharCount(limitedMatchedCount);
+          }
+        }
       }
-    } else if (!sttTranscript) {
-      // transcript가 비어있으면 무조건 리셋
-      setMatchedCharCount(0);
     }
+    // transcript가 비어있어도 matchedCharCount는 유지 (구절 전환 시에만 리셋)
+    // else if (!sttTranscript) { setMatchedCharCount(0); } ← 이 부분 제거
 
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
 
@@ -407,7 +411,11 @@ const App: React.FC = () => {
     const verseHasDifficultWord = containsDifficultWord(normalizedTargetVerseText);
     const adjustedSimilarityThreshold = verseHasDifficultWord ? (similarityThreshold - 20) : similarityThreshold;
 
-    let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
+    // 1. 기존의 전체 텍스트 유사도 기반 매칭
+    // 2. 점진적 매칭(취소선)이 구절의 90% 이상 도달했는지 확인
+    const isMatchedByProgress = (matchedCharCount / currentTargetVerseForSession.text.length) >= 0.90;
+
+    let isMatch = (similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff)) || isMatchedByProgress;
 
     if (isIOS && isMatch && normalizedTargetVerseText.length > LONG_VERSE_CHAR_COUNT) {
       const targetEnd = normalizedTargetVerseText.slice(-END_PORTION_LENGTH);
@@ -546,6 +554,7 @@ const App: React.FC = () => {
       setMatchedVersesContentForSession('');
       setTranscriptBuffer('');
       resetTranscript();
+      setMatchedCharCount(0); // 새 세션 시작 시 리셋
       setSessionProgress({
         totalVersesInSession: verses.length,
         sessionCompletedVersesCount: initialSkip,
@@ -650,6 +659,7 @@ const App: React.FC = () => {
     setTranscriptBuffer('');
     setAppError(null);
     resetTranscript();
+    setMatchedCharCount(0); // 다시 읽기 시 리셋
     stopListening();
     setIsRetryingVerse(true);
   }, [resetTranscript, stopListening]);
