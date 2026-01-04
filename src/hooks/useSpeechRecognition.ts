@@ -98,27 +98,23 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // 현재 타임스탬프 업데이트
       lastRecognitionEventTimeRef.current = Date.now();
 
-      let currentSessionFinal = '';
-      let currentSessionInterim = '';
-
       // Android/iOS 공통: 현재 인식 세션(start~stop)의 모든 결과를 0부터 다시 합산
       // 이는 Android의 resultIndex 버그나 중복 보고를 방지하는 가장 안전한 방법임
+      // 현재 세션의 트랜스크립트 빌드
+      let currentSessionTranscript = '';
       for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0].transcript;
-        if (result.isFinal) {
-          currentSessionFinal += transcript;
-        } else {
-          currentSessionInterim += transcript;
-        }
+        currentSessionTranscript += event.results[i][0].transcript;
       }
 
-      // 최종 표시 텍스트 = [이전 세션들에서 보존된 텍스트] + [현재 세션의 최종 결과] + [현재 세션의 중간 결과]
-      const totalTranscript = finalTranscriptRef.current + currentSessionFinal + (currentSessionInterim ? ' ' + currentSessionInterim : '');
+      // 최종 표시 텍스트: 이전 세션 결과 + 현재 세션 결과
+      // 주의: Android는 대개 단일 세션에서 모든 결과를 누적하여 주므로 
+      // finalTranscriptRef.current에 함부로 더하면 중복이 발생함.
+      const totalTranscript = isIOS
+        ? (finalTranscriptRef.current + currentSessionTranscript)
+        : currentSessionTranscript; // Android는 브라우저 누적 결과만 믿음
 
-      if (totalTranscript) {
+      if (totalTranscript && !ignoreResultsRef.current) {
         setTranscript(totalTranscript);
-        // App.tsx에서 참조할 수 있도록 전역 ref는 아니지만 내부적으로 현재 "완료된" 전체 텍스트를 추적 (선택사항)
       }
 
       setError(null);
@@ -166,15 +162,15 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         setTimeout(() => {
           if (recognitionRef.current) {
             try {
-              // For both iOS and Android, preserve the existing transcript
+              // For both iOS and Android, handle restart
               if (isIOS) {
-                // For iOS, update the final transcript ref
                 finalTranscriptRef.current = currentTranscript;
-                ignoreResultsRef.current = false;
-                console.log('[useSpeechRecognition] iOS - Restarting with preserved transcript:', currentTranscript);
+                console.log('[useSpeechRecognition] iOS - Restarting. Saved:', currentTranscript);
               } else {
-                // For Android, we'll set the transcript directly after restart
-                console.log('[useSpeechRecognition] Android - Restarting recognition');
+                // Android는 재시작 시 브라우저 버퍼가 비워지므로 
+                // 이전 세션 내용을 finalTranscriptRef에 백업해두고 onresult에서 합쳐야 할 수도 있음.
+                // 하지만 현재 중복이 심하므로 일단 Android는 무조건 새로 시작하도록 함.
+                finalTranscriptRef.current = '';
               }
 
               recognitionRef.current.start();
