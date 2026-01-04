@@ -317,35 +317,21 @@ const App: React.FC = () => {
   useEffect(() => {
     setTranscriptBuffer(sttTranscript);
 
-    // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
-    // Android에서 잠시 쉬면 transcript가 리셋되지만, 취소선(matchedCharCount)은 유지
+    // [점진적 매칭] 현재 구절에서 최적의 매칭 끝점 검색
     if (currentTargetVerseForSession && sttTranscript) {
-      const normalizedTranscriptLen = normalizeText(sttTranscript).length;
-
-      // 인식된 텍스트가 최소 2글자 이상일 때만 매칭
-      if (normalizedTranscriptLen >= 2) {
-        // 현재 이미 매칭된 부분 이후의 구절 텍스트
-        const remainingVerseText = currentTargetVerseForSession.text.substring(matchedCharCount);
-
-        if (remainingVerseText.length > 0) {
-          // 남은 구절 텍스트에서 새로 인식된 부분과 매칭
-          const additionalMatchedCount = findMatchedPrefixLength(
-            remainingVerseText,
-            sttTranscript,
-            75 // 임계값
-          );
-
-          if (additionalMatchedCount > 0) {
-            // 기존 매칭 + 추가 매칭 (단, transcript 길이 제한)
-            const newTotalMatched = matchedCharCount + additionalMatchedCount;
-            const limitedMatchedCount = Math.min(newTotalMatched, matchedCharCount + normalizedTranscriptLen + 3);
-            setMatchedCharCount(limitedMatchedCount);
-          }
+      if (normalizeText(sttTranscript).length >= 2) {
+        // 구절 전체를 검색하여 가장 멀리 매칭된 지점(끝점)을 찾음
+        const newMatchedCount = findMatchedPrefixLength(
+          currentTargetVerseForSession.text,
+          sttTranscript,
+          isIOS ? 80 : 70
+        );
+        if (newMatchedCount > 0) {
+          // Android/iOS 공통: 이전 지점보다 후퇴하지 않게 하며 화면 반영
+          setMatchedCharCount(prev => Math.max(prev, newMatchedCount));
         }
       }
     }
-    // transcript가 비어있어도 matchedCharCount는 유지 (구절 전환 시에만 리셋)
-    // else if (!sttTranscript) { setMatchedCharCount(0); } ← 이 부분 제거
 
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
 
@@ -433,6 +419,10 @@ const App: React.FC = () => {
     if (isMatch) {
       console.log(`[App.tsx] Verse matched! Index: ${currentVerseIndexInSession}`);
       const transitionDelay = isIOS ? 600 : 0;
+
+      // 즉시 취소선 리셋하여 다음 구절에 잔상이 남지 않게 함
+      setMatchedCharCount(0);
+      setTranscriptBuffer('');
 
       setTimeout(() => {
         setMatchedVersesContentForSession(prev => prev + `${currentTargetVerseForSession.book} ${currentTargetVerseForSession.chapter}:${currentTargetVerseForSession.verse} - ${currentTargetVerseForSession.text}\n`);
@@ -795,6 +785,33 @@ const App: React.FC = () => {
             </form>
           </div>
         )}
+
+        <header className="flex flex-col sm:flex-row items-center justify-between mb-8 border-b border-gray-300 pb-4">
+          <div className="flex items-center mb-4 sm:mb-0">
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg mr-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-purple-500 drop-shadow-md">
+                말씀 원정대
+              </h1>
+              <div className="text-xs sm:text-sm text-gray-500 font-serif">Bible Reading Companion</div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="text-sm font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 shadow-sm">{currentUser.username} 원정대원</span>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-full hover:bg-gray-100 hover:text-red-600 transition-all duration-200 shadow-sm"
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </header>
 
         {/* Dashboard View */}
         {readingState === ReadingState.IDLE && (
