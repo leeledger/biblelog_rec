@@ -8,7 +8,7 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState(''); 
+  const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -24,20 +24,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
       setError('비밀번호를 입력해주세요.');
       return;
     }
-    
+
     // 회원가입 모드일 때 비밀번호 확인 과정 추가
     if (isRegisterMode) {
       if (password.length < 4) {
         setError('비밀번호는 최소 4자 이상이어야 합니다.');
         return;
       }
-      
+
       if (password !== confirmPassword) {
         setError('비밀번호와 비밀번호 확인이 일치하지 않습니다.');
         return;
       }
     }
-    
+
     setError('');
     setSuccessMessage('');
 
@@ -111,7 +111,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
           {isRegisterMode ? '새로운 계정 만들기' : '말씀 여정의 시작'}
         </h3>
         <p className="text-amber-700 text-sm text-center">
-          {isRegisterMode 
+          {isRegisterMode
             ? '원하는 아이디와 비밀번호로 새 계정을 등록하세요'
             : '기존 계정으로 로그인하고 말씀 여정을 이어가세요'}
         </p>
@@ -134,7 +134,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
           {error && !successMessage && <p id="auth-error" className="mt-2 text-sm text-red-700 font-sans">{error}</p>}
           {successMessage && <p id="auth-success" className="mt-2 text-sm text-green-700 font-sans">{successMessage}</p>}
         </div>
-        
+
         <div>
           <label htmlFor="password" className="block text-md font-medium text-amber-700 mb-1">
             {isRegisterMode ? '새 비밀번호:' : '비밀번호:'}
@@ -173,7 +173,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
             </p>
           </div>
         )}
-        
+
         <button
           type="submit"
           className={`w-full py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition duration-150 ease-in-out text-white font-bold text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${isRegisterMode ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'}`}
@@ -181,17 +181,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
           {isRegisterMode ? '새 계정 등록하기' : '말씀으로 들어가기'}
         </button>
       </form>
-           
-    <div className="mt-10 text-center text-xs text-gray-400 font-sans select-none">
-      <div className="mb-3 text-sm text-amber-800 bg-amber-50 p-2 rounded-md border border-amber-200">
-        본 서비스는 저작권 문제로 <span className="font-medium">개역한글</span> 성경 번역본을 사용합니다.
-        <span className="block mt-1 text-[11px] text-amber-700">(개역개정 번역본은 별도의 라이센스 비용이 발생하여 사용하지 않습니다)</span>
+
+      <div className="mt-10 text-center text-xs text-gray-400 font-sans select-none">
+        <div className="mb-3 text-sm text-amber-800 bg-amber-50 p-2 rounded-md border border-amber-200">
+          본 서비스는 저작권 문제로 <span className="font-medium">개역한글</span> 성경 번역본을 사용합니다.
+          <span className="block mt-1 text-[11px] text-amber-700">(개역개정 번역본은 별도의 라이센스 비용이 발생하여 사용하지 않습니다)</span>
+        </div>
+        <div className="italic text-[11px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권장합니다.</div>
       </div>
-      <div className="mb-1">포도나무교회 &nbsp;|&nbsp; Dev: 이종림 &nbsp;|&nbsp; <a href="mailto:luxual8@gmail.com" className="underline hover:text-amber-700">문의 및 개선사항</a></div>
-      <div className="mb-1">© 2025 이종림. All rights reserved.</div>
-      <div className="mb-1">Copyright © 2025 Lee Jongrim. All rights reserved.</div>
-      <div className="italic text-[11px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권장합니다.</div>
-    </div>
 
     </div>
   );
