@@ -49,7 +49,10 @@ const App: React.FC = () => {
   const [bibleResetLoading, setBibleResetLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null); // null means Private Journey
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('selectedGroupId');
+    return saved ? parseInt(saved, 10) : null;
+  }); // null means Private Journey
   const [userOverallProgress, setUserOverallProgress] = useState<UserProgress | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('IDLE_SETUP');
   const [sessionCount, setSessionCount] = useState(0);
@@ -144,6 +147,15 @@ const App: React.FC = () => {
       console.error('Failed to load user groups:', err);
     }
   };
+
+  // Persistence for selectedGroupId
+  useEffect(() => {
+    if (selectedGroupId !== null) {
+      localStorage.setItem('selectedGroupId', selectedGroupId.toString());
+    } else {
+      localStorage.removeItem('selectedGroupId');
+    }
+  }, [selectedGroupId]);
 
   // Overall Bible Progress Effect
   useEffect(() => {
@@ -286,6 +298,10 @@ const App: React.FC = () => {
       if (user.id) loadUserGroups(user.id);
       setShowPasswordChangePrompt(user.must_change_password === true);
       setAppError(null);
+
+      // 로그인 성공 시 페이지 최상단으로 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       return true;
     } else {
       setAppError('비밀번호를 확인하세요.');

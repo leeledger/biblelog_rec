@@ -92,7 +92,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="p-5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-black flex items-center gap-2">
-              <span className="text-2xl">📍</span> 여정 선택
+              <span className="text-2xl">📍</span> 그룹 선택
             </h3>
             <button
               onClick={() => setShowGroupModal(true)}
