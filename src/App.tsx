@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { progressService } from './services/progressService';
 import { BibleVerse, SessionReadingProgress, ReadingState, User, UserProgress, UserSessionRecord } from './types';
 import { AVAILABLE_BOOKS, getVersesForSelection, getNextReadingStart, BOOK_ABBREVIATIONS_MAP, TOTAL_CHAPTERS_IN_BIBLE } from './constants';
-import { normalizeText, calculateSimilarity, containsDifficultWord } from './utils';
+import { normalizeText, calculateSimilarity, containsDifficultWord, findMatchedPrefixLength } from './utils';
 import rawBibleData from './bible_hierarchical.json';
 
 import useSpeechRecognition from './hooks/useSpeechRecognition';
@@ -62,6 +62,10 @@ const App: React.FC = () => {
   const [matchedVersesContentForSession, setMatchedVersesContentForSession] = useState<string>('');
   const [isRetryingVerse, setIsRetryingVerse] = useState(false);
   const [readingState, setReadingState] = useState<ReadingState>(ReadingState.IDLE);
+
+  // 점진적 매칭: 현재 구절에서 매칭된 글자 수
+  const [matchedCharCount, setMatchedCharCount] = useState(0);
+
 
   // Prevent pull-to-refresh on mobile during speech recognition
   useEffect(() => {
@@ -305,6 +309,7 @@ const App: React.FC = () => {
       setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
       resetTranscript();
       setTranscriptBuffer('');
+      setMatchedCharCount(0); // 구절 전환 시 리셋
     }
   }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, sessionProgress, stopListening, resetTranscript]);
 
@@ -312,13 +317,23 @@ const App: React.FC = () => {
   useEffect(() => {
     setTranscriptBuffer(sttTranscript);
 
+    // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
+    if (currentTargetVerseForSession && sttTranscript) {
+      const matchedCount = findMatchedPrefixLength(
+        currentTargetVerseForSession.text,
+        sttTranscript,
+        isIOS ? 55 : 50 // iOS는 약간 더 엄격한 임계값 사용
+      );
+      setMatchedCharCount(matchedCount);
+    }
+
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
 
     const normalizedTranscript = normalizeText(sttTranscript.toLowerCase());
     if (normalizedTranscript.includes('아멘')) {
       handleVerseSkip();
     }
-  }, [sttTranscript, showAmenPrompt, readingState, handleVerseSkip]);
+  }, [sttTranscript, showAmenPrompt, readingState, handleVerseSkip, currentTargetVerseForSession, isIOS]);
 
   useEffect(() => {
     if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) {
@@ -790,6 +805,7 @@ const App: React.FC = () => {
             matchedVersesContent={matchedVersesContentForSession}
             showAmenPrompt={showAmenPrompt}
             hasDifficultWords={hasDifficultWords}
+            matchedCharCount={matchedCharCount}
             onStopReading={() => handleStopReadingAndSave(undefined, false)}
             onRetryVerse={handleRetryVerse}
             onExitSession={() => {

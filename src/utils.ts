@@ -93,3 +93,61 @@ export function calculateSimilarity(targetText: string, bufferTextToSearch: stri
 
   return Math.max(0, Math.min(100, similarityScore)); // Clamp result to 0-100 range.
 }
+
+/**
+ * 구절 텍스트에서 인식된 텍스트와 매칭되는 prefix 길이를 찾습니다.
+ * 예: verseText="태초에 하나님이", recognizedText="태초에" → 최소 3 반환 (공백 제외 시)
+ * 
+ * @param verseText 원본 구절 텍스트
+ * @param recognizedText 인식된 텍스트
+ * @param similarityThreshold 유사도 임계값 (기본 50%)
+ * @returns 원본 구절에서 매칭된 글자 수 (공백 포함)
+ */
+export function findMatchedPrefixLength(
+  verseText: string,
+  recognizedText: string,
+  similarityThreshold: number = 50
+): number {
+  if (!verseText || !recognizedText) return 0;
+
+  const normalizedVerse = normalizeText(verseText);
+  const normalizedRecognized = normalizeText(recognizedText);
+
+  if (normalizedRecognized.length === 0) return 0;
+
+  // 점진적으로 구절의 prefix를 늘려가며 인식 텍스트와 비교
+  // 가장 많이 매칭되는 위치를 찾음
+  let bestMatchLength = 0;
+  let bestMatchOriginalLength = 0;
+
+  // 원본 텍스트에서 공백/문장부호를 제외한 글자 인덱스 매핑
+  const charToOriginalIndex: number[] = [];
+  for (let i = 0; i < verseText.length; i++) {
+    const char = verseText[i];
+    if (!/[\s\.\!\?\,\(\)\[\]\{\}\:\"\']/g.test(char)) {
+      charToOriginalIndex.push(i);
+    }
+  }
+
+  // 인식된 텍스트 길이까지만 비교 (과도한 계산 방지)
+  const maxCheckLength = Math.min(normalizedVerse.length, normalizedRecognized.length + 10);
+
+  for (let prefixLen = 1; prefixLen <= maxCheckLength; prefixLen++) {
+    const versePrefix = normalizedVerse.substring(0, prefixLen);
+
+    // 인식된 텍스트가 이 prefix를 포함하거나 비슷한지 확인
+    // 인식 텍스트의 끝 부분과 비교
+    const recognizedEnd = normalizedRecognized.slice(-prefixLen);
+    const similarity = calculateSimilarity(versePrefix, recognizedEnd);
+
+    if (similarity >= similarityThreshold) {
+      bestMatchLength = prefixLen;
+      // 정규화된 인덱스 → 원본 인덱스로 변환
+      if (prefixLen <= charToOriginalIndex.length) {
+        bestMatchOriginalLength = charToOriginalIndex[prefixLen - 1] + 1;
+      }
+    }
+  }
+
+  return bestMatchOriginalLength;
+}

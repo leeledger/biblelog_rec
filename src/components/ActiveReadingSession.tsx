@@ -14,6 +14,7 @@ interface ActiveReadingSessionProps {
   matchedVersesContent: string;
   showAmenPrompt: boolean;
   hasDifficultWords: boolean;
+  matchedCharCount: number; // 점진적 매칭: 읽은 글자 수
 
   // Handlers
   onStopReading: () => void;
@@ -34,6 +35,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   matchedVersesContent,
   showAmenPrompt,
   hasDifficultWords,
+  matchedCharCount,
   onStopReading,
   onRetryVerse,
   onExitSession,
@@ -93,7 +95,20 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             </div>
             <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
               <p className="text-xl font-semibold text-black leading-loose">
-                {currentTargetVerse ? currentTargetVerse.text : "읽기 목표 없음"}
+                {currentTargetVerse ? (
+                  <>
+                    {/* 읽은 부분 - 취소선 */}
+                    <span className="line-through text-gray-400">
+                      {currentTargetVerse.text.substring(0, matchedCharCount)}
+                    </span>
+                    {/* 아직 안 읽은 부분 - 강조 */}
+                    <span className="text-black">
+                      {currentTargetVerse.text.substring(matchedCharCount)}
+                    </span>
+                  </>
+                ) : (
+                  "읽기 목표 없음"
+                )}
               </p>
               {showAmenPrompt && hasDifficultWords && (
                 <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-md animate-pulse">
