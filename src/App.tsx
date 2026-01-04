@@ -870,13 +870,54 @@ const App: React.FC = () => {
           />
         )}
 
-        <footer className="mt-12 pt-6 border-t border-gray-300 text-center text-xs sm:text-sm text-gray-500">
-          <div className="mt-10 text-center text-xs text-gray-400 font-sans select-none">
-            <div className="mb-1">포도나무교회 &nbsp;|&nbsp; Dev: 이종림&nbsp;|&nbsp; <a href="mailto:luxual8@gmail.com" className="underline hover:text-amber-700">문의 및 개선사항</a></div>
-            <div className="mb-1">Copyright © 2025 이종림 All rights reserved.</div>
-            <div className="italic text-[11px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권장합니다</div>
-          </div>
-        </footer>
+        {/* Unified Global Footer */}
+        {readingState === ReadingState.IDLE && (
+          <footer className="mt-16 pb-12 px-4 border-t border-gray-100 pt-12 text-center">
+            <div className="max-w-md mx-auto space-y-10">
+              {/* Support Section */}
+              {currentUser && (
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl p-8 border border-indigo-50 shadow-sm">
+                  <h4 className="text-indigo-900 font-black mb-2 flex items-center justify-center gap-2">
+                    <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
+                  </h4>
+                  <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed">
+                    성도님들의 따뜻한 후원은 더 나은 바이블로그<br />
+                    서비스 운영을 지속하는 큰 힘이 됩니다.
+                  </p>
+                  <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex justify-between items-center shadow-md shadow-indigo-50">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">후원</span>
+                    <span className="text-sm font-black text-indigo-900 select-all">토스뱅크 1234-5678-0000 (이종림)</span>
+                  </div>
+                  <p className="mt-4 text-[10px] text-indigo-300 italic">
+                    *후원금은 전액 서버 유지비로 사용됩니다.
+                  </p>
+                </div>
+              )}
+
+              {/* Legal & Credits Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  <span>개인정보 처리방침</span>
+                  <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+                  <span>이용약관</span>
+                </div>
+
+                <div className="text-[11px] text-gray-400 leading-relaxed space-y-2 font-medium">
+                  <p>바이블로그는 아이디와 비밀번호 외의 개인정보를 수집하지 않습니다.</p>
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                    <span>포도나무교회</span>
+                    <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+                    <span>Dev: 이종림</span>
+                    <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+                    <a href="mailto:luxual8@gmail.com" className="text-indigo-400 underline decoration-indigo-200 hover:text-indigo-600">문의 및 개선</a>
+                  </div>
+                  <p className="opacity-70 mt-4">Copyright © 2026 BibleLog. All rights reserved.</p>
+                  <p className="italic text-gray-300 text-[10px] mt-2">"음성 인식 정확도를 위해 조용한 환경을 권장합니다"</p>
+                </div>
+              </div>
+            </div>
+          </footer>
+        )}
       </div>
     </>
   );
