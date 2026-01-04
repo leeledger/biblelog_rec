@@ -164,41 +164,18 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       console.log(`[useSpeechRecognition] onresult - hasFinal: ${hasFinalResult}, final: "${finalTranscript}", interim: "${interimTranscript}"`);
 
-      // iOS 기기에 의도적인 딜레이 추가
+      // iOS 기기 - 단순화된 로직 (디버깅용)
       if (isIOS) {
-        // iOS에서는 특별한 처리가 필요하며, 최종 결과와 중간 결과를 따로 관리
-
-        // 이전 대기 중인 타이머가 있으면 취소
-        if (delayedResultTimerRef.current) {
-          clearTimeout(delayedResultTimerRef.current);
-          delayedResultTimerRef.current = null;
-        }
-
-        // 최종 결과가 있으면 이를 기존 최종 결과에 추가
+        // 최종 결과가 있으면 기존 최종 결과에 추가
         if (hasFinalResult) {
           finalTranscriptRef.current = (finalTranscriptRef.current || '') + finalTranscript;
-          pendingFinalResultRef.current = finalTranscriptRef.current;
         }
 
-        // 중간 결과 저장
-        if (interimTranscript && interimTranscript !== lastInterimRef.current) {
-          lastInterimRef.current = interimTranscript;
-          pendingInterimResultRef.current = interimTranscript;
-        }
-
-        // 의도적인 딜레이 후 결과 표시 (안드로이드보다 더 길게 지연)
-        const ARTIFICIAL_DELAY_MS = 300; // 0.3초 지연 (실시간 타이핑 표시 개선)
-
-        delayedResultTimerRef.current = setTimeout(() => {
-          const finalResult = pendingFinalResultRef.current;
-          const interimResult = pendingInterimResultRef.current;
-
-          // 최종 결과 + 중간 결과 표시
-          setTranscript(finalResult + (interimResult ? ' ' + interimResult : ''));
-          console.log(`[useSpeechRecognition] iOS - Delayed result display after ${ARTIFICIAL_DELAY_MS}ms`);
-
-          delayedResultTimerRef.current = null;
-        }, ARTIFICIAL_DELAY_MS);
+        // 바로 결과 표시 (딜레이 제거)
+        const displayText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
+        setTranscript(displayText);
+        console.log(`[useSpeechRecognition] iOS - Immediate display: "${displayText}"`);
+        sendDebugLog('setTranscript', { displayText: displayText.substring(0, 50) });
       }
       // Android 및 기타 플랫폼
       else {
