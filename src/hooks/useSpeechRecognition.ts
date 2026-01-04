@@ -111,32 +111,24 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       console.log(`[useSpeechRecognition] onresult - hasFinal: ${hasFinalResult}, final: "${finalTranscript}", interim: "${interimTranscript}"`);
 
-      // iOS 기기 - 모든 필터링 제거, 항상 결과 표시
-      if (isIOS) {
-        // 최종 결과가 있으면 기존 최종 결과에 추가
-        if (hasFinalResult) {
-          finalTranscriptRef.current = (finalTranscriptRef.current || '') + finalTranscript;
-        }
-
-        // 바로 결과 표시
-        const displayText = (finalTranscriptRef.current || '') + (interimTranscript ? ' ' + interimTranscript : '');
-        if (displayText) {
-          setTranscript(displayText);
-          console.log(`[useSpeechRecognition] iOS - Display: "${displayText}"`);
-        }
+      // 공통 로직: 최종 결과와 중간 결과를 분리하여 처리
+      // ignoreResultsRef가 활성 상태면(구절 전환 직후 등) 결과를 무시함
+      if (ignoreResultsRef.current) {
+        console.log('[useSpeechRecognition] Result ignored due to ignoreResultsRef');
+        return;
       }
-      // Android 및 기타 플랫폼 - Web Speech API가 이미 누적된 결과를 반환함
-      else {
-        // Android에서는 더 정확한 실시간 업데이트를 위해 0번 인덱스부터 다시 조합
-        let fullAndroidTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          fullAndroidTranscript += event.results[i][0].transcript;
-        }
 
-        if (fullAndroidTranscript && !ignoreResultsRef.current) {
-          setTranscript(fullAndroidTranscript);
-          console.log('[useSpeechRecognition] Android - Display:', fullAndroidTranscript);
-        }
+      // 최종 결과가 있으면 기존 세션의 최종 결과에 추가
+      if (hasFinalResult) {
+        finalTranscriptRef.current += finalTranscript;
+      }
+
+      // 현재 세션의 전체 텍스트 (누적된 최종 결과 + 현재의 중간 결과)
+      const currentDisplayText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
+
+      if (currentDisplayText) {
+        setTranscript(currentDisplayText);
+        console.log(`[useSpeechRecognition] Display updated: "${currentDisplayText}"`);
       }
 
       setError(null);
@@ -308,12 +300,13 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         console.log('[useSpeechRecognition] iOS ignoreResults released by safety timeout');
       }, 400);
 
-      // 지언 가능한 모든 인식 결과 상태 초기화
+      // 지연 가능한 모든 인식 결과 상태 초기화
       setTranscript('');
       finalTranscriptRef.current = '';
       pendingFinalResultRef.current = '';
       pendingInterimResultRef.current = '';
       lastInterimRef.current = '';
+      lastProcessedResultIdRef.current = '';
 
       // 음성 인식 재시작 - 기존 인식 중단 및 재시작
       if (recognitionRef.current) {
