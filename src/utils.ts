@@ -101,7 +101,7 @@ export function calculateSimilarity(targetText: string, bufferTextToSearch: stri
 export function findMatchedPrefixLength(
   verseText: string,
   recognizedText: string,
-  similarityThreshold: number = 75 // 임계값 상향 (더 정확해야 함)
+  similarityThreshold: number = 80 // 75 -> 80으로 상향 (더 정확해야 함)
 ): number {
   if (!verseText || !recognizedText) return 0;
 

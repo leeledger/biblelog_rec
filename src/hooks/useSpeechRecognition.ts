@@ -89,32 +89,36 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
-      // ignoreResultsRef가 활성 상태면(구절 전환 직후 등) 결과를 무시함
-      if (ignoreResultsRef.current) {
-        console.log('[useSpeechRecognition] Result ignored due to ignoreResultsRef');
-        return;
-      }
-
-      // 현재 타임스탬프 업데이트
+      if (ignoreResultsRef.current) return;
       lastRecognitionEventTimeRef.current = Date.now();
 
-      // Android/iOS 공통: 현재 인식 세션(start~stop)의 모든 결과를 0부터 다시 합산
-      // 이는 Android의 resultIndex 버그나 중복 보고를 방지하는 가장 안전한 방법임
-      // 현재 세션의 트랜스크립트 빌드
-      let currentSessionTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        currentSessionTranscript += event.results[i][0].transcript;
-      }
+      let interimTranscript = '';
+      let finalTranscript = '';
 
-      // 최종 표시 텍스트: 이전 세션 결과 + 현재 세션 결과
-      // 주의: Android는 대개 단일 세션에서 모든 결과를 누적하여 주므로 
-      // finalTranscriptRef.current에 함부로 더하면 중복이 발생함.
-      const totalTranscript = isIOS
-        ? (finalTranscriptRef.current + currentSessionTranscript)
-        : currentSessionTranscript; // Android는 브라우저 누적 결과만 믿음
-
-      if (totalTranscript && !ignoreResultsRef.current) {
-        setTranscript(totalTranscript);
+      // iOS와 Android의 처리 방식을 완전히 분리
+      if (isIOS) {
+        // iOS Safari: Incremental 결과를 수동으로 누적해야 함
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          } else {
+            interimTranscript += result[0].transcript;
+          }
+        }
+        if (finalTranscript) {
+          finalTranscriptRef.current += finalTranscript;
+        }
+        setTranscript(finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : ''));
+      } else {
+        // Android Chrome: 이미 누적된 결과를 event.results[0] 등에 담아서 주거나 
+        // 각 인덱스에 단어별로 담아서 줌. 0부터 끝까지 합치되 중복 합산을 방지하기 위해 
+        // finalTranscriptRef를 절대 사용하지 않음.
+        let androidFull = '';
+        for (let i = 0; i < event.results.length; i++) {
+          androidFull += event.results[i][0].transcript;
+        }
+        setTranscript(androidFull);
       }
 
       setError(null);
