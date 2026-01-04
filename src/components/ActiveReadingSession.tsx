@@ -14,13 +14,13 @@ interface ActiveReadingSessionProps {
   matchedVersesContent: string;
   showAmenPrompt: boolean;
   hasDifficultWords: boolean;
-  
+
   // Handlers
   onStopReading: () => void;
   onRetryVerse: () => void;
   onExitSession: () => void;
   onStartListening: () => void; // For the "Start Voice Recognition" button in READING state
-  
+
   sessionCertificationMessage: string;
   onSessionCompleteConfirm: () => void; // Handler for "Other range / Menu" button
 }
@@ -79,7 +79,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
     return (
       <>
         <ProgressBar progress={sessionProgress} />
-        
+
         {/* Main Reading Display */}
         <div className="my-4 p-4 bg-white rounded-lg shadow-md">
           <div className="mb-4">
@@ -124,7 +124,11 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
           <div className="mb-4">
             <p className="text-sm text-gray-500">인식된 음성:</p>
             <p className="text-md text-gray-700 min-h-[2.5em] p-2 bg-gray-100 rounded-md border">
-              {transcript || <span className="text-gray-400 italic">듣고 있습니다...</span>}
+              {transcript || <span className="text-gray-400 italic">듣고 있습니다... (말씀해 주세요)</span>}
+            </p>
+            {/* iOS 디버그 정보 */}
+            <p className="text-xs text-blue-500 mt-1">
+              [Debug] 현재 호스트: {typeof window !== 'undefined' ? window.location.hostname : 'unknown'}
             </p>
           </div>
 
@@ -139,12 +143,12 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
         {readingState === ReadingState.LISTENING && (
           <p className="mt-3 text-xs text-center text-gray-600">내용을 다 읽으면 자동으로 진행 상황이 저장됩니다. 읽기를 중단하려면 '중단' 버튼을 누르세요.</p>
         )}
-        
+
         {readingState === ReadingState.SESSION_COMPLETED && (
           <div className="fixed top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 text-center p-6 bg-green-100 border-2 border-green-600 rounded-lg shadow-xl max-w-md w-11/12">
             <h2 className="text-2xl font-bold text-green-700 mb-3">이번 세션 읽기 완료!</h2>
             <p className="text-lg text-gray-700 mb-4 whitespace-pre-wrap">{sessionCertificationMessage}</p>
-            <button 
+            <button
               onClick={onSessionCompleteConfirm}
               className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg shadow transition duration-150 ease-in-out"
             >
