@@ -101,7 +101,7 @@ export function calculateSimilarity(targetText: string, bufferTextToSearch: stri
 export function findMatchedPrefixLength(
   verseText: string,
   recognizedText: string,
-  similarityThreshold: number = 80 // 75 -> 80으로 상향 (더 정확해야 함)
+  similarityThreshold: number = 85 // 80 -> 85로 상향하여 더 높은 정확도 요구
 ): number {
   if (!verseText || !recognizedText) return 0;
 
@@ -125,14 +125,14 @@ export function findMatchedPrefixLength(
   let combinedWords = "";
 
   for (const word of words) {
-    const nextTest = combinedWords + word;
-    if (nextTest.length > normalizedVerse.length + 5) break; // 구절보다 너무 길어지면 중단
+    const nextTest = combinedWords + (combinedWords ? "" : "") + word; // 띄어쓰기 없이 붙여서 비교 (normalizeText 결과가 붙어있는 경우 대비)
+    if (nextTest.length > normalizedVerse.length + 3) break;
 
     // 구절의 해당 길이만큼의 prefix 추출
     const versePrefix = normalizedVerse.substring(0, nextTest.length);
     const sim = calculateSimilarity(versePrefix, nextTest);
 
-    // 매우 높은 유사도를 요구 (80% 이상)
+    // 임계값 이상의 높은 유사도를 요구
     if (sim >= similarityThreshold) {
       combinedWords = nextTest;
       const targetIdx = Math.min(nextTest.length - 1, charToOriginalIndex.length - 1);
@@ -141,7 +141,8 @@ export function findMatchedPrefixLength(
       }
     } else {
       // 한 단어라도 틀리면 더 이상의 진행을 막음 (취소선이 앞서나가는 것 방지)
-      break;
+      // 단, 인식된 텍스트가 매우 짧을 때는 유사도 판정이 부정확할 수 있으므로 약간의 여유를 줌
+      if (nextTest.length > 3) break;
     }
   }
 

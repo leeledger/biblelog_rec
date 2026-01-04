@@ -89,15 +89,17 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
+      // 구절 전환 직후의 잔여 결과 무시
       if (ignoreResultsRef.current) return;
+
       lastRecognitionEventTimeRef.current = Date.now();
 
       let interimTranscript = '';
       let finalTranscript = '';
 
-      // iOS와 Android의 처리 방식을 완전히 분리
+      // iOS와 Android의 특성에 맞게 처리 분리
       if (isIOS) {
-        // iOS Safari: Incremental 결과를 수동으로 누적해야 함
+        // iOS: 결과 인덱스(event.resultIndex)부터의 변화만 감지하여 수동 누적
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           if (result.isFinal) {
@@ -111,18 +113,18 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         }
         setTranscript(finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : ''));
       } else {
-        // Android Chrome: 이미 누적된 결과를 event.results[0] 등에 담아서 주거나 
-        // 각 인덱스에 단어별로 담아서 줌. 0부터 끝까지 합치되 중복 합산을 방지하기 위해 
-        // finalTranscriptRef를 절대 사용하지 않음.
-        let androidFull = '';
+        // Android: 브라우저가 제공하는 전체 결과(0부터)를 매번 합산하여 표시
+        // 수동 누적(finalTranscriptRef)을 사용하지 않으므로 중복 증폭 원천 차단
+        let totalAndroid = '';
         for (let i = 0; i < event.results.length; i++) {
-          androidFull += event.results[i][0].transcript;
+          totalAndroid += event.results[i][0].transcript;
         }
-        setTranscript(androidFull);
+        setTranscript(totalAndroid);
       }
 
       setError(null);
     };
+
 
     recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
@@ -346,7 +348,6 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     // 구절 전환 시간 업데이트 (구절 전환으로 간주)
     verseTransitionTimeRef.current = Date.now();
-
     // 현재 인식이 진행 중이면 잠시 중지하고 다시 시작하여 인식 결과를 초기화
     if (isListening && recognitionRef.current) {
       try {
@@ -356,13 +357,20 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         // 현재 인식 즉시 중단 (버퍼 파괴)
         recognitionRef.current.abort();
 
+        // 텍스트 상태 즉시 초기화
+        setTranscript('');
+        finalTranscriptRef.current = '';
+        lastProcessedResultIdRef.current = '';
+        ignoreResultsRef.current = true; // 리셋 중에는 결과 무시
+
+        // 구절 전환 시간 업데이트 (구절 전환으로 간주)
+        verseTransitionTimeRef.current = Date.now();
+
         // 잠시 후 다시 시작
         setTimeout(() => {
           if (recognitionRef.current && isListening) {
-            lastProcessedResultIdRef.current = '';
-
+            intentionalStopRef.current = false;
             try {
-              intentionalStopRef.current = false;
               recognitionRef.current.start();
               console.log('[useSpeechRecognition] Recognition restarted after reset');
             } catch (e) {
@@ -371,12 +379,12 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
             }
           }
 
-          // 어떤 플랫폼이든 리셋 후 잠시 동안 들어오시는 결과 무시 해제 보장
+          // 리셋 후 결과를 받기 시작할 때까지 충분한 무시 기간 확보
           setTimeout(() => {
             ignoreResultsRef.current = false;
             console.log('[useSpeechRecognition] ignoreResults released after reset');
-          }, 350);
-        }, 250);
+          }, 400); // 350ms -> 400ms로 상향
+        }, 300); // 250ms -> 300ms로 상향하여 엔진 안정화 시간 확보
       } catch (e) {
         console.error('[useSpeechRecognition] Error during force reset:', e);
       }
@@ -384,8 +392,10 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // 리스닝 중이 아닐 때도 플래그는 해제되어야 함
       setTranscript('');
       finalTranscriptRef.current = '';
-      lastInterimRef.current = '';
       ignoreResultsRef.current = false;
+      lastInterimRef.current = ''; // lastInterimRef도 초기화
+      lastProcessedResultIdRef.current = ''; // lastProcessedResultIdRef도 초기화
+      verseTransitionTimeRef.current = Date.now(); // 구절 전환 시간 업데이트
       console.log('[useSpeechRecognition] Transcript reset (not listening)');
     }
   }, [isIOS, isListening]);
