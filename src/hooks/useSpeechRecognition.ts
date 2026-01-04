@@ -89,17 +89,20 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
-      // 구절 전환 직후의 잔여 결과 무시
-      if (ignoreResultsRef.current) return;
+      // 1. 결과 무시 플래그 체크 (구절 전환 직후 등)
+      if (ignoreResultsRef.current) {
+        console.log('[useSpeechRecognition] Result ignored');
+        return;
+      }
 
       lastRecognitionEventTimeRef.current = Date.now();
 
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      // iOS와 Android의 특성에 맞게 처리 분리
+      // iOS와 Android의 처리 방식을 완전히 분리하여 각각의 브라우저 특성에 대응
       if (isIOS) {
-        // iOS: 결과 인덱스(event.resultIndex)부터의 변화만 감지하여 수동 누적
+        // iOS Safari: Incremental 결과를 수동으로 누적해야 함
+        let interimTranscript = '';
+        let finalTranscript = '';
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           if (result.isFinal) {
@@ -108,18 +111,22 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
             interimTranscript += result[0].transcript;
           }
         }
+
         if (finalTranscript) {
           finalTranscriptRef.current += finalTranscript;
         }
-        setTranscript(finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : ''));
+
+        const totalText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
+        setTranscript(totalText);
       } else {
-        // Android: 브라우저가 제공하는 전체 결과(0부터)를 매번 합산하여 표시
-        // 수동 누적(finalTranscriptRef)을 사용하지 않으므로 중복 증폭 원천 차단
-        let totalAndroid = '';
-        for (let i = 0; i < event.results.length; i++) {
-          totalAndroid += event.results[i][0].transcript;
+        // Android Chrome 등: 대부분의 앱 브라우저는 event.results에 전체 세션 텍스트를 누적으로 담아서 줌.
+        // 따라서 모든 인덱스를 합치면 중복이 발생함 (하나님의하나님의...).
+        // 가장 마지막 인덱스의 텍스트가 현재까지 인식된 "전체 문장"인 경우가 많으므로 이것만 취함.
+        if (event.results.length > 0) {
+          const lastResultText = event.results[event.results.length - 1][0].transcript;
+          setTranscript(lastResultText);
+          console.log('[useSpeechRecognition] Android Cumulative Result:', lastResultText);
         }
-        setTranscript(totalAndroid);
       }
 
       setError(null);
@@ -329,8 +336,8 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // 잠시 후 다시 처리 가능하게 (구절 전환 직후 결과만 동작)
       setTimeout(() => {
         ignoreResultsRef.current = false;
-        console.log('[useSpeechRecognition] iOS verse transition ignore period ended');
-      }, 500); // 지연된 결과가 도착하는 시간을 고려해 500ms로 확장 (이전 250ms)
+        console.log('[useSpeechRecognition] ignoreResults released');
+      }, 1000); // 이전 결과를 완전히 버리기 위해 1초간 무시
 
       // 이전 결과와의 구분을 위해 마지막 처리된 결과 ID 초기화
       lastProcessedResultIdRef.current = '';
