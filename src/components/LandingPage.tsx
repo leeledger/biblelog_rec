@@ -27,12 +27,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                 </div>
 
                 <div className="relative z-10 max-w-4xl mx-auto space-y-8 animate-fade-in-up">
-                    <header>
-                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-4">
-                            바이블로그 <span className="text-amber-400">함께해요</span>
+                    <header className="break-keep">
+                        <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-6 leading-tight">
+                            바이블로그 <br className="md:hidden" /> <span className="text-amber-400">함께해요</span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-white font-medium drop-shadow-md font-serif">
-                            "말씀이 내 목소리가 되고, 내 목소리가 기록이 되는 시간."
+                        <p className="text-lg md:text-2xl text-white font-medium drop-shadow-md font-serif leading-relaxed px-2">
+                            "말씀이 내 목소리가 되고, <br className="md:hidden" /> 내 목소리가 기록이 되는 시간."
                         </p>
                     </header>
 
@@ -59,9 +59,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
             {/* Value Infographics Section */}
             <section className="py-24 px-4 max-w-6xl mx-auto space-y-20">
-                <div className="text-center space-y-4">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-800">눈으로만 보던 말씀을 <br className="md:hidden" /> <span className="text-purple-600 border-b-4 border-purple-200">입술의 고백</span>으로</h2>
-                    <p className="text-gray-500 max-w-2xl mx-auto">더 이상 기록의 번거로움 때문에 멈추지 마세요. <br /> 음성 인식 기술이 당신의 신앙적 여정을 묵묵히 기록합니다.</p>
+                <div className="text-center space-y-4 break-keep">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-800 leading-tight">
+                        눈으로만 보던 말씀을 <br /> <span className="text-purple-600 border-b-4 border-purple-200">입술의 고백</span>으로
+                    </h2>
+                    <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed px-4">
+                        더 이상 기록의 번거로움 때문에 멈추지 마세요. <br className="hidden md:block" />
+                        음성 인식 기술이 당신의 신앙적 여정을 <br className="md:hidden" /> 묵묵히 기록합니다.
+                    </p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-8">
@@ -96,15 +101,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     </div>
 
                     {/* Card 3: 몰입 */}
-                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden break-keep">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-12 -mt-12 transition-all group-hover:scale-110"></div>
                         <div className="relative z-10 space-y-6">
                             <img src="/images/landing/immersion_icon.png" alt="Immersion icon" className="w-20 h-20 mx-auto" />
                             <div className="space-y-3">
                                 <h3 className="text-xl font-bold text-gray-800 text-center">기록과 습관</h3>
                                 <p className="text-gray-600 text-sm leading-relaxed text-center">
-                                    "당신의 사모함이 쌓여 흔들리지 않는 습관이 됩니다." <br />
-                                    음성 인식은 그저 당신의 성실한 발걸음을 기록해 주는 도구입니다.
+                                    "당신의 사모함이 쌓여 <br className="md:hidden" /> 흔들리지 않는 습관이 됩니다." <br />
+                                    음성 인식은 그저 당신의 성실한 발걸음을 <br className="md:hidden" /> 기록해 주는 도구입니다.
                                 </p>
                             </div>
                         </div>
@@ -131,7 +136,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                 <div className="flex justify-center gap-6 text-slate-400">
                     <span className="text-xs">포도나무교회</span>
                     <span className="text-xs">Dev: 이종림</span>
-                    <a href="mailto:luxual8@gmail.com" className="text-xs underline">개개인 문의</a>
+                    <a href="mailto:luxual8@gmail.com" className="text-xs underline">개인 문의</a>
                 </div>
                 <p className="text-[10px] text-slate-300">Copyright © 2025 이종림 All rights reserved.</p>
             </footer>
