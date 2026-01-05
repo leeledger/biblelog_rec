@@ -222,30 +222,50 @@ app.post('/api/progress/:username', async (req, res) => {
         }
 
         if (completedChapters && completedChapters.length > 0) {
-            // Use a single ON CONFLICT clause that works with the actual unique constraint
-            // The constraint is on (user_id, book_name, chapter_number) without group_id condition
-            const chapterInsertQuery = `
-        INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
-        VALUES ($1, $2, $3, $4, NOW())
-        ON CONFLICT ON CONSTRAINT completed_chapters_user_id_book_name_chapter_number_key DO NOTHING;
-      `;
-            for (const chapterStr of completedChapters) {
-                const [book, chapterNumStr] = chapterStr.split(':');
-                const chapterNum = parseInt(chapterNumStr, 10);
-                if (book && !isNaN(chapterNum)) {
-                    await client.query(chapterInsertQuery, [userId, groupId || null, book, chapterNum]);
-                }
+            // 배치 INSERT로 성능 개선 - 모든 장을 한 번의 쿼리로 처리
+            const validChapters = completedChapters
+                .map(chapterStr => {
+                    const [book, chapterNumStr] = chapterStr.split(':');
+                    const chapterNum = parseInt(chapterNumStr, 10);
+                    return (book && !isNaN(chapterNum)) ? { book, chapterNum } : null;
+                })
+                .filter(c => c !== null);
+
+            if (validChapters.length > 0) {
+                const values = validChapters.map((_, i) =>
+                    `($1, $2, $${i * 2 + 3}, $${i * 2 + 4}, NOW())`
+                ).join(', ');
+
+                const params = [userId, groupId || null];
+                validChapters.forEach(c => {
+                    params.push(c.book, c.chapterNum);
+                });
+
+                const batchInsertQuery = `
+                    INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
+                    VALUES ${values}
+                    ON CONFLICT (user_id, group_id, book_name, chapter_number) DO NOTHING;
+                `;
+                await client.query(batchInsertQuery, params);
             }
         }
 
         if (history && history.length > 0) {
-            const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, group_id, book_name, chapter_number, verse_number, read_at)
-        VALUES ($1, $2, $3, $4, $5, $6);
-      `;
-            for (const entry of history) {
-                await client.query(historyInsertQuery, [userId, groupId || null, entry.book, entry.startChapter, entry.startVerse, new Date(entry.date)]);
-            }
+            // history도 배치 INSERT로 처리
+            const historyValues = history.map((_, i) =>
+                `($1, $2, $${i * 4 + 3}, $${i * 4 + 4}, $${i * 4 + 5}, $${i * 4 + 6})`
+            ).join(', ');
+
+            const historyParams = [userId, groupId || null];
+            history.forEach(entry => {
+                historyParams.push(entry.book, entry.startChapter, entry.startVerse, new Date(entry.date));
+            });
+
+            const batchHistoryQuery = `
+                INSERT INTO reading_history (user_id, group_id, book_name, chapter_number, verse_number, read_at)
+                VALUES ${historyValues};
+            `;
+            await client.query(batchHistoryQuery, historyParams);
         }
 
         await client.query('COMMIT');
