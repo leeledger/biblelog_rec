@@ -699,22 +699,32 @@ const App: React.FC = () => {
         completedChapters: Array.from(newCompletedChaptersInSession)
       };
 
+      // 진도 저장을 먼저 완료한 후 reload
       progressService.saveUserProgress(currentUser.username, updatedUserProgress)
         .then(() => {
           setUserOverallProgress(updatedUserProgress);
           setOverallCompletedChaptersCount(updatedUserProgress.completedChapters?.length || 0);
         })
-        .catch(err => console.error(err));
+        .catch(err => console.error(err))
+        .finally(() => {
+          // 저장 완료(성공/실패 무관) 후 reload
+          if (!isNaturalCompletion) {
+            setTimeout(() => {
+              window.location.reload();
+            }, 300);
+          }
+        });
 
     } else if (versesActuallyReadThisSessionCount <= 0 && !isNaturalCompletion) {
       setSessionCertificationMessage("이번 세션에서 읽은 구절이 없습니다.");
+      // 읽은 구절이 없을 때도 reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
     }
 
     if (!isNaturalCompletion) {
       setReadingState(ReadingState.IDLE);
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     }
   }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId]);
 
