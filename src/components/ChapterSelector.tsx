@@ -29,13 +29,18 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'requesting'>('unknown');
 
   const [selectedBookName, setSelectedBookName] = useState<string>(defaultBook);
-  const [selectedBookInfo, setSelectedBookInfo] = useState<BookChapterInfo | undefined>(
-    AVAILABLE_BOOKS.find(b => b.name === defaultBook)
+
+  // Derived state for book info
+  const selectedBookInfo = useMemo(() =>
+    AVAILABLE_BOOKS.find(b => b.name === selectedBookName),
+    [selectedBookName]
   );
+
+  const dataAvailableForBook = !!selectedBookInfo;
+
   const [startChapter, setStartChapter] = useState<number>(Number(defaultStartChapter) || 1);
   const [endChapter, setEndChapter] = useState<number>(Number(defaultEndChapter) || 1);
   const [error, setError] = useState<string>('');
-  const [dataAvailableForBook, setDataAvailableForBook] = useState<boolean>(false);
   const [alreadyReadMessage, setAlreadyReadMessage] = useState<string>('');
 
   const handleBookChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -69,24 +74,26 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
 
   // Effect to initialize component state from props
   useEffect(() => {
-    setSelectedBookName(defaultBook);
-    setStartChapter(Number(defaultStartChapter) || 1);
-    setEndChapter(Number(defaultEndChapter) || 1);
-  }, [defaultBook, defaultStartChapter, defaultEndChapter, defaultStartVerse]);
+    // Only update if props are different from current state to avoid loops, 
+    // although setting same value in React is cheap.
+    // Important: When props change (e.g. from Parent when user finishes a chapter and we want to suggest next),
+    // we need to update internal state.
+    if (defaultBook !== selectedBookName ||
+      (Number(defaultStartChapter) || 1) !== startChapter ||
+      (Number(defaultEndChapter) || 1) !== endChapter) {
 
-  // Effect to synchronize selectedBookInfo and data availability whenever selectedBookName changes
-  useEffect(() => {
-    const bookInfo = AVAILABLE_BOOKS.find(b => b.name === selectedBookName);
-    setSelectedBookInfo(bookInfo);
-    setDataAvailableForBook(!!bookInfo);
-    if (!bookInfo) {
-      setError(`"${selectedBookName}" 책을 찾을 수 없습니다. 목록에서 올바른 책을 선택해주세요.`);
+      setSelectedBookName(defaultBook);
+      setStartChapter(Number(defaultStartChapter) || 1);
+      setEndChapter(Number(defaultEndChapter) || 1);
     }
-  }, [selectedBookName]);
+  }, [defaultBook, defaultStartChapter, defaultEndChapter]);
 
   // Effect for validation of chapters and checking read status
   useEffect(() => {
     if (!selectedBookInfo) {
+      if (selectedBookName) {
+        setError(`"${selectedBookName}" 책을 찾을 수 없습니다. 목록에서 올바른 책을 선택해주세요.`);
+      }
       return;
     }
 
