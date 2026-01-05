@@ -134,6 +134,25 @@ const Dashboard: React.FC<DashboardProps> = ({
               * 동역자들과 함께하고 싶다면 <strong>'그룹 관리'</strong>에서 공동체를 만드세요!
             </p>
           )}
+
+          {/* 마지막 읽은 위치 표시 - 그룹 선택 영역 내 */}
+          {userOverallProgress && (
+            <div className="mt-4 bg-white bg-opacity-15 backdrop-blur-sm p-3 rounded-xl border border-white border-opacity-20">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📖</span>
+                <div>
+                  <p className="text-[11px] text-indigo-100 opacity-80">
+                    {selectedGroupId ? `${activeGroup?.name || '그룹'}에서` : '개인 통독'} 마지막 읽은 곳
+                  </p>
+                  <p className="text-base font-black text-white">
+                    {userOverallProgress.lastReadBook
+                      ? `${userOverallProgress.lastReadBook} ${userOverallProgress.lastReadChapter}장 ${userOverallProgress.lastReadVerse || 1}절`
+                      : '아직 기록이 없어요'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 하단: 범위 선택 (ChapterSelector) */}
@@ -161,17 +180,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Control Buttons */}
       {currentUser && userOverallProgress && (
         <div className="my-8 flex flex-col gap-4 items-center w-full max-w-md mx-auto">
-          {/* 이어 읽기 퀵 정보 */}
-          <div className="w-full p-4 bg-blue-50 bg-opacity-50 rounded-2xl border border-blue-100 flex items-center justify-between">
-            <div>
-              <h3 className="text-xs font-bold text-blue-800 mb-0.5">마지막 읽은 곳</h3>
-              <p className="text-base font-black text-gray-700">
-                {userOverallProgress.lastReadBook ? `${userOverallProgress.lastReadBook} ${userOverallProgress.lastReadChapter}장` : '기록 없음'}
-              </p>
-            </div>
-            <span className="text-2xl opacity-40">📖</span>
-          </div>
-
           <button
             onClick={() => setShowBookCompletionStatus(!showBookCompletionStatus)}
             className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-blue-500 to-sky-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
