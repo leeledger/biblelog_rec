@@ -57,11 +57,16 @@
   <script>
     const userAgent = navigator.userAgent;
     const isKakao = /KAKAOTALK/i.test(userAgent);
-    const isIphone = /iPhone/i.test(userAgent); // 아이폰 감지
+    const isIphone = /iPhone|iPad|iPod/i.test(userAgent);
 
-    // 카카오톡 인앱 브라우저이고 아이폰이 아닐 경우에만 리디렉션
-    if (isKakao && !isIphone) {
-      window.location.href = `intent://${window.location.hostname}#Intent;scheme=https;end`;
+    if (isKakao) {
+      if (isIphone) {
+        // 아이폰 카카오톡 외부 브라우저(Safari) 호출
+        location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+      } else {
+        // 안드로이드 카카오톡 외부 브라우저 호출
+        window.location.href = `intent://${window.location.hostname}${window.location.pathname}#Intent;scheme=https;end`;
+      }
     }
   </script>
   <script>
