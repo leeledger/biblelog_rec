@@ -7,19 +7,12 @@ if (!connectionString) {
   console.error('CRITICAL: DATABASE_URL is not defined in Vercel environment variables!');
 }
 
-// Supabase/Neon connection pooler 지원을 위해 URL 파라미터 추가
-let finalConnectionString = connectionString;
-if (connectionString && !connectionString.includes('pgbouncer=true')) {
-  const separator = connectionString.includes('?') ? '&' : '?';
-  finalConnectionString = connectionString + separator + 'pgbouncer=true';
-}
-
 const pool = new Pool({
-  connectionString: finalConnectionString,
+  connectionString: connectionString,
   ssl: connectionString ? { rejectUnauthorized: false } : false,
-  max: 1, // pgbouncer 사용 시 최소 연결로 유지
-  idleTimeoutMillis: 5000, // 5초 후 유휴 연결 해제
-  connectionTimeoutMillis: 10000,
+  max: 2, // 서버리스 환경용 최소 연결
+  idleTimeoutMillis: 20000, // 20초 유휴 타임아웃
+  connectionTimeoutMillis: 30000, // 30초 연결 타임아웃 (늘림)
 });
 
 pool.on('error', (err) => {
