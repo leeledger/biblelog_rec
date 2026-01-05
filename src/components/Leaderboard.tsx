@@ -34,38 +34,17 @@ interface LeaderboardProps {
 const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(10); // 초기 노출 개수
 
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       setIsLoading(true);
+      setVisibleCount(10); // 그룹 변경 시 노출 개수 리셋
       try {
         const usersData: UserDataForLeaderboard[] = await authService.getAllUsersWithProgress(groupId); // Pass groupId
 
-        const sortedUsers = [...usersData].sort((a, b) => {
-          // Primary sort: by completionRate, descending
-          if (a.completionRate !== b.completionRate) {
-            return b.completionRate - a.completionRate;
-          }
-
-          // Secondary sort: by last read progress
-          const bookIndexA = BOOK_ORDER.indexOf(a.progress.lastReadBook);
-          const bookIndexB = BOOK_ORDER.indexOf(b.progress.lastReadBook);
-
-          // Handle books not in order or empty lastReadBook (treat as "later" in sort)
-          const effectiveIndexA = bookIndexA === -1 ? Infinity : bookIndexA;
-          const effectiveIndexB = bookIndexB === -1 ? Infinity : bookIndexB;
-
-          if (effectiveIndexA !== effectiveIndexB) {
-            return effectiveIndexA - effectiveIndexB; // Sort by predefined book order
-          }
-          // If books are the same or both unknown, sort by chapter/verse
-          if (a.progress.lastReadChapter !== b.progress.lastReadChapter) {
-            return b.progress.lastReadChapter - a.progress.lastReadChapter; // Higher chapter first
-          }
-          return b.progress.lastReadVerse - a.progress.lastReadVerse; // Higher verse first
-        });
-
-        const formattedData: LeaderboardEntry[] = sortedUsers.map((user, index) => {
+        // 백엔드에서 이미 정렬 및 필터링을 해서 오므로, 클라이언트에서는 포맷팅만 수행
+        const formattedData: LeaderboardEntry[] = usersData.map((user, index) => {
           let progressDisplay = "아직 읽기 시작 안 함";
           if (user.progress && (user.progress.lastReadBook || user.progress.lastReadChapter > 0 || user.progress.lastReadVerse > 0)) {
             progressDisplay = `${user.progress.lastReadBook || '??'} ${user.progress.lastReadChapter}장 ${user.progress.lastReadVerse}절`;
@@ -78,15 +57,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
             book: user.progress?.lastReadBook || '',
             chapter: user.progress?.lastReadChapter || 0,
             verse: user.progress?.lastReadVerse || 0,
-            lastProgressUpdateDate: user.progress?.lastProgressUpdateDate, // UserProgress에서 직접 가져옴
-            completed_count: user.completed_count || 0, // 완독 횟수
+            lastProgressUpdateDate: user.progress?.lastProgressUpdateDate,
+            completed_count: user.completed_count || 0,
           };
         });
 
         setLeaderboardData(formattedData);
       } catch (error) {
-        console.error("Failed to fetch or process leaderboard data:", error);
-        setLeaderboardData([]); // Set to empty on error
+        console.error("Failed to fetch leaderboard data:", error);
+        setLeaderboardData([]);
       } finally {
         setIsLoading(false);
       }
@@ -97,145 +76,127 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
 
   if (isLoading) {
     return (
-      <div className="mt-8 p-4 bg-white shadow rounded-lg text-center">
-        <p className="text-gray-600">랭킹 보드 로딩 중...</p>
+      <div className="mt-8 p-8 bg-white shadow-xl rounded-2xl text-center">
+        <div className="animate-spin inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mb-4"></div>
+        <p className="text-gray-600 font-medium font-sans">말씀의 발자국을 찾는 중...</p>
       </div>
     );
   }
 
   if (leaderboardData.length === 0) {
     return (
-      <div className="mt-8 p-4 bg-white shadow rounded-lg text-center">
-        <p className="text-gray-600">아직 등록된 사용자 기록이 없습니다.</p>
+      <div className="mt-8 p-10 bg-white shadow-xl rounded-2xl text-center border border-dashed border-gray-200">
+        <span className="text-4xl block mb-4">✨</span>
+        <p className="text-gray-500 font-medium font-sans">
+          {groupId ? '이 그룹에 아직 활동 중인 멤버가 없습니다.' : '개인 통독을 시작한 멤버가 아직 없습니다.'}<br />
+          <span className="text-xs opacity-60 mt-2 block">(0% 진행 사용자는 랭킹에서 제외됩니다)</span>
+        </p>
       </div>
     );
   }
 
+  const displayedData = leaderboardData.slice(0, visibleCount);
+  const hasMore = leaderboardData.length > visibleCount;
+
   return (
-    <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-xl rounded-2xl overflow-hidden border border-indigo-100">
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 py-4 px-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-center text-white mb-1 break-keep drop-shadow-sm">
-          {groupId ? '🏅 그룹 랭킹 🏅' : '✨ 전체 완독률 순위 ✨'}
+    <div className="mt-8 bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100 flex flex-col font-sans">
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 py-6 px-6 shadow-inner">
+        <h2 className="text-xl sm:text-2xl font-black text-center text-white mb-1 break-keep drop-shadow-md tracking-tight uppercase">
+          {groupId ? '🏅 그룹 랭킹 🏅' : '✨ 개인 통독 랭킹 ✨'}
         </h2>
-        <p className="text-center text-indigo-100 text-sm">{groupId ? '공동체와 함께하는 여정' : '함께 걷는 말씀의 여정'}</p>
+        <p className="text-center text-indigo-100 text-xs font-medium opacity-90">
+          {groupId ? '우리 공동체의 소중한 동행' : '홀로 서서 걷는 말씀의 시간'}
+        </p>
       </div>
 
-      {/* 모바일에서는 카드 형태로, 데스크톱에서는 테이블 형태로 표시 */}
-      <div className="md:hidden">
-        {/* 모바일 카드 뷰 */}
-        <div className="p-4 space-y-4">
-          {leaderboardData.map((entry) => (
+      <div className="flex-grow overflow-hidden">
+        {/* 모바일 뷰 (Card Layout) */}
+        <div className="md:hidden p-4 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+          {displayedData.map((entry) => (
             <div
               key={entry.username}
-              className={`rounded-xl p-4 shadow-md transition-all duration-300 hover:shadow-lg ${entry.rank <= 3 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200' : 'bg-white'}`}
+              className={`rounded-2xl p-4 shadow-sm border transition-all duration-300 ${entry.rank <= 3 ? 'bg-gradient-to-br from-amber-50 to-white border-amber-100' : 'bg-gray-50 border-gray-100'}`}
             >
-              <div className="flex items-center mb-3">
-                <div className={`
-                  ${entry.rank === 1 ? 'bg-amber-500 text-white' :
-                    entry.rank === 2 ? 'bg-gray-400 text-white' :
-                      entry.rank === 3 ? 'bg-amber-700 text-white' :
-                        'bg-indigo-100 text-indigo-800'} 
-                  rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm mr-3
-                `}>
-                  {entry.rank}
-                </div>
-                <div className="font-bold text-lg text-indigo-900 flex-grow truncate flex items-center gap-1">
-                  {entry.username}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className={`
+                    ${entry.rank === 1 ? 'bg-amber-400 text-white' :
+                      entry.rank === 2 ? 'bg-slate-300 text-white' :
+                        entry.rank === 3 ? 'bg-amber-600 text-white' :
+                          'bg-indigo-50 text-indigo-400'} 
+                    rounded-full w-7 h-7 flex items-center justify-center font-black text-xs shadow-sm
+                  `}>
+                    {entry.rank}
+                  </div>
+                  <div className="font-black text-gray-800 truncate max-w-[120px] flex items-center gap-1">
+                    {entry.username}
+                  </div>
                   {entry.completed_count > 0 && (
-                    <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm border border-amber-300 ml-1 flex items-center">
-                      <span className="mr-0.5">🏆</span>
-                      <span>{entry.completed_count}</span>
-                    </span>
+                    <div className="flex items-center bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
+                      🏆 {entry.completed_count}
+                    </div>
                   )}
                 </div>
-                <div className="text-sm font-semibold bg-indigo-100 text-indigo-800 px-2 py-1 rounded-lg">
+                <div className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
                   {entry.completionRate.toFixed(1)}%
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 gap-2 text-sm">
-                <div className="flex">
-                  <span className="text-gray-500 w-20">최근 읽기:</span>
-                  <span className="text-gray-800 font-medium">{entry.progressDisplay}</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-500 w-20">업데이트:</span>
-                  <span className="text-gray-600">
-                    {entry.lastProgressUpdateDate
-                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
-                      : '기록 없음'}
-                  </span>
-                </div>
-              </div>
+              <p className="text-[11px] text-gray-500 flex justify-between items-center">
+                <span>📍 {entry.progressDisplay}</span>
+                <span className="opacity-60 italic">{entry.lastProgressUpdateDate ? entry.lastProgressUpdateDate.slice(5, 10).replace('-', '/') : ''}</span>
+              </p>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* 데스크톱 테이블 뷰 */}
-      <div className="hidden md:block">
-        <div className="p-6">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left border-b-2 border-indigo-200">
-                <th className="pb-3 px-4 text-indigo-800 font-bold">순위</th>
-                <th className="pb-3 px-4 text-indigo-800 font-bold">사용자명</th>
-                <th className="pb-3 px-4 text-indigo-800 font-bold">최근 읽기</th>
-                <th className="pb-3 px-4 text-indigo-800 font-bold">완독률</th>
-                <th className="pb-3 px-4 text-indigo-800 font-bold">업데이트 일시</th>
+        {/* 데스크톱 뷰 (Table Layout) */}
+        <div className="hidden md:block p-0 max-h-[60vh] overflow-y-auto scrollbar-thin">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-gray-50 z-10">
+              <tr className="text-left text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
+                <th className="py-4 px-6">Rank</th>
+                <th className="py-4 px-6">User</th>
+                <th className="py-4 px-6">Last Progress</th>
+                <th className="py-4 px-6">Rate</th>
               </tr>
             </thead>
             <tbody>
-              {leaderboardData.map((entry) => (
+              {displayedData.map((entry) => (
                 <tr
                   key={entry.username}
-                  className={`border-b border-indigo-50 hover:bg-indigo-50/50 transition-colors ${entry.rank <= 3 ? 'bg-amber-50/50' : ''}`}
+                  className={`border-b border-gray-50 hover:bg-gray-50/80 transition-colors ${entry.rank <= 3 ? 'bg-amber-50/20' : ''}`}
                 >
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-6">
                     <div className={`
-                      ${entry.rank === 1 ? 'bg-amber-500 text-white' :
-                        entry.rank === 2 ? 'bg-gray-400 text-white' :
-                          entry.rank === 3 ? 'bg-amber-700 text-white' :
-                            'bg-indigo-100 text-indigo-800'} 
-                      rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm
+                      ${entry.rank === 1 ? 'bg-amber-400' :
+                        entry.rank === 2 ? 'bg-slate-300' :
+                          entry.rank === 3 ? 'bg-amber-600' :
+                            'bg-gray-100 text-gray-400'} 
+                      rounded-lg w-8 h-8 flex items-center justify-center font-black text-xs text-white shadow-sm
                     `}>
                       {entry.rank}
                     </div>
                   </td>
-                  <td className="py-4 px-4 font-medium text-gray-800">
-                    <div className="flex items-center gap-1">
+                  <td className="py-4 px-6 font-bold text-gray-700">
+                    <div className="flex items-center gap-2">
                       {entry.username}
                       {entry.completed_count > 0 && (
-                        <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-900 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm border border-amber-300 ml-1 flex items-center">
-                          <span className="mr-0.5">🏆</span>
-                          <span>{entry.completed_count}</span>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
+                          🏆 {entry.completed_count}
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-4 text-gray-700">{entry.progressDisplay}</td>
-                  <td className="py-4 px-4">
-                    <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-lg inline-block font-medium">
+                  <td className="py-4 px-6 text-gray-500 font-medium">
+                    {entry.progressDisplay}
+                    {entry.lastProgressUpdateDate && (
+                      <span className="ml-2 text-[10px] opacity-40 font-normal italic">({new Date(entry.lastProgressUpdateDate).toLocaleDateString()})</span>
+                    )}
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full inline-block font-black text-xs shadow-sm shadow-indigo-100">
                       {entry.completionRate.toFixed(1)}%
                     </div>
-                  </td>
-                  <td className="py-4 px-4 text-gray-600">
-                    {entry.lastProgressUpdateDate
-                      ? new Date(entry.lastProgressUpdateDate).toLocaleString('ko-KR', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      }).replace(/\.$/, '').replace(/\./g, '-').replace(' - ', ' ')
-                      : ''}
                   </td>
                 </tr>
               ))}
@@ -243,6 +204,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
           </table>
         </div>
       </div>
+
+      {/* 더 보기 버튼 */}
+      {hasMore && (
+        <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+          <button
+            onClick={() => setVisibleCount(prev => prev + 20)}
+            className="px-6 py-2 bg-white text-indigo-600 text-xs font-black rounded-full border border-indigo-100 hover:bg-indigo-50 active:scale-95 transition-all shadow-sm flex items-center gap-2 mx-auto"
+          >
+            기록 더 보기 ({leaderboardData.length - visibleCount}명 남음) <span>▼</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
