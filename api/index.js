@@ -195,17 +195,31 @@ app.post('/api/progress/:username', async (req, res) => {
             userId = newUserResult.rows[0].id;
         }
 
-        const progressQuery = `
+        const progressQuery = groupId ? `
       INSERT INTO reading_progress (user_id, group_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
       VALUES ($1, $2, $3, $4, $5, NOW())
-      ON CONFLICT (user_id, group_id)
+      ON CONFLICT (user_id, group_id) WHERE group_id IS NOT NULL
+      DO UPDATE SET
+        last_read_book = EXCLUDED.last_read_book,
+        last_read_chapter = EXCLUDED.last_read_chapter,
+        last_read_verse = EXCLUDED.last_read_verse,
+        updated_at = NOW();
+    ` : `
+      INSERT INTO reading_progress (user_id, group_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
+      VALUES ($1, NULL, $2, $3, $4, NOW())
+      ON CONFLICT (user_id) WHERE group_id IS NULL
       DO UPDATE SET
         last_read_book = EXCLUDED.last_read_book,
         last_read_chapter = EXCLUDED.last_read_chapter,
         last_read_verse = EXCLUDED.last_read_verse,
         updated_at = NOW();
     `;
-        await client.query(progressQuery, [userId, groupId || null, lastReadBook, lastReadChapter, lastReadVerse]);
+
+        if (groupId) {
+            await client.query(progressQuery, [userId, groupId, lastReadBook, lastReadChapter, lastReadVerse]);
+        } else {
+            await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse]);
+        }
 
         if (completedChapters && completedChapters.length > 0) {
             const chapterInsertQuery = `

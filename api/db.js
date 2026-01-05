@@ -139,11 +139,17 @@ export const initializeDatabase = async () => {
     await pool.query(createReadingHistoryTable);
     await pool.query(createHallOfFameTable);
 
-    // Add indexes for performance optimization
+    // Add indexes for performance optimization and resolve ON CONFLICT constraints
     const createIndexes = `
       CREATE INDEX IF NOT EXISTS idx_completed_chapters_user_group ON completed_chapters(user_id, group_id);
       CREATE INDEX IF NOT EXISTS idx_hall_of_fame_user_group ON hall_of_fame(user_id, group_id);
       CREATE INDEX IF NOT EXISTS idx_reading_progress_user_group ON reading_progress(user_id, group_id);
+      
+      -- Add partial unique indexes for reading_progress to support ON CONFLICT with NULL group_id
+      -- First, try to drop the existing PK if it only covers user_id, group_id to avoid conflicts with NULLs in some DB engines
+      -- but for safety in serverless/hosted envs, we'll just ensure unique indexes exist.
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_group ON reading_progress(user_id, group_id) WHERE group_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_personal ON reading_progress(user_id) WHERE group_id IS NULL;
     `;
     await pool.query(createIndexes);
 

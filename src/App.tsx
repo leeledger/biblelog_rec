@@ -687,9 +687,6 @@ const App: React.FC = () => {
 
     if (!isNaturalCompletion) {
       setReadingState(ReadingState.IDLE);
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     }
   }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress]);
 
@@ -745,9 +742,10 @@ const App: React.FC = () => {
               <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
               {appError && <p className="mt-4 text-red-500 text-center">{appError}</p>}
 
-              {userOverallProgress && (userOverallProgress.lastReadChapter > 0 || userOverallProgress.lastReadVerse > 0) && readingState === ReadingState.IDLE && (
+
+              {userOverallProgress && (userOverallProgress.lastReadChapter > 0 || (userOverallProgress.lastReadVerse && userOverallProgress.lastReadVerse > 0)) && readingState === ReadingState.IDLE && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-sm text-blue-700">
-                  마지막 읽은 곳: {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse}절
+                  마지막 읽은 곳: {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse || 1}절
                   <span className="italic block mt-1 text-xs opacity-70">(아래에서 이어서 읽거나 새로운 범위를 선택하여 읽으세요.)</span>
                 </div>
               )}
