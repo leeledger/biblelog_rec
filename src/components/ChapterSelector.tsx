@@ -202,12 +202,15 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       <h3 className="text-xl font-semibold text-gray-800 text-center">읽을 범위 선택</h3>
 
       <div>
-        <label htmlFor="book-select" className="block text-sm font-medium text-gray-700">성경:</label>
+        <label htmlFor="book-select" className="block text-sm font-medium text-gray-700">
+          성경: {isLoading && <span className="text-xs text-indigo-600 font-normal ml-2 animate-pulse">(로딩 중...)</span>}
+        </label>
         <select
           id="book-select"
           value={selectedBookName}
           onChange={handleBookChange}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          disabled={isLoading}
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-wait"
         >
           {AVAILABLE_BOOKS.map(book => (
             <option key={book.name} value={book.name}>{book.name}</option>
@@ -225,8 +228,8 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
             id="start-chapter"
             value={startChapter}
             onChange={handleStartChapterChange}
-            disabled={!dataAvailableForBook}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100"
+            disabled={!dataAvailableForBook || isLoading}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
             {chapterOptions(selectedBookInfo?.chapterCount ?? 0)}
           </select>
@@ -237,8 +240,8 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
             id="end-chapter"
             value={endChapter}
             onChange={handleEndChapterChange}
-            disabled={!dataAvailableForBook}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100"
+            disabled={!dataAvailableForBook || isLoading}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
             {chapterOptions(selectedBookInfo?.chapterCount ?? 0)}
           </select>
