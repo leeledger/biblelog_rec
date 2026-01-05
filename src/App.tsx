@@ -132,6 +132,14 @@ const App: React.FC = () => {
   const [startVerseForSelector, setStartVerseForSelector] = useState<number>(1);
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
 
+  useEffect(() => {
+    if (selectedGroupId !== null) {
+      localStorage.setItem('selectedGroupId', selectedGroupId.toString());
+    } else {
+      localStorage.removeItem('selectedGroupId');
+    }
+  }, [selectedGroupId]);
+
   const {
     isListening,
     transcript: sttTranscript,
@@ -147,6 +155,11 @@ const App: React.FC = () => {
     try {
       const groups = await groupService.getUserGroups(userId);
       setUserGroups(groups);
+
+      // 만약 선택된 그룹이 더 이상 목록에 없다면(탈퇴/삭제), 개인 통독으로 전환
+      if (selectedGroupId !== null && !groups.some(g => g.id === selectedGroupId)) {
+        setSelectedGroupId(null);
+      }
     } catch (err) {
       console.error('Failed to load user groups:', err);
     }

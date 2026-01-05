@@ -403,6 +403,106 @@ app.get('/api/users/:userId/groups', async (req, res) => {
     }
 });
 
+// List members of a group
+app.get('/api/groups/:groupId/members', async (req, res) => {
+    const { groupId } = req.params;
+    try {
+        const result = await db.query(
+            `SELECT u.id, u.username FROM users u
+             JOIN group_members gm ON u.id = gm.user_id
+             WHERE gm.group_id = $1
+             ORDER BY u.username`,
+            [groupId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[GET /api/groups/:groupId/members] Error:', error);
+        res.status(500).json({ message: 'Error fetching group members' });
+    }
+});
+
+// Leave a group (removes all records for that user in that group)
+app.post('/api/groups/:groupId/leave', async (req, res) => {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Remove reading progress
+        await client.query('DELETE FROM reading_progress WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
+        // 2. Remove completed chapters
+        await client.query('DELETE FROM completed_chapters WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
+        // 3. Remove reading history
+        await client.query('DELETE FROM reading_history WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
+        // 4. Remove hall of fame records
+        await client.query('DELETE FROM hall_of_fame WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
+        // 5. Remove from group members
+        await client.query('DELETE FROM group_members WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
+
+        await client.query('COMMIT');
+        res.json({ message: 'Successfully left the group and all your records for this group have been deleted.' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('[POST /api/groups/:groupId/leave] Error:', error);
+        res.status(500).json({ message: 'Error leaving group' });
+    } finally {
+        client.release();
+    }
+});
+
+// Delete a group (owner only)
+app.delete('/api/groups/:groupId', async (req, res) => {
+    const { groupId } = req.params;
+    const { userId } = req.query; // Authenticating with userId from query for simplicity in this dev environment
+    try {
+        // Check ownership
+        const groupRes = await db.query('SELECT owner_id FROM groups WHERE id = $1', [groupId]);
+        if (groupRes.rows.length === 0) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+        if (groupRes.rows[0].owner_id != userId) {
+            return res.status(403).json({ message: 'Only the group owner can delete the group' });
+        }
+
+        // Delete group (CASCADE handles members, records, etc.)
+        await db.query('DELETE FROM groups WHERE id = $1', [groupId]);
+        res.json({ message: 'Group deleted successfully' });
+    } catch (error) {
+        console.error('[DELETE /api/groups/:groupId] Error:', error);
+        res.status(500).json({ message: 'Error deleting group' });
+    }
+});
+
+// Transfer group ownership
+app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
+    const { groupId } = req.params;
+    const { currentOwnerId, newOwnerId } = req.body;
+    try {
+        // Check current ownership
+        const groupRes = await db.query('SELECT owner_id FROM groups WHERE id = $1', [groupId]);
+        if (groupRes.rows.length === 0) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+        if (groupRes.rows[0].owner_id != currentOwnerId) {
+            return res.status(403).json({ message: 'Only the current owner can transfer ownership' });
+        }
+
+        // Check if new owner is a member
+        const memberRes = await db.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, newOwnerId]);
+        if (memberRes.rows.length === 0) {
+            return res.status(400).json({ message: 'New owner must be a member of the group' });
+        }
+
+        // Update ownership
+        await db.query('UPDATE groups SET owner_id = $1 WHERE id = $2', [newOwnerId, groupId]);
+        res.json({ message: 'Ownership transferred successfully' });
+    } catch (error) {
+        console.error('[POST /api/groups/:groupId/transfer-ownership] Error:', error);
+        res.status(500).json({ message: 'Error transferring ownership' });
+    }
+});
+
 // Debug logging endpoint for iOS Safari speech recognition
 app.post('/api/debug-log', async (req, res) => {
     const { event, data, userAgent, timestamp } = req.body;
