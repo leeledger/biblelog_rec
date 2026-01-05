@@ -16,10 +16,11 @@ interface DashboardProps {
   selectedBookForSelector: string;
   startChapterForSelector: number;
   endChapterForSelector: number;
+  startVerseForSelector: number;
   // Handler for chapter selection update might be needed if ChapterSelector controls are lifted, 
   // but ChapterSelector manages its own internal state mostly, except for defaults.
 
-  onStartReading: (book: string, startCh: number, endCh: number) => void;
+  onStartReading: (book: string, startCh: number, endCh: number, startVerse?: number) => void;
   onShowHallOfFame: () => void;
   onBibleReset: () => void;
 
@@ -47,6 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   selectedBookForSelector,
   startChapterForSelector,
   endChapterForSelector,
+  startVerseForSelector,
   onStartReading,
   onShowHallOfFame,
   onBibleReset,
@@ -141,6 +143,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             defaultBook={selectedBookForSelector}
             defaultStartChapter={startChapterForSelector}
             defaultEndChapter={endChapterForSelector}
+            defaultStartVerse={startVerseForSelector}
             completedChapters={userOverallProgress?.completedChapters}
             isLoading={isLoading}
           />

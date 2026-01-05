@@ -66,7 +66,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
     setSelectedBookName(defaultBook);
     setStartChapter(Number(defaultStartChapter) || 1);
     setEndChapter(Number(defaultEndChapter) || 1);
-  }, [defaultBook, defaultStartChapter, defaultEndChapter]);
+  }, [defaultBook, defaultStartChapter, defaultEndChapter, defaultStartVerse]);
 
   // Effect to synchronize selectedBookInfo and data availability whenever selectedBookName changes
   useEffect(() => {

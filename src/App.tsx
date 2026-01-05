@@ -562,17 +562,21 @@ const App: React.FC = () => {
   // Removed automatic startListening useEffect to comply with mobile browser user gesture requirements.
   // startListening should now be called directly from user-initiated events (buttons).
 
-  const handleSelectChaptersAndStartReading = useCallback((book: string, startCh: number, endCh: number) => {
+  const handleSelectChaptersAndStartReading = useCallback((book: string, startCh: number, endCh: number, startVerse?: number) => {
     const verses = getVersesForSelection(book, startCh, endCh);
     if (verses.length > 0) {
       let initialSkip = 0;
+
+      // 전달받은 startVerse가 있거나, selector의 기본값이 있으면 이어 읽기 적용
+      const actualStartVerse = startVerse || startVerseForSelector;
+
       if (
         book === selectedBookForSelector &&
         startCh === startChapterForSelector &&
         endCh === startChapterForSelector &&
-        startVerseForSelector > 1
+        actualStartVerse > 1
       ) {
-        const firstVerseIndex = verses.findIndex(v => v.verse === startVerseForSelector);
+        const firstVerseIndex = verses.findIndex(v => v.verse === actualStartVerse);
         if (firstVerseIndex !== -1) {
           initialSkip = firstVerseIndex;
         }
@@ -837,6 +841,7 @@ const App: React.FC = () => {
             selectedBookForSelector={selectedBookForSelector}
             startChapterForSelector={startChapterForSelector}
             endChapterForSelector={endChapterForSelector}
+            startVerseForSelector={startVerseForSelector}
             onStartReading={handleSelectChaptersAndStartReading}
             onShowHallOfFame={() => setShowHallOfFame(true)}
             onBibleReset={handleBibleReset}
