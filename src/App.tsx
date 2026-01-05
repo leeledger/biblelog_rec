@@ -687,6 +687,9 @@ const App: React.FC = () => {
 
     if (!isNaturalCompletion) {
       setReadingState(ReadingState.IDLE);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress]);
 
