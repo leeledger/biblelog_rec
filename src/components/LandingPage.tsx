@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import InstallPWA from './InstallPWA';
 
 interface LandingPageProps {
@@ -7,6 +7,15 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
     const loginSectionRef = useRef<HTMLDivElement>(null);
+    const [isStandalone, setIsStandalone] = useState(false);
+
+    // PWA standalone 모드 감지 (이미 설치된 앱에서 실행 중인지)
+    useEffect(() => {
+        const standalone = window.matchMedia('(display-mode: standalone)').matches
+            || (window.navigator as any).standalone
+            || document.referrer.includes('android-app://');
+        setIsStandalone(standalone);
+    }, []);
 
     React.useEffect(() => {
         const observerOptions = {
@@ -32,7 +41,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
     }, []);
 
     const scrollToLogin = () => {
-        loginSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+        loginSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
     return (
@@ -67,7 +76,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                             onClick={scrollToLogin}
                             className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-bold text-lg shadow-xl shadow-purple-500/30 transition-all hover:scale-105 active:scale-95"
                         >
-                            지금 선포 시작하기
+                            로그인
                         </button>
                         <div className="mt-4 sm:mt-0">
                             <InstallPWA />
@@ -162,7 +171,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                 <div className="flex justify-center gap-6 text-slate-400">
                     <span className="text-xs">포도나무교회</span>
                     <span className="text-xs">Dev: 이종림</span>
-                    <a href="mailto:luxual8@gmail.com" className="text-xs underline">개인 문의</a>
+                    <a href="mailto:luxual8@gmail.com" className="text-xs underline">문의</a>
                 </div>
                 <p className="text-[10px] text-slate-300">Copyright © 2025 이종림 All rights reserved.</p>
             </footer>
