@@ -1,5 +1,5 @@
 import { BibleVerse, BookChapterInfo } from './types';
-import bibleDataRaw from '/public/bible_hierarchical.json';
+import bibleDataRaw from './bible_hierarchical.json';
 
 // bibleDataRaw의 타입을 정의 (실제 구조에 맞게 조정 필요)
 interface BibleHierarchicalData {
