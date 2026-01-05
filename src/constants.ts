@@ -34,7 +34,8 @@ export const getVersesForSelection = (book: string, startCh: number, endCh: numb
     const chapterStr = ch.toString();
     const chapterData = bookData[chapterStr];
     if (chapterData) {
-      Object.keys(chapterData).forEach(verseStr => {
+      const sortedVerseKeys = Object.keys(chapterData).sort((a, b) => parseInt(a) - parseInt(b));
+      sortedVerseKeys.forEach(verseStr => {
         const verseNum = parseInt(verseStr);
         // Only apply the startVerse filter to the very first chapter of the selection
         if (ch === startCh && verseNum < startVerse) {
@@ -132,7 +133,7 @@ export const getBookId = (fullBookName: string): string | null => {
   Object.entries(BOOK_ABBREVIATIONS_MAP).forEach(([abbr, full]) => {
     reverseMap[full] = abbr;
   });
-  
+
   // 전체 이름으로 약어 찾기
   return reverseMap[fullBookName] || null;
 };

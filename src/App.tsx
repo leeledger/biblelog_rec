@@ -705,7 +705,11 @@ const App: React.FC = () => {
           setUserOverallProgress(updatedUserProgress);
           setOverallCompletedChaptersCount(updatedUserProgress.completedChapters?.length || 0);
         })
-        .catch(err => console.error(err))
+        .catch(err => {
+          console.error(err);
+          setAppError("저장에 실패했습니다. 잠시 후 다시 시도하거나, 네트워크 상태를 확인해주세요.");
+          setSessionCertificationMessage("⚠️ 저장 실패: 완료 기록이 저장되지 않았습니다.");
+        })
         .finally(() => {
           // 저장 완료(성공/실패 무관) 후 reload
           if (!isNaturalCompletion) {
