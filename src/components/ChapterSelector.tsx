@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AVAILABLE_BOOKS } from '../constants';
 import { BookChapterInfo } from '../types';
 
@@ -22,6 +22,12 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   completedChapters = [],
   isLoading = false,
 }) => {
+  // iOS 감지
+  const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
+
+  // 마이크 권한 상태: 'unknown' | 'granted' | 'denied' | 'requesting'
+  const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'requesting'>('unknown');
+
   const [selectedBookName, setSelectedBookName] = useState<string>(defaultBook);
   const [selectedBookInfo, setSelectedBookInfo] = useState<BookChapterInfo | undefined>(
     AVAILABLE_BOOKS.find(b => b.name === defaultBook)
@@ -124,6 +130,36 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
     }
   }, [selectedBookName, startChapter, endChapter, selectedBookInfo, completedChapters]);
 
+  // iOS에서 마이크 권한 사전 확인
+  useEffect(() => {
+    if (isIOS && navigator.permissions) {
+      // permissions API 지원 시 권한 상태 확인
+      navigator.permissions.query({ name: 'microphone' as PermissionName }).then(result => {
+        if (result.state === 'granted') {
+          setMicPermission('granted');
+        } else if (result.state === 'denied') {
+          setMicPermission('denied');
+        }
+        // prompt 상태면 unknown 유지
+      }).catch(() => {
+        // permissions API 미지원 시 unknown 유지
+      });
+    }
+  }, [isIOS]);
+
+  // 마이크 권한 사전 요청 (iOS용)
+  const requestMicPermission = async () => {
+    setMicPermission('requesting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 권한 획득 성공 - 스트림 즉시 해제 (실제 사용은 읽기 시작 시)
+      stream.getTracks().forEach(track => track.stop());
+      setMicPermission('granted');
+    } catch (err) {
+      console.error('Microphone permission denied:', err);
+      setMicPermission('denied');
+    }
+  };
 
   const handleStart = () => {
     setError('');
@@ -197,9 +233,50 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       </div>
       {error && <p className="mt-2 text-sm text-red-600 text-center">{error}</p>}
 
+      {/* iOS 마이크 권한 사전 요청 UI */}
+      {isIOS && micPermission !== 'granted' && (
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">🎤</div>
+            <div className="flex-1">
+              <h4 className="font-bold text-blue-800 text-sm">마이크 권한이 필요합니다</h4>
+              <p className="text-xs text-blue-600">읽기를 시작하기 전에 마이크 권한을 먼저 허용해주세요.</p>
+            </div>
+          </div>
+          <button
+            onClick={requestMicPermission}
+            disabled={micPermission === 'requesting'}
+            className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md transition disabled:bg-blue-400 flex items-center justify-center gap-2"
+          >
+            {micPermission === 'requesting' ? (
+              <>
+                <span className="animate-spin">⏳</span> 권한 요청 중...
+              </>
+            ) : micPermission === 'denied' ? (
+              '❌ 권한이 거부됨 - 설정에서 허용해주세요'
+            ) : (
+              <>🎤 마이크 권한 허용하기</>
+            )}
+          </button>
+          {micPermission === 'denied' && (
+            <p className="text-xs text-red-600 mt-2 text-center">
+              설정 → Safari → 마이크 → 이 웹사이트 허용
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 마이크 권한 허용됨 표시 */}
+      {isIOS && micPermission === 'granted' && (
+        <div className="bg-green-50 border border-green-200 p-3 rounded-xl flex items-center gap-2">
+          <span className="text-xl">✅</span>
+          <span className="text-sm text-green-700 font-medium">마이크 권한이 허용되었습니다. 읽기를 시작하세요!</span>
+        </div>
+      )}
+
       <button
         onClick={handleStart}
-        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter}
+        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission !== 'granted')}
         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
         {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
