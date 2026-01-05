@@ -230,7 +230,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         recognitionRef.current = null;
       }
     };
-  }, [lang, browserSupportsSpeechRecognition, SpeechRecognitionAPI, isListening, isIOS]);
+  }, [lang, browserSupportsSpeechRecognition, SpeechRecognitionAPI, isIOS]);
 
   const startListening = useCallback(async () => {
     if (isListening || !recognitionRef.current) {
