@@ -927,13 +927,47 @@ const App: React.FC = () => {
                       <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed break-keep">
                         성도님들의 따뜻한 후원은 더 나은 바이블로그 서비스 운영을 지속하는 큰 힘이 됩니다.
                       </p>
-                      <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-center gap-2 shadow-md shadow-indigo-50">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">후원</span>
-                        <span className="text-sm font-black text-indigo-900 select-all text-center sm:text-right">
-                          토스뱅크 1234-5678-0000 <br className="sm:hidden" />(이종림)
-                        </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        {/* QR Code Section */}
+                        <div className="bg-white p-4 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center shadow-sm">
+                          <img src="/assets/kakao-qr.png" alt="카카오페이 QR" className="w-32 h-32 object-contain mb-2" />
+                          <span className="text-[10px] font-bold text-gray-400">카카오페이 스캔 송금</span>
+                        </div>
+
+                        {/* Account Number Section */}
+                        <div className="flex flex-col gap-3">
+                          <div className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center h-full">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">토스뱅크 (이종림)</span>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-black text-indigo-900 select-all">
+                                1234-5678-0000
+                              </span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText('123456780000');
+                                  alert('계좌번호가 복사되었습니다.');
+                                }}
+                                className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black hover:bg-indigo-100 transition-colors"
+                              >
+                                복사
+                              </button>
+                            </div>
+
+                            <a
+                              href="https://qr.kakaopay.com/FPSSoizJo"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-3 bg-[#FFEB00] text-[#3C1E1E] rounded-xl text-xs font-black flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                            >
+                              <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_small.png" alt="" className="w-4 h-4" />
+                              카카오페이 송금하기
+                            </a>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-4 text-[10px] text-indigo-300 italic">
+
+                      <p className="text-[10px] text-indigo-300 italic text-center">
                         *후원금은 전액 서버 유지비로 사용됩니다.
                       </p>
                     </div>
