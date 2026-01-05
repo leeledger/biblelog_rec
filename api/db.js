@@ -10,9 +10,9 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString: connectionString,
   ssl: connectionString ? { rejectUnauthorized: false } : false,
-  max: 10, // 서버리스 환경에 적합한 최대 연결 수
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 3, // 서버리스 환경에 적합한 최소 연결 수 (Vercel은 인스턴스별로 Pool 생성)
+  idleTimeoutMillis: 10000, // 10초 후 유휴 연결 해제
+  connectionTimeoutMillis: 5000, // 5초 내 연결 실패 시 타임아웃
 });
 
 pool.on('error', (err) => {
