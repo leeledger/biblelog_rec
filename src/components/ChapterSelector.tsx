@@ -133,31 +133,31 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   // iOS에서 마이크 권한 사전 확인
   useEffect(() => {
     if (isIOS && navigator.permissions) {
-      // permissions API 지원 시 권한 상태 확인
       navigator.permissions.query({ name: 'microphone' as PermissionName }).then(result => {
         if (result.state === 'granted') {
           setMicPermission('granted');
         } else if (result.state === 'denied') {
           setMicPermission('denied');
         }
-        // prompt 상태면 unknown 유지
-      }).catch(() => {
-        // permissions API 미지원 시 unknown 유지
-      });
+      }).catch(() => { });
     }
   }, [isIOS]);
 
-  // 마이크 권한 사전 요청 (iOS용)
+  // 마이크 권한 사전 요청 (iOS용) - 시스템 팝업 사용
   const requestMicPermission = async () => {
+    // 시스템 alert으로 사용자에게 안내
+    alert('🎤 마이크 권한이 필요합니다.\n\n다음 화면에서 "허용"을 눌러주세요.');
+
     setMicPermission('requesting');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // 권한 획득 성공 - 스트림 즉시 해제 (실제 사용은 읽기 시작 시)
       stream.getTracks().forEach(track => track.stop());
       setMicPermission('granted');
+      alert('✅ 마이크 권한이 허용되었습니다!\n\n이제 읽기를 시작하세요.');
     } catch (err) {
       console.error('Microphone permission denied:', err);
       setMicPermission('denied');
+      alert('❌ 마이크 권한이 거부되었습니다.\n\n설정 → Safari → 마이크에서 이 웹사이트를 허용해주세요.');
     }
   };
 
