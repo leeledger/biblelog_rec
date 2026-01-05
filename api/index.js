@@ -252,46 +252,64 @@ app.get('/api/users/all', async (req, res) => {
 
         if (groupId) {
             query = `
-          SELECT * FROM (
-            SELECT
+            WITH chapter_counts AS (
+                SELECT user_id, COUNT(*) as count 
+                FROM completed_chapters 
+                WHERE group_id = $1 
+                GROUP BY user_id
+            ),
+            hof_counts AS (
+                SELECT user_id, COUNT(*) as count 
+                FROM hall_of_fame 
+                WHERE group_id = $1 
+                GROUP BY user_id
+            )
+            SELECT 
               u.username,
               COALESCE(rp.last_read_book, '') AS "lastReadBook",
               COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
               COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
               rp.updated_at AS "lastProgressUpdateDate",
-              (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND cc.group_id = $1) AS "completedChaptersCount",
-              (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND hf.group_id = $1) AS "completed_count"
-            FROM
-              users u
-            JOIN
-              group_members gm ON u.id = gm.user_id
-            LEFT JOIN
-              reading_progress rp ON u.id = rp.user_id AND rp.group_id = $1
-            WHERE
-              gm.group_id = $1
-          ) sub
-          WHERE "completedChaptersCount" > 0 OR "completed_count" > 0
-          ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, username;
+              COALESCE(cc.count, 0) AS "completedChaptersCount",
+              COALESCE(hf.count, 0) AS "completed_count"
+            FROM users u
+            JOIN group_members gm ON u.id = gm.user_id
+            LEFT JOIN reading_progress rp ON u.id = rp.user_id AND rp.group_id = $1
+            LEFT JOIN chapter_counts cc ON u.id = cc.user_id
+            LEFT JOIN hof_counts hf ON u.id = hf.user_id
+            WHERE gm.group_id = $1
+              AND (COALESCE(cc.count, 0) > 0 OR COALESCE(hf.count, 0) > 0)
+            ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, u.username;
         `;
             params = [groupId];
         } else {
             query = `
-          SELECT * FROM (
-            SELECT
+            WITH chapter_counts AS (
+                SELECT user_id, COUNT(*) as count 
+                FROM completed_chapters 
+                WHERE group_id IS NULL 
+                GROUP BY user_id
+            ),
+            hof_counts AS (
+                SELECT user_id, COUNT(*) as count 
+                FROM hall_of_fame 
+                WHERE group_id IS NULL 
+                GROUP BY user_id
+            )
+            SELECT 
               u.username,
               COALESCE(rp.last_read_book, '') AS "lastReadBook",
               COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
               COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
               rp.updated_at AS "lastProgressUpdateDate",
-              (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND cc.group_id IS NULL) AS "completedChaptersCount",
-              (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND hf.group_id IS NULL) AS "completed_count"
-            FROM
-              users u
-            LEFT JOIN
-              reading_progress rp ON u.id = rp.user_id AND rp.group_id IS NULL
-          ) sub
-          WHERE "completedChaptersCount" > 0 OR "completed_count" > 0
-          ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, username;
+              COALESCE(cc.count, 0) AS "completedChaptersCount",
+              COALESCE(hf.count, 0) AS "completed_count"
+            FROM users u
+            LEFT JOIN reading_progress rp ON u.id = rp.user_id AND rp.group_id IS NULL
+            LEFT JOIN chapter_counts cc ON u.id = cc.user_id
+            LEFT JOIN hof_counts hf ON u.id = hf.user_id
+            WHERE (COALESCE(cc.count, 0) > 0 OR COALESCE(hf.count, 0) > 0)
+            ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, u.username;
         `;
         }
 

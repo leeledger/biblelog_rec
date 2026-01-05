@@ -948,7 +948,7 @@ const App: React.FC = () => {
                       </div>
 
                       <p className="text-[10px] text-indigo-300 italic text-center">
-                        *후원금은 전액 서버 유지비로 사용됩니다.
+                        *후원금은 서비스 고도화와 서버 운영비로 사용됩니다.
                       </p>
                     </div>
                   )}

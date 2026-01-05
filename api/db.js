@@ -138,6 +138,15 @@ export const initializeDatabase = async () => {
     await pool.query(createCompletedChaptersTable);
     await pool.query(createReadingHistoryTable);
     await pool.query(createHallOfFameTable);
+
+    // Add indexes for performance optimization
+    const createIndexes = `
+      CREATE INDEX IF NOT EXISTS idx_completed_chapters_user_group ON completed_chapters(user_id, group_id);
+      CREATE INDEX IF NOT EXISTS idx_hall_of_fame_user_group ON hall_of_fame(user_id, group_id);
+      CREATE INDEX IF NOT EXISTS idx_reading_progress_user_group ON reading_progress(user_id, group_id);
+    `;
+    await pool.query(createIndexes);
+
     console.log('Database tables checked/created successfully.');
   } catch (err) {
     console.error('Error initializing database:', err);
