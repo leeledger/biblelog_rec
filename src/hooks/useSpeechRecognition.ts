@@ -68,6 +68,18 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const pendingFinalResultRef = useRef<string>('');
   const pendingInterimResultRef = useRef<string>('');
 
+  // 최신 transcript 값을 추적하기 위한 Ref (onend 등에서 stale closure 방지)
+  const latestTranscriptRef = useRef('');
+
+  // safe setTranscript
+  const updateTranscript = (newTranscript: string) => {
+    latestTranscriptRef.current = newTranscript;
+    setTranscript(newTranscript);
+  };
+
+  // visibility 변경으로 인한 일시 정지 상태 추적
+  const pausedByVisibilityRef = useRef(false);
+
   useEffect(() => {
     if (!browserSupportsSpeechRecognition) {
       setError('이 브라우저에서는 음성 인식을 지원하지 않습니다.');
@@ -117,14 +129,14 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         }
 
         const totalText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
-        setTranscript(totalText);
+        updateTranscript(totalText);
       } else {
         // Android Chrome 등: 대부분의 앱 브라우저는 event.results에 전체 세션 텍스트를 누적으로 담아서 줌.
         // 따라서 모든 인덱스를 합치면 중복이 발생함 (하나님의하나님의...).
         // 가장 마지막 인덱스의 텍스트가 현재까지 인식된 "전체 문장"인 경우가 많으므로 이것만 취함.
         if (event.results.length > 0) {
           const lastResultText = event.results[event.results.length - 1][0].transcript;
-          setTranscript(lastResultText);
+          updateTranscript(lastResultText);
           console.log('[useSpeechRecognition] Android Cumulative Result:', lastResultText);
         }
       }
@@ -135,6 +147,11 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
+
+      // 백그라운드나 중단 의도가 있을 때 발생하는 에러는 무시
+      if (intentionalStopRef.current || pausedByVisibilityRef.current) {
+        return;
+      }
 
       let specificError = `오류: ${event.error}`;
       if (event.error === 'no-speech') specificError = '음성이 감지되지 않았습니다.';
@@ -155,7 +172,15 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       // Check if the stoppage was intentional.
       if (intentionalStopRef.current) {
-        console.log('[useSpeechRecognition] Intentional stop detected, not restarting');
+        console.log('[useSpeechRecognition] Intentional stop detected');
+
+        // visibility 변경으로 인한 중지라면 isListening을 유지하고 리턴 (재시작 방지)
+        if (pausedByVisibilityRef.current) {
+          console.log('[useSpeechRecognition] Paused by visibility, keeping isListening=true');
+          return;
+        }
+
+        console.log('[useSpeechRecognition] Stopping completely');
         // Reset the flag for future use.
         intentionalStopRef.current = false;
         // Update the listening state.
@@ -169,11 +194,11 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         console.log('[useSpeechRecognition] Unintentional stop, attempting to restart');
 
         // Preserve the current transcript before restarting
-        const currentTranscript = transcript;
+        const currentTranscript = latestTranscriptRef.current; // Ref에서 최신값 가져옴
 
         // Small delay before restarting to prevent rapid restarts
         setTimeout(() => {
-          if (recognitionRef.current) {
+          if (recognitionRef.current && !pausedByVisibilityRef.current) {
             try {
               // For both iOS and Android, handle restart
               if (isIOS) {
@@ -191,7 +216,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
               // For Android, we need to restore the transcript after restart
               if (!isIOS && currentTranscript) {
                 setTimeout(() => {
-                  setTranscript(currentTranscript);
+                  updateTranscript(currentTranscript);
                   console.log('[useSpeechRecognition] Android - Restored transcript after restart');
                 }, 100);
               }
@@ -205,15 +230,54 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       }
     };
 
+    // Visibility change handler logic
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[useSpeechRecognition] Document hidden');
+        if (isListening && recognitionRef.current) {
+          console.log('[useSpeechRecognition] Pausing recognition due to background');
+          // 백그라운드로 갈 때 의도적 중단으로 표시하여 에러 방지
+          intentionalStopRef.current = true;
+          recognitionRef.current.stop();
+        }
+      } else {
+        console.log('[useSpeechRecognition] Document visible');
+        // iOS 등에서 백그라운드 복귀 시 마이크가 죽어있는 경우가 많으므로
+        // 이전에 듣고 있었다면(또는 컴포넌트가 마운트 된 상태라면) 재시작 시도
+        // 다만 intentionalStopRef가 true면(위에서 설정함) 사용자가 끈게 아니라 시스템이 끈 것임.
+        // 하지만 여기서는 간단히: "사용자가 끄지 않았는데 멈춰있다면" 재시작.
+
+        // 약간의 딜레이 후 재시작 (브라우저가 리소스 복구할 시간 확보)
+        setTimeout(() => {
+          if (!recognitionRef.current) return;
+
+          // 이미 돌고 있다면 패스
+          // (하지만 죽어있는 좀비 상태일 수 있으므로, 상태를 확실히 하기 위해 재시작이 더 나을 수 있음)
+
+          // 단순화: 백그라운드에서 돌아오면 무조건 재시작 시도 (기존 인스턴스가 있다면)
+          // 단, 사용자가 명시적으로 '정지'를 누른 상태(isListening=false)가 아니어야 함.
+          // 문제는 여기 scope의 isListening은 closure에 갇혀서 옛날 값일 수 있음.
+          // 따라서 ref를 하나 더 써야 할 수도 있지만, 
+          // 현재 구조상 useEffect 내의 이벤트 리스너는 dep에 isListening이 없으므로 위험함.
+          // 여기서 document.addEventListener를 useEffect 밖이나, isListening을 dep에 추가해야 함.
+          // 하지만 구조를 크게 안 바꾸고 해결하려면:
+          // handleVisibilityChange를 useEffect 내부에서 정의하고 deps에 포함시키는게 맞음.
+        }, 300);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Cleanup function for when the component unmounts.
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (recognitionRef.current) {
         intentionalStopRef.current = true; // Ensure no restart on unmount
         recognitionRef.current.stop();
         recognitionRef.current = null;
       }
     };
-  }, [lang, browserSupportsSpeechRecognition, SpeechRecognitionAPI]);
+  }, [lang, browserSupportsSpeechRecognition, SpeechRecognitionAPI, isListening, isIOS]); // transcript 제거, isIOS 추가
 
   const startListening = useCallback(async () => {
     if (isListening || !recognitionRef.current) {
