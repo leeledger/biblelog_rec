@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ISpeechRecognition,
   ISpeechRecognitionEvent,
@@ -23,7 +23,7 @@ interface UseSpeechRecognitionReturn {
   stopListening: () => void;
   browserSupportsSpeechRecognition: boolean;
   resetTranscript: () => void;
-  markVerseTransition: () => void; // 援ъ젅 ?꾪솚 ?쒓컙???쒖떆?섎뒗 ?⑥닔 異붽?
+  markVerseTransition: () => void; // 구절 전환 시간을 표시하는 함수 추가
 }
 
 const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechRecognitionReturn => {
@@ -37,7 +37,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const browserSupportsSpeechRecognition = !!SpeechRecognitionAPI;
   const lang = options?.lang || 'ko-KR';
 
-  // iOS 湲곌린 媛먯?
+  // iOS 기기 감지
   const isIOS = useMemo(() => {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
   }, []);
@@ -45,29 +45,32 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   // This ref will track if the stop was initiated by the user/app logic.
   const intentionalStopRef = useRef(false);
 
-  // iOS 湲곌린?먯꽌留??ъ슜??理쒖쥌 ?몃옖?ㅽ겕由쏀듃? ?댁쟾 ?꾩떆 寃곌낵瑜???ν븷 ref
+  // iOS 기기에서만 사용할 최종 트랜스크립트와 이전 임시 결과를 저장할 ref
   const finalTranscriptRef = useRef('');
   const lastInterimRef = useRef('');
 
-  // iOS?먯꽌 ??蹂寃?????쾶 ?꾩갑?섎뒗 ?몄떇 寃곌낵瑜?臾댁떆?섍린 ?꾪븳 ?뚮옒洹?  const ignoreResultsRef = useRef(false);
+  // iOS에서 절 변경 시 늦게 도착하는 인식 결과를 무시하기 위한 플래그
+  const ignoreResultsRef = useRef(false);
 
-  // iOS?먯꽌 ?몄떇 以묐떒 臾몄젣瑜?異붿쟻?섍린 ?꾪븳 ?붾쾭洹???꾩뒪?쒗봽
+  // iOS에서 인식 중단 문제를 추적하기 위한 디버그 타임스태프
   const lastRecognitionEventTimeRef = useRef(Date.now());
 
-  // 援ъ젅 ?꾪솚 ?쒓컙??異붿쟻?섏뿬 ?ㅻ옒??寃곌낵 臾댁떆
+  // 구절 전환 시간을 추적하여 오래된 결과 무시
   const verseTransitionTimeRef = useRef(Date.now());
 
-  // 留덉?留됱쑝濡?泥섎━??寃곌낵??ID瑜?異붿쟻?섏뿬 以묐났 泥섎━ 諛⑹?
+  // 마지막으로 처리된 결과의 ID를 추적하여 중복 처리 방지
   const lastProcessedResultIdRef = useRef<string>('');
 
-  // iOS?먯꽌 寃곌낵 ?쒖떆???섎룄?곸씤 ?쒕젅?대? 二쇨린 ?꾪븳 ??대㉧ 愿由?  const delayedResultTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // iOS에서 결과 표시에 의도적인 딜레이를 주기 위한 타이머 관리
+  const delayedResultTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 吏?곕맂 ?쒖떆瑜??꾪븳 寃곌낵 媛????  const pendingFinalResultRef = useRef<string>('');
+  // 지연된 표시를 위한 결과 값 저장
+  const pendingFinalResultRef = useRef<string>('');
   const pendingInterimResultRef = useRef<string>('');
 
   useEffect(() => {
     if (!browserSupportsSpeechRecognition) {
-      setError('??釉뚮씪?곗??먯꽌???뚯꽦 ?몄떇??吏?먰븯吏 ?딆뒿?덈떎.');
+      setError('이 브라우저에서는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
@@ -86,7 +89,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
-      // 1. 寃곌낵 臾댁떆 ?뚮옒洹?泥댄겕 (援ъ젅 ?꾪솚 吏곹썑 ??
+      // 1. 결과 무시 플래그 체크 (구절 전환 직후 등)
       if (ignoreResultsRef.current) {
         console.log('[useSpeechRecognition] Result ignored');
         return;
@@ -94,8 +97,10 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
       lastRecognitionEventTimeRef.current = Date.now();
 
-      // iOS? Android??泥섎━ 諛⑹떇???꾩쟾??遺꾨━?섏뿬 媛곴컖??釉뚮씪?곗? ?뱀꽦?????      if (isIOS) {
-        // iOS Safari: Incremental 寃곌낵瑜??섎룞?쇰줈 ?꾩쟻?댁빞 ??        let interimTranscript = '';
+      // iOS와 Android의 처리 방식을 완전히 분리하여 각각의 브라우저 특성에 대응
+      if (isIOS) {
+        // iOS Safari: Incremental 결과를 수동으로 누적해야 함
+        let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -114,9 +119,9 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         const totalText = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
         setTranscript(totalText);
       } else {
-        // Android Chrome ?? ?遺遺꾩쓽 ??釉뚮씪?곗???event.results???꾩껜 ?몄뀡 ?띿뒪?몃? ?꾩쟻?쇰줈 ?댁븘??以?
-        // ?곕씪??紐⑤뱺 ?몃뜳?ㅻ? ?⑹튂硫?以묐났??諛쒖깮??(?섎굹?섏쓽?섎굹?섏쓽...).
-        // 媛??留덉?留??몃뜳?ㅼ쓽 ?띿뒪?멸? ?꾩옱源뚯? ?몄떇??"?꾩껜 臾몄옣"??寃쎌슦媛 留롮쑝誘濡??닿쾬留?痍⑦븿.
+        // Android Chrome 등: 대부분의 앱 브라우저는 event.results에 전체 세션 텍스트를 누적으로 담아서 줌.
+        // 따라서 모든 인덱스를 합치면 중복이 발생함 (하나님의하나님의...).
+        // 가장 마지막 인덱스의 텍스트가 현재까지 인식된 "전체 문장"인 경우가 많으므로 이것만 취함.
         if (event.results.length > 0) {
           const lastResultText = event.results[event.results.length - 1][0].transcript;
           setTranscript(lastResultText);
@@ -131,11 +136,11 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
 
-      let specificError = `?ㅻ쪟: ${event.error}`;
-      if (event.error === 'no-speech') specificError = '?뚯꽦??媛먯??섏? ?딆븯?듬땲??';
-      else if (event.error === 'audio-capture') specificError = '留덉씠?щ? 李얠쓣 ???놁뒿?덈떎.';
-      else if (event.error === 'not-allowed') specificError = '留덉씠???ъ슜??李⑤떒?섏뿀?듬땲??';
-      else if (event.error === 'network') specificError = '?ㅽ듃?뚰겕 ?ㅻ쪟?낅땲??';
+      let specificError = `오류: ${event.error}`;
+      if (event.error === 'no-speech') specificError = '음성이 감지되지 않았습니다.';
+      else if (event.error === 'audio-capture') specificError = '마이크를 찾을 수 없습니다.';
+      else if (event.error === 'not-allowed') specificError = '마이크 사용이 차단되었습니다.';
+      else if (event.error === 'network') specificError = '네트워크 오류입니다.';
 
       setError(specificError);
     };
@@ -144,7 +149,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       console.log('[useSpeechRecognition] onend fired');
 
 
-      // iOS?먯꽌 留덉?留??몄떇 ?대깽?몄? ?꾩옱 ?쒓컙??李⑥씠 怨꾩궛
+      // iOS에서 마지막 인식 이벤트와 현재 시간의 차이 계산
       const timeSinceLastEvent = Date.now() - lastRecognitionEventTimeRef.current;
       console.log(`[useSpeechRecognition] Time since last event: ${timeSinceLastEvent}ms`);
 
@@ -175,9 +180,9 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
                 finalTranscriptRef.current = currentTranscript;
                 console.log('[useSpeechRecognition] iOS - Restarting. Saved:', currentTranscript);
               } else {
-                // Android???ъ떆????釉뚮씪?곗? 踰꾪띁媛 鍮꾩썙吏誘濡?
-                // ?댁쟾 ?몄뀡 ?댁슜??finalTranscriptRef??諛깆뾽?대몢怨?onresult?먯꽌 ?⑹퀜?????섎룄 ?덉쓬.
-                // ?섏?留??꾩옱 以묐났???ы븯誘濡??쇰떒 Android??臾댁“嫄??덈줈 ?쒖옉?섎룄濡???
+                // Android는 재시작 시 브라우저 버퍼가 비워지므로 
+                // 이전 세션 내용을 finalTranscriptRef에 백업해두고 onresult에서 합쳐야 할 수도 있음.
+                // 하지만 현재 중복이 심하므로 일단 Android는 무조건 새로 시작하도록 함.
                 finalTranscriptRef.current = '';
               }
 
@@ -220,7 +225,8 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       console.log('[useSpeechRecognition] startListening called');
       // Mark that we are not stopping intentionally.
       intentionalStopRef.current = false;
-      // 留덉?留??대깽???쒓컙 珥덇린??      lastRecognitionEventTimeRef.current = Date.now();
+      // 마지막 이벤트 시간 초기화
+      lastRecognitionEventTimeRef.current = Date.now();
 
       // Ensure Secure Context for Microphone access
       if (window.isSecureContext === false) {
@@ -237,7 +243,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         console.log('[useSpeechRecognition] Microphone permission granted');
       } catch (permErr: any) {
         console.error('[useSpeechRecognition] Microphone permission denied or error:', permErr);
-        setError(`留덉씠??沅뚰븳 ?ㅻ쪟: ${permErr.name === 'NotAllowedError' ? '沅뚰븳??嫄곕??섏뿀?듬땲?? ?ㅼ젙?먯꽌 留덉씠?щ? ?덉슜?댁＜?몄슂.' : permErr.message}`);
+        setError(`마이크 권한 오류: ${permErr.name === 'NotAllowedError' ? '권한이 거부되었습니다. 설정에서 마이크를 허용해주세요.' : permErr.message}`);
         setIsListening(false);
         return;
       }
@@ -250,7 +256,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     } catch (e: any) {
       console.error('[useSpeechRecognition] Exception in startListening:', e);
-      setError(`留덉씠???쒖옉 ?ㅻ쪟: ${e.message}`);
+      setError(`마이크 시작 오류: ${e.message}`);
       setIsListening(false);
     }
   }, [isListening]);
@@ -262,7 +268,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     try {
       // Mark that we ARE stopping intentionally.
       intentionalStopRef.current = true;
-      // iOS 湲곌린?먯꽌留???蹂寃?????쾶 ?꾩갑?섎뒗 ?몄떇 寃곌낵瑜?臾댁떆?섍린 ?꾪빐 ?뚮옒洹??ㅼ젙
+      // iOS 기기에서만 절 변경 시 늦게 도착하는 인식 결과를 무시하기 위해 플래그 설정
       if (isIOS) {
         ignoreResultsRef.current = true;
         console.log('[useSpeechRecognition] iOS - Stopping with ignoreResults=true');
@@ -271,45 +277,50 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       // The onend event will handle setting isListening to false.
     } catch (e: any) {
       console.error('Error stopping speech recognition:', e);
-      setError(`留덉씠??以묒? ?ㅻ쪟: ${e.message}`);
+      setError(`마이크 중지 오류: ${e.message}`);
     }
   }, [isListening]);
 
-  // 援ъ젅 ?꾪솚???쒖떆?섎뒗 ?⑥닔 - iOS?먯꽌 吏?곕맂 寃곌낵 臾몄젣 ?닿껐??  const markVerseTransition = useCallback(() => {
-    // 援ъ젅 ?꾪솚 ?쒓컙 ?낅뜲?댄듃
+  // 구절 전환을 표시하는 함수 - iOS에서 지연된 결과 문제 해결용
+  const markVerseTransition = useCallback(() => {
+    // 구절 전환 시간 업데이트
     const now = Date.now();
     verseTransitionTimeRef.current = now;
     console.log(`[useSpeechRecognition] Verse transition marked at ${new Date(now).toISOString().substr(11, 12)}`);
 
-    // iOS?먯꽌 留??밸퀎 泥섎━
+    // iOS에서 만 특별 처리
     if (isIOS) {
-      // ?댁쟾 援ъ젅?먯꽌 吏???묐떟???ㅻ뒗 臾몄젣瑜?諛⑹??섍린 ?꾪빐 ?좎떆媛?臾댁떆 ?뚮옒洹??ㅼ젙
+      // 이전 구절에서 지연 응답이 오는 문제를 방지하기 위해 잠시간 무시 플래그 설정
       ignoreResultsRef.current = true;
 
-      // ?대뼡 ?곹솴?먯꽌??0.4珥??꾩뿉??臾댁떆 ?댁젣 蹂댁옣
+      // 어떤 상황에서도 0.4초 후에는 무시 해제 보장
       setTimeout(() => {
         ignoreResultsRef.current = false;
         console.log('[useSpeechRecognition] iOS ignoreResults released by safety timeout');
       }, 400);
 
-      // 吏??媛?ν븳 紐⑤뱺 ?몄떇 寃곌낵 ?곹깭 珥덇린??      setTranscript('');
+      // 지연 가능한 모든 인식 결과 상태 초기화
+      setTranscript('');
       finalTranscriptRef.current = '';
       pendingFinalResultRef.current = '';
       pendingInterimResultRef.current = '';
       lastInterimRef.current = '';
       lastProcessedResultIdRef.current = '';
 
-      // ?뚯꽦 ?몄떇 ?ъ떆??- 湲곗〈 ?몄떇 以묐떒 諛??ъ떆??      if (recognitionRef.current) {
+      // 음성 인식 재시작 - 기존 인식 중단 및 재시작
+      if (recognitionRef.current) {
         try {
-          // 以묐났 ?ъ떆?묒쓣 留됯린 ?꾪빐 ?좎떆 ?섎룄??以묐떒?쇰줈 ?ㅼ젙
+          // 중복 재시작을 막기 위해 잠시 의도적 중단으로 설정
           intentionalStopRef.current = true;
-          // abort()???대? 踰꾪띁瑜?利됱떆 ??젣??          recognitionRef.current.abort();
+          // abort()는 내부 버퍼를 즉시 삭제함
+          recognitionRef.current.abort();
           console.log('[useSpeechRecognition] iOS recognition forcefully aborted for reset');
         } catch (e) {
           console.error('[useSpeechRecognition] Error aborting recognition:', e);
         }
 
-        // ?ъ떆?묒쓣 ?꾪븳 吏㏃? 吏??        setTimeout(() => {
+        // 재시작을 위한 짧은 지연
+        setTimeout(() => {
           if (isListening && recognitionRef.current) {
             try {
               intentionalStopRef.current = false;
@@ -322,43 +333,47 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         }, 150);
       }
 
-      // ?좎떆 ???ㅼ떆 泥섎━ 媛?ν븯寃?(援ъ젅 ?꾪솚 吏곹썑 寃곌낵留??숈옉)
+      // 잠시 후 다시 처리 가능하게 (구절 전환 직후 결과만 동작)
       setTimeout(() => {
         ignoreResultsRef.current = false;
         console.log('[useSpeechRecognition] ignoreResults released');
-      }, 1000); // ?댁쟾 寃곌낵瑜??꾩쟾??踰꾨━湲??꾪빐 1珥덇컙 臾댁떆
+      }, 1000); // 이전 결과를 완전히 버리기 위해 1초간 무시
 
-      // ?댁쟾 寃곌낵???援щ텇???꾪빐 留덉?留?泥섎━??寃곌낵 ID 珥덇린??      lastProcessedResultIdRef.current = '';
+      // 이전 결과와의 구분을 위해 마지막 처리된 결과 ID 초기화
+      lastProcessedResultIdRef.current = '';
     }
   }, [isIOS]);
 
-  // ?뚯꽦 ?몄떇 ?띿뒪?몃? 媛뺤젣濡?珥덇린?뷀븯???⑥닔
+  // 음성 인식 텍스트를 강제로 초기화하는 함수
   const resetTranscript = useCallback(() => {
     setTranscript('');
 
-    // 紐⑤뱺 湲곌린?먯꽌 李몄“ 蹂??珥덇린??    finalTranscriptRef.current = '';
+    // 모든 기기에서 참조 변수 초기화
+    finalTranscriptRef.current = '';
     lastInterimRef.current = '';
     ignoreResultsRef.current = true;
 
-    // 援ъ젅 ?꾪솚 ?쒓컙 ?낅뜲?댄듃 (援ъ젅 ?꾪솚?쇰줈 媛꾩＜)
+    // 구절 전환 시간 업데이트 (구절 전환으로 간주)
     verseTransitionTimeRef.current = Date.now();
-    // ?꾩옱 ?몄떇??吏꾪뻾 以묒씠硫??좎떆 以묒??섍퀬 ?ㅼ떆 ?쒖옉?섏뿬 ?몄떇 寃곌낵瑜?珥덇린??    if (isListening && recognitionRef.current) {
+    // 현재 인식이 진행 중이면 잠시 중지하고 다시 시작하여 인식 결과를 초기화
+    if (isListening && recognitionRef.current) {
       try {
         console.log('[useSpeechRecognition] Force resetting recognition by abort/start cycle');
-        // 媛뺤젣 以묐떒 ??flag瑜?true濡??먯뼱 onend?먯꽌???먮룞 ?ъ떆??諛⑹?
+        // 강제 중단 시 flag를 true로 두어 onend에서의 자동 재시작 방지
         intentionalStopRef.current = true;
-        // ?꾩옱 ?몄떇 利됱떆 以묐떒 (踰꾪띁 ?뚭눼)
+        // 현재 인식 즉시 중단 (버퍼 파괴)
         recognitionRef.current.abort();
 
-        // ?띿뒪???곹깭 利됱떆 珥덇린??        setTranscript('');
+        // 텍스트 상태 즉시 초기화
+        setTranscript('');
         finalTranscriptRef.current = '';
         lastProcessedResultIdRef.current = '';
-        ignoreResultsRef.current = true; // 由ъ뀑 以묒뿉??寃곌낵 臾댁떆
+        ignoreResultsRef.current = true; // 리셋 중에는 결과 무시
 
-        // 援ъ젅 ?꾪솚 ?쒓컙 ?낅뜲?댄듃 (援ъ젅 ?꾪솚?쇰줈 媛꾩＜)
+        // 구절 전환 시간 업데이트 (구절 전환으로 간주)
         verseTransitionTimeRef.current = Date.now();
 
-        // ?좎떆 ???ㅼ떆 ?쒖옉
+        // 잠시 후 다시 시작
         setTimeout(() => {
           if (recognitionRef.current && isListening) {
             intentionalStopRef.current = false;
@@ -371,20 +386,23 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
             }
           }
 
-          // 由ъ뀑 ??寃곌낵瑜?諛쏄린 ?쒖옉???뚭퉴吏 異⑸텇??臾댁떆 湲곌컙 ?뺣낫
+          // 리셋 후 결과를 받기 시작할 때까지 충분한 무시 기간 확보
           setTimeout(() => {
             ignoreResultsRef.current = false;
             console.log('[useSpeechRecognition] ignoreResults released after reset');
-          }, 400); // 350ms -> 400ms濡??곹뼢
-        }, 300); // 250ms -> 300ms濡??곹뼢?섏뿬 ?붿쭊 ?덉젙???쒓컙 ?뺣낫
+          }, 400); // 350ms -> 400ms로 상향
+        }, 300); // 250ms -> 300ms로 상향하여 엔진 안정화 시간 확보
       } catch (e) {
         console.error('[useSpeechRecognition] Error during force reset:', e);
       }
     } else {
-      // 由ъ뒪??以묒씠 ?꾨땺 ?뚮룄 ?뚮옒洹몃뒗 ?댁젣?섏뼱????      setTranscript('');
+      // 리스닝 중이 아닐 때도 플래그는 해제되어야 함
+      setTranscript('');
       finalTranscriptRef.current = '';
       ignoreResultsRef.current = false;
-      lastInterimRef.current = ''; // lastInterimRef??珥덇린??      lastProcessedResultIdRef.current = ''; // lastProcessedResultIdRef??珥덇린??      verseTransitionTimeRef.current = Date.now(); // 援ъ젅 ?꾪솚 ?쒓컙 ?낅뜲?댄듃
+      lastInterimRef.current = ''; // lastInterimRef도 초기화
+      lastProcessedResultIdRef.current = ''; // lastProcessedResultIdRef도 초기화
+      verseTransitionTimeRef.current = Date.now(); // 구절 전환 시간 업데이트
       console.log('[useSpeechRecognition] Transcript reset (not listening)');
     }
   }, [isIOS, isListening]);
