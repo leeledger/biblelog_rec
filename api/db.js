@@ -145,11 +145,17 @@ export const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_hall_of_fame_user_group ON hall_of_fame(user_id, group_id);
       CREATE INDEX IF NOT EXISTS idx_reading_progress_user_group ON reading_progress(user_id, group_id);
       
-      -- Add partial unique indexes for reading_progress to support ON CONFLICT with NULL group_id
-      -- First, try to drop the existing PK if it only covers user_id, group_id to avoid conflicts with NULLs in some DB engines
-      -- but for safety in serverless/hosted envs, we'll just ensure unique indexes exist.
+      -- Add partial unique indexes for reading_progress
       CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_group ON reading_progress(user_id, group_id) WHERE group_id IS NOT NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_personal ON reading_progress(user_id) WHERE group_id IS NULL;
+
+      -- Add partial unique indexes for completed_chapters
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_chapters_unique_group ON completed_chapters(user_id, group_id, book_name, chapter_number) WHERE group_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_chapters_unique_personal ON completed_chapters(user_id, book_name, chapter_number) WHERE group_id IS NULL;
+
+      -- Add partial unique indexes for hall_of_fame
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_hall_of_fame_unique_group ON hall_of_fame(user_id, group_id, round) WHERE group_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_hall_of_fame_unique_personal ON hall_of_fame(user_id, round) WHERE group_id IS NULL;
     `;
     await pool.query(createIndexes);
 
@@ -171,10 +177,19 @@ export const handleBibleCompletion = async (userId, groupId = null) => {
     );
     const nextRound = rows[0].last_round + 1;
 
-    await client.query(
-      'INSERT INTO hall_of_fame (user_id, group_id, round) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-      [userId, groupId, nextRound]
-    );
+    const hallOfFameQuery = groupId ? `
+      INSERT INTO hall_of_fame (user_id, group_id, round) VALUES ($1, $2, $3) 
+      ON CONFLICT (user_id, group_id, round) WHERE group_id IS NOT NULL DO NOTHING
+    ` : `
+      INSERT INTO hall_of_fame (user_id, group_id, round) VALUES ($1, NULL, $2) 
+      ON CONFLICT (user_id, round) WHERE group_id IS NULL DO NOTHING
+    `;
+
+    if (groupId) {
+      await client.query(hallOfFameQuery, [userId, groupId, nextRound]);
+    } else {
+      await client.query(hallOfFameQuery, [userId, nextRound]);
+    }
 
     // If it's the personal quest (groupId is null), we also update the users total completed_count for legacy compatibility
     if (!groupId) {

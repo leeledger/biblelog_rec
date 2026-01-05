@@ -222,16 +222,24 @@ app.post('/api/progress/:username', async (req, res) => {
         }
 
         if (completedChapters && completedChapters.length > 0) {
-            const chapterInsertQuery = `
+            const chapterInsertQuery = groupId ? `
         INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
         VALUES ($1, $2, $3, $4, NOW())
-        ON CONFLICT (user_id, group_id, book_name, chapter_number) DO NOTHING;
+        ON CONFLICT (user_id, group_id, book_name, chapter_number) WHERE group_id IS NOT NULL DO NOTHING;
+      ` : `
+        INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
+        VALUES ($1, NULL, $2, $3, NOW())
+        ON CONFLICT (user_id, book_name, chapter_number) WHERE group_id IS NULL DO NOTHING;
       `;
             for (const chapterStr of completedChapters) {
                 const [book, chapterNumStr] = chapterStr.split(':');
                 const chapterNum = parseInt(chapterNumStr, 10);
                 if (book && !isNaN(chapterNum)) {
-                    await client.query(chapterInsertQuery, [userId, groupId || null, book, chapterNum]);
+                    if (groupId) {
+                        await client.query(chapterInsertQuery, [userId, groupId, book, chapterNum]);
+                    } else {
+                        await client.query(chapterInsertQuery, [userId, book, chapterNum]);
+                    }
                 }
             }
         }
