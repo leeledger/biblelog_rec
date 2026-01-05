@@ -8,6 +8,26 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
     const loginSectionRef = useRef<HTMLDivElement>(null);
 
+    React.useEffect(() => {
+        const observerOptions = {
+            threshold: 0.15,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, observerOptions);
+
+        const revealElements = document.querySelectorAll('.reveal-on-scroll');
+        revealElements.forEach((el) => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, []);
+
     const scrollToLogin = () => {
         loginSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -62,7 +82,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
             {/* Value Infographics Section */}
             <section className="py-24 px-4 max-w-6xl mx-auto space-y-20">
-                <div className="text-center space-y-4 break-keep">
+                <div className="text-center space-y-4 break-keep reveal-on-scroll">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-800 leading-tight">
                         눈으로만 보던 말씀을 <br /> <span className="text-purple-600 border-b-4 border-purple-200">입술의 고백</span>으로
                     </h2>
@@ -74,7 +94,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
                 <div className="grid md:grid-cols-3 gap-8">
                     {/* Card 1: 선포 */}
-                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden reveal-on-scroll delay-100">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-12 -mt-12 transition-all group-hover:scale-110"></div>
                         <div className="relative z-10 space-y-6">
                             <img src="/images/landing/voice_icon.png" alt="Voice icon" className="w-20 h-20 mx-auto" />
@@ -89,7 +109,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     </div>
 
                     {/* Card 2: 여정 */}
-                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden reveal-on-scroll delay-300">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-12 -mt-12 transition-all group-hover:scale-110"></div>
                         <div className="relative z-10 space-y-6">
                             <img src="/images/landing/progress_icon.png" alt="Journey icon" className="w-20 h-20 mx-auto" />
@@ -104,7 +124,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     </div>
 
                     {/* Card 3: 몰입 */}
-                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden break-keep">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-shadow group relative overflow-hidden break-keep reveal-on-scroll delay-500">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-12 -mt-12 transition-all group-hover:scale-110"></div>
                         <div className="relative z-10 space-y-6">
                             <img src="/images/landing/immersion_icon.png" alt="Immersion icon" className="w-20 h-20 mx-auto" />
@@ -122,7 +142,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
             {/* Login / Auth Section */}
             <section ref={loginSectionRef} className="py-24 bg-gradient-to-b from-slate-50 to-white">
-                <div className="max-w-md mx-auto px-4">
+                <div className="max-w-md mx-auto px-4 reveal-on-scroll">
                     <div className="text-center mb-10 space-y-2">
                         <h2 className="text-2xl font-bold text-gray-800">함께 시작할까요?</h2>
                         <p className="text-gray-500">당신의 목소리로 말씀의 지도를 그려보세요.</p>
@@ -148,19 +168,35 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
             <style dangerouslySetInnerHTML={{
                 __html: `
         @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes pulse-slow {
           0%, 100% { transform: scale(1.05); }
-          50% { transform: scale(1.1); }
+          50% { transform: scale(1.08); }
         }
         .animate-fade-in-up {
-          animation: fade-in-up 1s ease-out forwards;
+          animation: fade-in-up 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
         .animate-pulse-slow {
-          animation: pulse-slow 20s infinite ease-in-out;
+          animation: pulse-slow 15s infinite ease-in-out;
         }
+
+        /* Scroll Reveal Styles */
+        .reveal-on-scroll {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+          will-change: opacity, transform;
+        }
+        .reveal-on-scroll.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        
+        .delay-100 { transition-delay: 100ms; }
+        .delay-300 { transition-delay: 300ms; }
+        .delay-500 { transition-delay: 500ms; }
       `}} />
         </div>
     );
