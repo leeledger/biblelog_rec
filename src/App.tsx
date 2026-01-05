@@ -77,6 +77,10 @@ const App: React.FC = () => {
   // 데이터 로딩 상태
   const [isProgressLoading, setIsProgressLoading] = useState(true);
 
+  // 푸터 섹션 확장 상태
+  const [footerSupportExpanded, setFooterSupportExpanded] = useState(false);
+  const [footerChurchExpanded, setFooterChurchExpanded] = useState(false);
+
 
   // Prevent pull-to-refresh on mobile during speech recognition
   useEffect(() => {
@@ -892,63 +896,91 @@ const App: React.FC = () => {
             <div className="max-w-md mx-auto space-y-10">
               {/* Support Section */}
               {currentUser && (
-                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl p-8 border border-indigo-50 shadow-sm">
-                  <h4 className="text-indigo-900 font-black mb-2 flex items-center justify-center gap-2">
-                    <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
-                  </h4>
-                  <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed break-keep">
-                    성도님들의 따뜻한 후원은 더 나은 바이블로그 서비스 운영을 지속하는 큰 힘이 됩니다.
-                  </p>
-                  <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-center gap-2 shadow-md shadow-indigo-50">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">후원</span>
-                    <span className="text-sm font-black text-indigo-900 select-all text-center sm:text-right">토스뱅크 1234-5678-0000 (이종림)</span>
-                  </div>
-                  <p className="mt-4 text-[10px] text-indigo-300 italic">
-                    *후원금은 전액 서버 유지비로 사용됩니다.
-                  </p>
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl border border-indigo-50 shadow-sm overflow-hidden transition-all duration-300">
+                  <button
+                    onClick={() => setFooterSupportExpanded(!footerSupportExpanded)}
+                    className="w-full p-6 flex items-center justify-between group"
+                  >
+                    <h4 className="text-indigo-900 font-black flex items-center gap-2">
+                      <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
+                    </h4>
+                    <span className={`text-indigo-400 transition-transform duration-300 ${footerSupportExpanded ? 'rotate-180' : ''}`}>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </span>
+                  </button>
+
+                  {footerSupportExpanded && (
+                    <div className="px-6 pb-8 animate-fade-in-down">
+                      <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed break-keep">
+                        성도님들의 따뜻한 후원은 더 나은 바이블로그 서비스 운영을 지속하는 큰 힘이 됩니다.
+                      </p>
+                      <div className="bg-white px-5 py-4 rounded-2xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-center gap-2 shadow-md shadow-indigo-50">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">후원</span>
+                        <span className="text-sm font-black text-indigo-900 select-all text-center sm:text-right">
+                          토스뱅크 1234-5678-0000 <br className="sm:hidden" />(이종림)
+                        </span>
+                      </div>
+                      <p className="mt-4 text-[10px] text-indigo-300 italic">
+                        *후원금은 전액 서버 유지비로 사용됩니다.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Church Custom Solution Promotion */}
-              <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-50 text-left space-y-6">
-                <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
-                  <span className="text-3xl">⛪</span>
-                  <div>
-                    <h4 className="text-lg font-black text-gray-900 leading-tight">우리 교회만을 위한 <span className="text-indigo-600">특별한 통독 서비스</span></h4>
-                    <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Church Custom Solutions</p>
-                  </div>
-                </div>
-
-                <ul className="space-y-4">
-                  <li className="flex gap-3">
-                    <span className="text-indigo-500 font-bold">01</span>
-                    <div>
-                      <strong className="text-sm text-gray-800 block mb-1">교회용 관리자 대시보드</strong>
-                      <p className="text-xs text-gray-500 leading-relaxed">전 성도의 통독 현황을 통계로 한눈에 관리하고 엑셀로 다운로드하여 심방 및 양육 자료로 활용하세요.</p>
-                    </div>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-indigo-500 font-bold">02</span>
-                    <div>
-                      <strong className="text-sm text-gray-800 block mb-1">특별 통독 캠페인 패키지</strong>
-                      <p className="text-xs text-gray-500 leading-relaxed">사순절, 연말연시 등 주제별 캠페인을 개설하고 달성도에 따른 자동 수료증 발급 솔루션을 제공합니다.</p>
-                    </div>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-indigo-500 font-bold">03</span>
-                    <div>
-                      <strong className="text-sm text-gray-800 block mb-1">교회 전용 브랜딩 및 커스텀</strong>
-                      <p className="text-xs text-gray-500 leading-relaxed">교회 로고 적용은 물론, 주간 광고와 말씀 요약을 노출하는 전용 커뮤니티 페이지를 구성해 드립니다.</p>
-                    </div>
-                  </li>
-                </ul>
-
-                <a
-                  href="mailto:luxual8@gmail.com"
-                  className="w-full flex items-center justify-center py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 group"
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-50 text-left overflow-hidden transition-all duration-300">
+                <button
+                  onClick={() => setFooterChurchExpanded(!footerChurchExpanded)}
+                  className="w-full p-6 flex items-center justify-between group"
                 >
-                  문의하기 <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                </a>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">⛪</span>
+                    <div>
+                      <h4 className="text-lg font-black text-gray-900 leading-tight">우리 교회만을 위한 <span className="text-indigo-600">특별한 통독 서비스</span></h4>
+                      <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Church Custom Solutions</p>
+                    </div>
+                  </div>
+                  <span className={`text-gray-300 transition-transform duration-300 ${footerChurchExpanded ? 'rotate-180' : ''}`}>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                  </span>
+                </button>
+
+                {footerChurchExpanded && (
+                  <div className="px-6 pb-8 space-y-6 animate-fade-in-down">
+                    <div className="h-px bg-gray-50 w-full mb-6"></div>
+                    <ul className="space-y-4">
+                      <li className="flex gap-3">
+                        <span className="text-indigo-500 font-bold">01</span>
+                        <div>
+                          <strong className="text-sm text-gray-800 block mb-1">교회용 관리자 대시보드</strong>
+                          <p className="text-xs text-gray-500 leading-relaxed">전 성도의 통독 현황을 통계로 한눈에 관리하고 엑셀로 다운로드하여 심방 및 양육 자료로 활용하세요.</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="text-indigo-500 font-bold">02</span>
+                        <div>
+                          <strong className="text-sm text-gray-800 block mb-1">특별 통독 캠페인 패키지</strong>
+                          <p className="text-xs text-gray-500 leading-relaxed">사순절, 연말연시 등 주제별 캠페인을 개설하고 달성도에 따른 자동 수료증 발급 솔루션을 제공합니다.</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="text-indigo-500 font-bold">03</span>
+                        <div>
+                          <strong className="text-sm text-gray-800 block mb-1">교회 전용 브랜딩 및 커스텀</strong>
+                          <p className="text-xs text-gray-500 leading-relaxed">교회 로고 적용은 물론, 주간 광고와 말씀 요약을 노출하는 전용 커뮤니티 페이지를 구성해 드립니다.</p>
+                        </div>
+                      </li>
+                    </ul>
+
+                    <a
+                      href="mailto:luxual8@gmail.com"
+                      className="w-full flex items-center justify-center py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 group"
+                    >
+                      문의하기 <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Legal & Credits Section */}
