@@ -959,7 +959,7 @@ const App: React.FC = () => {
                   <span>이용약관</span>
                 </div>
 
-                <div className="text-[11px] text-gray-400 leading-relaxed space-y-2 font-medium">
+                <div className="text-[11px] text-gray-400 leading-relaxed space-y-2 font-medium break-keep">
                   <p>바이블로그는 아이디와 비밀번호 외의 개인정보를 수집하지 않습니다.</p>
                   <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
                     <span>포도나무교회</span>
@@ -968,7 +968,7 @@ const App: React.FC = () => {
                     <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
                     <a href="mailto:luxual8@gmail.com" className="text-indigo-400 underline decoration-indigo-200 hover:text-indigo-600">문의 및 개선</a>
                   </div>
-                  <p className="opacity-70 mt-4">Copyright © 2026 BibleLog. All rights reserved.</p>
+                  <p className="opacity-70 mt-4">Copyright © 2026 <span className="font-extrabold text-gray-500">bibleLog.kr</span>. All rights reserved.</p>
                   <p className="italic text-gray-300 text-[10px] mt-2">"음성 인식 정확도를 위해 조용한 환경을 권장합니다"</p>
                 </div>
               </div>

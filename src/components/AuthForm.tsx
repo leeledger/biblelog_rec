@@ -182,12 +182,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
         </button>
       </form>
 
-      <div className="mt-10 text-center text-xs text-gray-400 font-sans select-none">
-        <div className="mb-3 text-sm text-amber-800 bg-amber-50 p-2 rounded-md border border-amber-200">
-          본 서비스는 저작권 문제로 <span className="font-medium">개역한글</span> 성경 번역본을 사용합니다.
-          <span className="block mt-1 text-[11px] text-amber-700">(개역개정 번역본은 별도의 라이센스 비용이 발생하여 사용하지 않습니다)</span>
+      <div className="mt-10 text-center text-xs text-gray-400 font-sans select-none break-keep">
+        <div className="mb-3 text-sm text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-100">
+          <div className="font-black text-amber-900 mb-1 opacity-60">bibleLog.kr</div>
+          본 서비스는 저작권 문제로 <span className="font-medium text-amber-900">개역한글</span> 성경 번역본을 사용합니다.
+          <span className="block mt-1 text-[10px] text-amber-600 leading-tight">
+            (개역개정 번역본은 별도의 라이센스 비용이 발생하여 사용하지 않습니다)
+          </span>
         </div>
-        <div className="italic text-[11px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권장합니다.</div>
+        <div className="italic text-[10px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권승합니다.</div>
       </div>
 
     </div>

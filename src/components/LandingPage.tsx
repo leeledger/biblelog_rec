@@ -28,6 +28,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
                 <div className="relative z-10 max-w-4xl mx-auto space-y-8 animate-fade-in-up">
                     <header className="break-keep">
+                        <div className="mb-4 inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+                            <span className="text-amber-400 font-black tracking-widest text-sm uppercase">bibleLog.kr</span>
+                        </div>
                         <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-6 leading-tight">
                             바이블로그 <br className="md:hidden" /> <span className="text-amber-400">함께해요</span>
                         </h1>
