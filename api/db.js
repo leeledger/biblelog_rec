@@ -149,7 +149,18 @@ export const initializeDatabase = async () => {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_group ON reading_progress(user_id, group_id) WHERE group_id IS NOT NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_reading_progress_unique_personal ON reading_progress(user_id) WHERE group_id IS NULL;
 
-      -- Add partial unique indexes for completed_chapters
+      -- Add partial unique indexes for completed_chapters (to resolve group separation issue)
+      -- First, drop the old constraint if it exists (it didn't include group_id)
+      -- This needs to be done carefully as DROP CONSTRAINT inside a DO block or separate query is better, 
+      -- but putting it here in the multi-statement string works if the driver supports it.
+      -- However, to be safe and avoid error if constraint doesn't exist (handled by IF EXISTS), we add it here.
+      DO $$ 
+      BEGIN 
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'completed_chapters_user_id_book_name_chapter_number_key') THEN 
+          ALTER TABLE completed_chapters DROP CONSTRAINT completed_chapters_user_id_book_name_chapter_number_key; 
+        END IF; 
+      END $$;
+
       CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_chapters_unique_group ON completed_chapters(user_id, group_id, book_name, chapter_number) WHERE group_id IS NOT NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_completed_chapters_unique_personal ON completed_chapters(user_id, book_name, chapter_number) WHERE group_id IS NULL;
 

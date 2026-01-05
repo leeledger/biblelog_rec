@@ -241,10 +241,18 @@ app.post('/api/progress/:username', async (req, res) => {
                     params.push(c.book, c.chapterNum);
                 });
 
+                // Postgre IS NOT NULL index usage requires WHERE clause in ON CONFLICT
+                let conflictClause = '';
+                if (groupId) {
+                    conflictClause = 'ON CONFLICT (user_id, group_id, book_name, chapter_number) WHERE group_id IS NOT NULL DO NOTHING';
+                } else {
+                    conflictClause = 'ON CONFLICT (user_id, book_name, chapter_number) WHERE group_id IS NULL DO NOTHING';
+                }
+
                 const batchInsertQuery = `
                     INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
                     VALUES ${values}
-                    ON CONFLICT ON CONSTRAINT completed_chapters_user_id_book_name_chapter_number_key DO NOTHING;
+                    ${conflictClause};
                 `;
                 await client.query(batchInsertQuery, params);
             }
