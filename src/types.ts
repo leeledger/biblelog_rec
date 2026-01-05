@@ -33,6 +33,7 @@ export interface Group {
   name: string;
   invite_code: string;
   owner_id: number;
+  owner_name?: string; // 추가: 그룹장의 아이디(이름)
   created_at: string;
   is_owner?: boolean; // 클라이언트 편의용
 }

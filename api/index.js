@@ -385,8 +385,9 @@ app.get('/api/users/:userId/groups', async (req, res) => {
     const { userId } = req.params;
     try {
         const result = await db.query(
-            `SELECT g.* FROM groups g 
+            `SELECT g.*, u.username as owner_name FROM groups g 
              JOIN group_members gm ON g.id = gm.group_id 
+             LEFT JOIN users u ON g.owner_id = u.id
              WHERE gm.user_id = $1 
              ORDER BY g.created_at DESC`,
             [userId]

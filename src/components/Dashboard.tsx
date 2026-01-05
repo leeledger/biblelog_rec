@@ -123,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           {activeGroup && (
             <div className="mt-4 bg-black bg-opacity-10 p-3 rounded-xl flex justify-between items-center text-xs">
               <span className="font-bold">초대 코드: <strong className="select-all text-white font-mono tracking-wider ml-1">{activeGroup.invite_code}</strong></span>
-              <span className="opacity-70">그룹장: {activeGroup.owner_id === currentUser.id ? '나' : '동역자'}</span>
+              <span className="opacity-70">그룹장: {activeGroup.owner_id === currentUser.id ? '나 (관리자)' : (activeGroup.owner_name || '동역자')}</span>
             </div>
           )}
 
