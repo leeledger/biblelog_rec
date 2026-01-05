@@ -18,6 +18,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('is-visible');
+                } else {
+                    // 화면에서 벗어나면 클래스를 제거하여 다시 들어올 때 애니메이션 재실행
+                    entry.target.classList.remove('is-visible');
                 }
             });
         }, observerOptions);
