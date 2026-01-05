@@ -244,7 +244,7 @@ app.post('/api/progress/:username', async (req, res) => {
                 const batchInsertQuery = `
                     INSERT INTO completed_chapters (user_id, group_id, book_name, chapter_number, completed_at)
                     VALUES ${values}
-                    ON CONFLICT (user_id, group_id, book_name, chapter_number) DO NOTHING;
+                    ON CONFLICT ON CONSTRAINT completed_chapters_user_id_book_name_chapter_number_key DO NOTHING;
                 `;
                 await client.query(batchInsertQuery, params);
             }
