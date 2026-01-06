@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
           globIgnores: ['**/bible*.json'] // Exclude large bible JSON files from precaching
         },
-        includeAssets: ['images/favicon.svg', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: ['images/favicon.svg', 'images/logo-main.png', 'images/apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
           name: '바이블로그',
           short_name: '바이블로그',
