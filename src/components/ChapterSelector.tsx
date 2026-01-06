@@ -267,15 +267,6 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
         {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
       </button>
 
-      {/* 라이센스 안내 문구를 하단으로 이동 */}
-      <div className="mt-8 text-sm text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-100 text-center break-keep">
-        <div className="font-bold mb-1">bibleLog.kr</div>
-        <span className="font-medium">개역한글</span> 성경 번역본 사용 안내
-        <span className="block mt-1 text-[11px] text-amber-700 opacity-80 leading-relaxed">
-          본 서비스는 저작권 문제로 개역한글 번역본을 사용합니다. <br className="hidden md:block" />
-          개역개정은 별도 라이센스 비용이 발생하여 사용하지 않습니다.
-        </span>
-      </div>
     </div>
   );
 };

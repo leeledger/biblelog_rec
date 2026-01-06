@@ -143,7 +143,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
               </div>
               <p className="text-[11px] text-gray-500 flex justify-between items-center">
                 <span>📍 {entry.progressDisplay}</span>
-                <span className="opacity-60 italic">{entry.lastProgressUpdateDate ? entry.lastProgressUpdateDate.slice(5, 10).replace('-', '/') : ''}</span>
+                <span className="opacity-60 italic whitespace-nowrap">
+                  {entry.lastProgressUpdateDate ? (
+                    `${String(new Date(entry.lastProgressUpdateDate).getFullYear()).slice(-2)}/${new Date(entry.lastProgressUpdateDate).getMonth() + 1}/${new Date(entry.lastProgressUpdateDate).getDate()} ${String(new Date(entry.lastProgressUpdateDate).getHours()).padStart(2, '0')}:${String(new Date(entry.lastProgressUpdateDate).getMinutes()).padStart(2, '0')}`
+                  ) : ''}
+                </span>
               </p>
             </div>
           ))}
@@ -190,7 +194,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
                   <td className="py-4 px-6 text-gray-500 font-medium">
                     {entry.progressDisplay}
                     {entry.lastProgressUpdateDate && (
-                      <span className="ml-2 text-[10px] opacity-40 font-normal italic">({new Date(entry.lastProgressUpdateDate).toLocaleDateString()})</span>
+                      <span className="ml-2 text-[10px] opacity-40 font-normal italic">
+                        ({String(new Date(entry.lastProgressUpdateDate).getFullYear()).slice(-2)}/{new Date(entry.lastProgressUpdateDate).getMonth() + 1}/{new Date(entry.lastProgressUpdateDate).getDate()} {String(new Date(entry.lastProgressUpdateDate).getHours()).padStart(2, '0')}:{String(new Date(entry.lastProgressUpdateDate).getMinutes()).padStart(2, '0')})
+                      </span>
                     )}
                   </td>
                   <td className="py-4 px-6">

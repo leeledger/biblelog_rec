@@ -160,6 +160,7 @@ const App: React.FC = () => {
     startVerse: 1
   });
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
+  const [syncedVerseIndex, setSyncedVerseIndex] = useState(0); // UI 동기화용 인덱스 추가
 
   const {
     isListening,
@@ -432,67 +433,24 @@ const App: React.FC = () => {
       const normalizedTranscript = normalizeText(transcriptBuffer.toLowerCase());
       if (normalizedTranscript.includes('아멘')) {
         console.log('[App.tsx] 아멘 패스 감지됨');
-
-        // 1. 즉시 모든 인식 텍스트 비우기 (유령 텍스트 방지)
-        setTranscriptBuffer('');
-        resetTranscript();
         setShowAmenPrompt(false);
-
         if (verseTimeoutId) {
           clearTimeout(verseTimeoutId);
           setVerseTimeoutId(null);
         }
 
-        // 2. 실시간 진도 저장 (Auto-Save) - 일반 읽기 완료 로직과 동일하게 적용
-        if (currentUser && userOverallProgress && currentTargetVerseForSession) {
-          const lastCompletedVerse = currentTargetVerseForSession;
-          const bookInfo = AVAILABLE_BOOKS.find(b => b.name === lastCompletedVerse.book);
-          const isLastVerseOfChapter = bookInfo && lastCompletedVerse.verse === bookInfo.versesPerChapter[lastCompletedVerse.chapter - 1];
-
-          let updatedCompletedChapters = [...(userOverallProgress.completedChapters || [])];
-          if (isLastVerseOfChapter) {
-            const chapterKey = `${lastCompletedVerse.book}:${lastCompletedVerse.chapter}`;
-            if (!updatedCompletedChapters.includes(chapterKey)) {
-              updatedCompletedChapters.push(chapterKey);
-            }
-          }
-
-          const updatedProgress: UserProgress = {
-            ...userOverallProgress,
-            groupId: selectedGroupId,
-            lastReadBook: lastCompletedVerse.book,
-            lastReadChapter: lastCompletedVerse.chapter,
-            lastReadVerse: lastCompletedVerse.verse,
-            completedChapters: updatedCompletedChapters
-          };
-
-          progressService.saveUserProgress(currentUser.username, updatedProgress)
-            .then(() => {
-              setUserOverallProgress(updatedProgress);
-              if (isLastVerseOfChapter) {
-                setOverallCompletedChaptersCount(updatedProgress.completedChapters?.length || 0);
-              }
-            })
-            .catch(err => console.error('[App.tsx] 아멘 패스 중 실시간 저장 실패:', err));
-        }
-
-        // 3. 구절 전환 및 마이크 리셋 (아이폰 대응)
         setTimeout(() => {
           setMatchedVersesContentForSession(prev => prev + `${currentTargetVerseForSession.book} ${currentTargetVerseForSession.chapter}:${currentTargetVerseForSession.verse} - ${currentTargetVerseForSession.text} [아멘 패스 적용]\n`);
+          setTranscriptBuffer('');
+          setTimeout(() => resetTranscript(), 50);
 
           if (currentVerseIndexInSession < sessionTargetVerses.length - 1) {
             setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
-            setMatchedCharCount(0);
-
-            // 아이폰 전용 리셋 (마이크 껐다 켜기)
-            if (isIOS) {
-              stopListening();
-              setIsRetryingVerse(true);
-            }
+            setMatchedCharCount(0); // 구절 전환 시 리셋
           } else {
             handleStopReadingAndSave(sessionTargetVerses.length, true);
           }
-        }, isIOS ? 100 : 0); // 500ms -> 100ms로 단축하여 반응성 향상
+        }, isIOS ? 500 : 0);
         return;
       }
     }
@@ -616,15 +574,24 @@ const App: React.FC = () => {
         resetTranscript();
         setMatchedCharCount(0); // 구절 전환 시 리셋
 
-        if (isIOS) {
-          setTimeout(() => {
-            stopListening();
-            setIsRetryingVerse(true);
-          }, 100);
-        }
+        // 구절 전환 시 마이크 리셋 (안드로이드/iOS 공통)
+        // 이전 구절의 잔여 인식이 다음 구절에 섞이지 않도록 하기 위함
+        setTimeout(() => {
+          stopListening();
+          setIsRetryingVerse(true);
+        }, 50); // 아주 짧은 찰나에 정지 명령
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
+
+  // 구절 전환 동기화 로직 (마이크 예열 대기)
+  useEffect(() => {
+    // 모든 플랫폼에서 마이크가 실제로 켜졌거나, 인식이 끝난 상태(IDLE 등)면 UI 인덱스를 동기화
+    // 이를 통해 '글자가 보일 때 마이크가 100% 준비됨'을 보장하고 이전 텍스트 잔상을 제거함
+    if (isListening || readingState !== ReadingState.LISTENING) {
+      setSyncedVerseIndex(currentVerseIndexInSession);
+    }
+  }, [isListening, currentVerseIndexInSession, readingState]);
   // -----------------------------------------------------------------------
 
   useEffect(() => {
@@ -812,14 +779,9 @@ const App: React.FC = () => {
 
     if (readingState === ReadingState.LISTENING) {
       setVerseStartTime(Date.now());
-
-      // 구절 길이에 비례한 대기 시간 계산 (글자당 0.4초, 최소 8초, 최대 30초)
-      const verseLength = currentTargetVerseForSession?.text.length || 0;
-      const dynamicWaitTime = Math.max(8000, Math.min(30000, verseLength * 400));
-
       const timeoutId = setTimeout(() => {
         setShowAmenPrompt(true);
-      }, dynamicWaitTime);
+      }, 15000);
       setVerseTimeoutId(timeoutId);
     }
   }, [currentVerseIndexInSession, readingState]);
@@ -977,19 +939,23 @@ const App: React.FC = () => {
           <ActiveReadingSession
             readingState={readingState}
             sessionTargetVerses={sessionTargetVerses}
-            currentTargetVerse={currentTargetVerseForSession}
-            sessionProgress={sessionProgress}
+            currentTargetVerse={sessionTargetVerses[syncedVerseIndex] || null}
+            sessionProgress={{
+              ...sessionProgress,
+              sessionCompletedVersesCount: syncedVerseIndex
+            }}
             transcript={sttTranscript}
             matchedVersesContent={matchedVersesContentForSession}
             showAmenPrompt={showAmenPrompt}
             hasDifficultWords={hasDifficultWords}
-            matchedCharCount={matchedCharCount}
+            matchedCharCount={syncedVerseIndex === currentVerseIndexInSession ? matchedCharCount : (sessionTargetVerses[syncedVerseIndex]?.text.length || 0)}
             onStopReading={() => handleStopReadingAndSave(undefined, false)}
             onRetryVerse={handleRetryVerse}
             onExitSession={() => {
               setReadingState(ReadingState.IDLE);
               setSessionTargetVerses([]);
               setCurrentVerseIndexInSession(0);
+              setSyncedVerseIndex(0);
               setMatchedVersesContentForSession('');
               setSessionProgress(initialSessionProgress);
               setSessionCertificationMessage('');
@@ -997,7 +963,6 @@ const App: React.FC = () => {
             }}
             onStartListening={() => {
               setReadingState(ReadingState.LISTENING);
-              // Directly call startListening to satisfy mobile's requirement for user-initiated audio/mic access.
               setTimeout(() => {
                 startListening();
               }, 0);
@@ -1005,7 +970,6 @@ const App: React.FC = () => {
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
             onSessionCompleteConfirm={() => {
-              // 완료 버튼 클릭 시에도 '중단'과 동일하게 저장 및 새로고침 프로세스 수행
               handleStopReadingAndSave(sessionTargetVerses.length, false);
             }}
           />
@@ -1072,7 +1036,10 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">⛪</span>
                     <div>
-                      <h4 className="text-lg font-black text-gray-900 leading-tight">우리 교회만을 위한 <span className="text-indigo-600">특별한 통독 서비스</span></h4>
+                      <h4 className="text-lg font-black text-gray-900 leading-tight">
+                        우리 교회만을 위한 <br className="md:hidden" />
+                        <span className="text-indigo-600 font-black">특별한 통독 서비스</span>
+                      </h4>
                       <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Church Custom Solutions</p>
                     </div>
                   </div>
@@ -1120,6 +1087,16 @@ const App: React.FC = () => {
 
               {/* Legal & Credits Section */}
               <div className="space-y-6">
+                {/* Bible Translation Info */}
+                <div className="text-center px-4">
+                  <p className="text-[10px] text-gray-400 leading-relaxed break-keep">
+                    본 서비스는 저작권 정책에 따라 <span className="font-bold text-gray-500">개역한글</span> 번역본을<br />
+                    사용하고 있습니다.
+                    개역개정은 고액의 라이선스 비용이 발생하여 <br />
+                    부득이하게 개역한글로 제공되는 점 양해 부탁드립니다.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   <span>개인정보 처리방침</span>
                   <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
