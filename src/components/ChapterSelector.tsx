@@ -74,17 +74,19 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
 
   // Effect to initialize component state from props
   useEffect(() => {
-    // Only update if props are different from current state to avoid loops, 
-    // although setting same value in React is cheap.
-    // Important: When props change (e.g. from Parent when user finishes a chapter and we want to suggest next),
-    // we need to update internal state.
-    if (defaultBook !== selectedBookName ||
+    // Only update if props are different from current state to avoid loops.
+    // Important: We update book and chapters together to prevent the validation effect
+    // from seeing an intermediate state (e.g., old book + new chapter).
+    const needsUpdate = defaultBook !== selectedBookName ||
       (Number(defaultStartChapter) || 1) !== startChapter ||
-      (Number(defaultEndChapter) || 1) !== endChapter) {
+      (Number(defaultEndChapter) || 1) !== endChapter;
 
+    if (needsUpdate) {
       setSelectedBookName(defaultBook);
       setStartChapter(Number(defaultStartChapter) || 1);
       setEndChapter(Number(defaultEndChapter) || 1);
+      // Reset error when props change to let validation effect run on fresh state
+      setError('');
     }
   }, [defaultBook, defaultStartChapter, defaultEndChapter]);
 

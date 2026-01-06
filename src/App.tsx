@@ -151,19 +151,14 @@ const App: React.FC = () => {
   const [totalBibleChapters, setTotalBibleChapters] = useState(0);
 
   // State for ChapterSelector default values, dynamically updated by user progress
-  const [selectedBookForSelector, setSelectedBookForSelector] = useState<string>(AVAILABLE_BOOKS[0]?.name || '');
-  const [startChapterForSelector, setStartChapterForSelector] = useState<number>(1);
-  const [endChapterForSelector, setEndChapterForSelector] = useState<number>(1);
-  const [startVerseForSelector, setStartVerseForSelector] = useState<number>(1);
+  // Consolidated state for ChapterSelector default values
+  const [selectorState, setSelectorState] = useState({
+    book: AVAILABLE_BOOKS[0]?.name || '',
+    startChapter: 1,
+    endChapter: 1,
+    startVerse: 1
+  });
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
-
-  useEffect(() => {
-    if (selectedGroupId !== null) {
-      localStorage.setItem('selectedGroupId', selectedGroupId.toString());
-    } else {
-      localStorage.removeItem('selectedGroupId');
-    }
-  }, [selectedGroupId]);
 
   const {
     isListening,
@@ -255,31 +250,38 @@ const App: React.FC = () => {
   // Effect to set default values for ChapterSelector based on user progress
   useEffect(() => {
     if (currentUser && userOverallProgress) {
-      const lastReadInfo = userOverallProgress && userOverallProgress.lastReadBook && userOverallProgress.lastReadChapter && (userOverallProgress.lastReadVerse !== undefined && userOverallProgress.lastReadVerse !== null)
+      const lastReadInfo = userOverallProgress.lastReadBook && userOverallProgress.lastReadChapter && (userOverallProgress.lastReadVerse !== undefined && userOverallProgress.lastReadVerse !== null)
         ? { book: userOverallProgress.lastReadBook, chapter: userOverallProgress.lastReadChapter, verse: userOverallProgress.lastReadVerse }
         : null;
       const nextRead = getNextReadingStart(lastReadInfo);
+
       if (nextRead) {
-        setSelectedBookForSelector(nextRead.book);
-        setStartChapterForSelector(nextRead.chapter);
-        setEndChapterForSelector(nextRead.chapter);
-        setStartVerseForSelector(nextRead.verse);
+        setSelectorState({
+          book: nextRead.book,
+          startChapter: nextRead.chapter,
+          endChapter: nextRead.chapter,
+          startVerse: nextRead.verse
+        });
       } else {
         const firstBook = AVAILABLE_BOOKS[0];
         if (firstBook) {
-          setSelectedBookForSelector(firstBook.name);
-          setStartChapterForSelector(1);
-          setEndChapterForSelector(1);
-          setStartVerseForSelector(1);
+          setSelectorState({
+            book: firstBook.name,
+            startChapter: 1,
+            endChapter: 1,
+            startVerse: 1
+          });
         }
       }
     } else {
       const firstBook = AVAILABLE_BOOKS[0];
       if (firstBook) {
-        setSelectedBookForSelector(firstBook.name);
-        setStartChapterForSelector(1);
-        setEndChapterForSelector(1);
-        setStartVerseForSelector(1);
+        setSelectorState({
+          book: firstBook.name,
+          startChapter: 1,
+          endChapter: 1,
+          startVerse: 1
+        });
       }
     }
   }, [userOverallProgress, currentUser]);
@@ -593,12 +595,12 @@ const App: React.FC = () => {
       let initialSkip = 0;
 
       // 전달받은 startVerse가 있거나, selector의 기본값이 있으면 이어 읽기 적용
-      const actualStartVerse = startVerse || startVerseForSelector;
+      const actualStartVerse = startVerse || selectorState.startVerse;
 
       if (
-        book === selectedBookForSelector &&
-        startCh === startChapterForSelector &&
-        endCh === startChapterForSelector &&
+        book === selectorState.book &&
+        startCh === selectorState.startChapter &&
+        endCh === selectorState.startChapter &&
         actualStartVerse > 1
       ) {
         const firstVerseIndex = verses.findIndex(v => v.verse === actualStartVerse);
@@ -624,7 +626,7 @@ const App: React.FC = () => {
     } else {
       setAppError('선택한 범위의 성경 데이터를 찾을 수 없습니다.');
     }
-  }, [selectedBookForSelector, startChapterForSelector, startVerseForSelector, resetTranscript]);
+  }, [selectorState, resetTranscript]);
 
   const handleStopReadingAndSave = useCallback((overrideSessionCompletedCount?: number | React.MouseEvent<HTMLButtonElement>, isNaturalCompletion: boolean = false) => {
     if (!isNaturalCompletion) {
@@ -877,10 +879,10 @@ const App: React.FC = () => {
             userOverallProgress={userOverallProgress}
             totalBibleChapters={totalBibleChapters}
             overallCompletedChaptersCount={overallCompletedChaptersCount}
-            selectedBookForSelector={selectedBookForSelector}
-            startChapterForSelector={startChapterForSelector}
-            endChapterForSelector={endChapterForSelector}
-            startVerseForSelector={startVerseForSelector}
+            selectedBookForSelector={selectorState.book}
+            startChapterForSelector={selectorState.startChapter}
+            endChapterForSelector={selectorState.endChapter}
+            startVerseForSelector={selectorState.startVerse}
             onStartReading={handleSelectChaptersAndStartReading}
             onShowHallOfFame={() => setShowHallOfFame(true)}
             onBibleReset={handleBibleReset}
