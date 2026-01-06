@@ -11,6 +11,7 @@ import * as authService from './services/authService';
 import AuthForm from './components/AuthForm';
 import HallOfFame from './components/HallOfFame';
 import { BrowserRecommendation } from './components/BrowserRecommendation';
+import { useWakeLock } from './hooks/useWakeLock'; // 추가
 
 // Refactored Sub-components
 import Dashboard from './components/Dashboard';
@@ -168,8 +169,11 @@ const App: React.FC = () => {
     stopListening,
     browserSupportsSpeechRecognition,
     resetTranscript,
-    markVerseTransition
+    markVerseTransition,
+    isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
+
+  const { requestWakeLock, releaseWakeLock } = useWakeLock(); // 추가
 
   const loadUserGroups = async (userId: number) => {
     try {
@@ -424,28 +428,71 @@ const App: React.FC = () => {
     }
 
     // 아멘 패스
-    if (showAmenPrompt && hasDifficultWords && transcriptBuffer) {
+    if (showAmenPrompt && transcriptBuffer) {
       const normalizedTranscript = normalizeText(transcriptBuffer.toLowerCase());
       if (normalizedTranscript.includes('아멘')) {
         console.log('[App.tsx] 아멘 패스 감지됨');
+
+        // 1. 즉시 모든 인식 텍스트 비우기 (유령 텍스트 방지)
+        setTranscriptBuffer('');
+        resetTranscript();
         setShowAmenPrompt(false);
+
         if (verseTimeoutId) {
           clearTimeout(verseTimeoutId);
           setVerseTimeoutId(null);
         }
 
+        // 2. 실시간 진도 저장 (Auto-Save) - 일반 읽기 완료 로직과 동일하게 적용
+        if (currentUser && userOverallProgress && currentTargetVerseForSession) {
+          const lastCompletedVerse = currentTargetVerseForSession;
+          const bookInfo = AVAILABLE_BOOKS.find(b => b.name === lastCompletedVerse.book);
+          const isLastVerseOfChapter = bookInfo && lastCompletedVerse.verse === bookInfo.versesPerChapter[lastCompletedVerse.chapter - 1];
+
+          let updatedCompletedChapters = [...(userOverallProgress.completedChapters || [])];
+          if (isLastVerseOfChapter) {
+            const chapterKey = `${lastCompletedVerse.book}:${lastCompletedVerse.chapter}`;
+            if (!updatedCompletedChapters.includes(chapterKey)) {
+              updatedCompletedChapters.push(chapterKey);
+            }
+          }
+
+          const updatedProgress: UserProgress = {
+            ...userOverallProgress,
+            groupId: selectedGroupId,
+            lastReadBook: lastCompletedVerse.book,
+            lastReadChapter: lastCompletedVerse.chapter,
+            lastReadVerse: lastCompletedVerse.verse,
+            completedChapters: updatedCompletedChapters
+          };
+
+          progressService.saveUserProgress(currentUser.username, updatedProgress)
+            .then(() => {
+              setUserOverallProgress(updatedProgress);
+              if (isLastVerseOfChapter) {
+                setOverallCompletedChaptersCount(updatedProgress.completedChapters?.length || 0);
+              }
+            })
+            .catch(err => console.error('[App.tsx] 아멘 패스 중 실시간 저장 실패:', err));
+        }
+
+        // 3. 구절 전환 및 마이크 리셋 (아이폰 대응)
         setTimeout(() => {
           setMatchedVersesContentForSession(prev => prev + `${currentTargetVerseForSession.book} ${currentTargetVerseForSession.chapter}:${currentTargetVerseForSession.verse} - ${currentTargetVerseForSession.text} [아멘 패스 적용]\n`);
-          setTranscriptBuffer('');
-          setTimeout(() => resetTranscript(), 50);
 
           if (currentVerseIndexInSession < sessionTargetVerses.length - 1) {
             setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
-            setMatchedCharCount(0); // 구절 전환 시 리셋
+            setMatchedCharCount(0);
+
+            // 아이폰 전용 리셋 (마이크 껐다 켜기)
+            if (isIOS) {
+              stopListening();
+              setIsRetryingVerse(true);
+            }
           } else {
             handleStopReadingAndSave(sessionTargetVerses.length, true);
           }
-        }, isIOS ? 500 : 0);
+        }, isIOS ? 100 : 0); // 500ms -> 100ms로 단축하여 반응성 향상
         return;
       }
     }
@@ -717,7 +764,7 @@ const App: React.FC = () => {
           if (!isNaturalCompletion) {
             setTimeout(() => {
               window.location.reload();
-            }, 300);
+            }, 200); // 300 -> 200
           }
         });
 
@@ -726,7 +773,7 @@ const App: React.FC = () => {
       // 읽은 구절이 없을 때도 reload
       setTimeout(() => {
         window.location.reload();
-      }, 300);
+      }, 200); // 300 -> 200
     }
 
     if (!isNaturalCompletion) {
@@ -763,14 +810,32 @@ const App: React.FC = () => {
     const hasDifficult = checkForDifficultWords(currentTargetVerseForSession);
     setHasDifficultWords(hasDifficult);
 
-    if (readingState === ReadingState.LISTENING && hasDifficult) {
+    if (readingState === ReadingState.LISTENING) {
       setVerseStartTime(Date.now());
+
+      // 구절 길이에 비례한 대기 시간 계산 (글자당 0.4초, 최소 8초, 최대 30초)
+      const verseLength = currentTargetVerseForSession?.text.length || 0;
+      const dynamicWaitTime = Math.max(8000, Math.min(30000, verseLength * 400));
+
       const timeoutId = setTimeout(() => {
         setShowAmenPrompt(true);
-      }, 15000);
+      }, dynamicWaitTime);
       setVerseTimeoutId(timeoutId);
     }
   }, [currentVerseIndexInSession, readingState]);
+
+  // 화면 꺼짐 방지 (Wake Lock) 트리거
+  useEffect(() => {
+    if (readingState === ReadingState.LISTENING) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => {
+      releaseWakeLock();
+    };
+  }, [readingState, requestWakeLock, releaseWakeLock]);
 
   if (!currentUser) {
     return (
@@ -938,13 +1003,10 @@ const App: React.FC = () => {
               }, 0);
             }}
             sessionCertificationMessage={sessionCertificationMessage}
+            isStalled={isStalled}
             onSessionCompleteConfirm={() => {
-              setReadingState(ReadingState.IDLE);
-              setSessionTargetVerses([]);
-              setMatchedVersesContentForSession('');
-              setSessionProgress({ totalVersesInSession: 0, sessionCompletedVersesCount: 0, sessionInitialSkipCount: 0 });
-              setSessionCertificationMessage('');
-              setSessionCount(prev => prev + 1);
+              // 완료 버튼 클릭 시에도 '중단'과 동일하게 저장 및 새로고침 프로세스 수행
+              handleStopReadingAndSave(sessionTargetVerses.length, false);
             }}
           />
         )}

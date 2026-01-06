@@ -23,7 +23,8 @@ interface ActiveReadingSessionProps {
   onStartListening: () => void; // For the "Start Voice Recognition" button in READING state
 
   sessionCertificationMessage: string;
-  onSessionCompleteConfirm: () => void; // Handler for "Other range / Menu" button
+  isStalled: boolean; // 추가
+  onSessionCompleteConfirm: () => void;
 }
 
 const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
@@ -41,6 +42,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   onExitSession,
   onStartListening,
   sessionCertificationMessage,
+  isStalled, // 추가
   onSessionCompleteConfirm
 }) => {
 
@@ -93,15 +95,21 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                 </p>
               )}
             </div>
-            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-              <p className="text-xl font-semibold text-black leading-loose">
+            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 relative overflow-hidden">
+              {/* 마이크 활성 상태 애니메이션 (Heartbeat) */}
+              {readingState === ReadingState.LISTENING && !isStalled && (
+                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 animate-pulse"></div>
+              )}
+
+              <p
+                key={currentTargetVerse ? `${currentTargetVerse.book}-${currentTargetVerse.chapter}-${currentTargetVerse.verse}` : 'no-verse'}
+                className="text-xl font-semibold text-black leading-loose relative z-10 animate-fade-in-up"
+              >
                 {currentTargetVerse ? (
                   <>
-                    {/* 읽은 부분 - 취소선 */}
                     <span className="line-through text-gray-400">
                       {currentTargetVerse.text.substring(0, matchedCharCount)}
                     </span>
-                    {/* 아직 안 읽은 부분 - 강조 */}
                     <span className="text-black">
                       {currentTargetVerse.text.substring(matchedCharCount)}
                     </span>
@@ -110,9 +118,23 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                   "읽기 목표 없음"
                 )}
               </p>
-              {showAmenPrompt && hasDifficultWords && (
+
+              {/* iOS 마이크 복구 버튼 (Rescue Button) */}
+              {isStalled && (
+                <div className="mt-4 p-4 bg-red-50 border-2 border-red-500 rounded-xl text-center shadow-lg animate-bounce">
+                  <p className="font-bold text-red-700 mb-2">🎤 아이폰 마이크가 잠시 쉬고 있어요!</p>
+                  <button
+                    onClick={onStartListening}
+                    className="w-full py-3 bg-red-600 text-white rounded-lg font-bold text-lg shadow-md hover:bg-red-700 transition"
+                  >
+                    여기 눌러 다시 깨우기
+                  </button>
+                </div>
+              )}
+
+              {showAmenPrompt && !isStalled && (
                 <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-md animate-pulse">
-                  <p className="font-bold text-center">인식이 어려워요!</p>
+                  <p className="font-bold text-center">인식이 어려우신가요?</p>
                   <p className="text-sm text-center">"아멘"을 외치면 다음 구절로 넘어갑니다.</p>
                 </div>
               )}

@@ -1,3 +1,5 @@
+const STORAGE_KEY = 'pwa_install_record_v3'; // 키를 바꿔서 기존 잘못 저장된 캐시를 강제 리셋
+
 import React, { useState, useEffect } from 'react';
 
 interface InstallState {
@@ -11,49 +13,49 @@ const InstallPWA: React.FC = () => {
         status: 'idle',
         platform: 'other'
     });
+    const [showFallback, setShowFallback] = useState(false); // 안드로이드에서 프롬프트가 안 올 경우의 대비책
 
     useEffect(() => {
+        console.log('[InstallPWA] Version 1.0.3 Loaded');
+
         // 1. 현재 앱 모드(standalone)인지 확인
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches
             || (window.navigator as any).standalone
             || document.referrer.includes('android-app://');
 
         if (isStandalone) {
-            setInstallState({ status: 'already-installed', platform: 'other' }); // 실제 앱 안이므로 초기 상태 설정
+            setInstallState({ status: 'already-installed', platform: 'other' });
             return;
         }
 
         // 2. 플랫폼 감지
         const userAgent = window.navigator.userAgent.toLowerCase();
-        const platform = /iphone|ipad|ipod/.test(userAgent) ? 'ios' :
-            /android/.test(userAgent) ? 'android' : 'other';
+        const isIOS = /iphone|ipad|ipod/.test(userAgent);
+        const isAndroid = /android/.test(userAgent);
+        const platform = isIOS ? 'ios' : isAndroid ? 'android' : 'other';
 
-        // IOS는 beforeinstallprompt 이벤트가 없으므로 localStorage로 가이드 표시 여부 결정
-        if (platform === 'ios') {
-            const wasInstalled = localStorage.getItem('pwa-installed') === 'true';
-            if (!wasInstalled) {
-                setInstallState({ status: 'idle', platform: 'ios' });
-            } else {
-                setInstallState({ status: 'already-installed', platform: 'ios' });
-            }
-        } else if (platform === 'android') {
-            // Android는 이벤트를 기다려야 하므로 일단 idle
-            setInstallState({ status: 'idle', platform: 'android' });
+        // 3. 초기 상태 설정
+        const wasInstalled = localStorage.getItem(STORAGE_KEY) === 'true';
+
+        if (wasInstalled) {
+            setInstallState({ status: 'already-installed', platform });
+        } else {
+            setInstallState({ status: 'idle', platform });
         }
 
-        // 3. Android용 설치 프롬프트 이벤트 리스닝
+        // 4. 안드로이드용 설치 프롬프트 이벤트 리스닝
         const handleBeforeInstallPrompt = (e: any) => {
             console.log('[InstallPWA] beforeinstallprompt event fired');
             e.preventDefault();
             setDeferredPrompt(e);
-            // 이벤트가 왔다는 건 설치가 가능하다는 뜻이므로 상태 초기화
             setInstallState({ status: 'idle', platform: 'android' });
+            setShowFallback(false);
         };
 
-        // 4. 설치 완료 이벤트 리스닝
+        // 5. 설치 완료 이벤트 리스닝
         const handleAppInstalled = () => {
             console.log('[InstallPWA] App installed successfully');
-            localStorage.setItem('pwa-installed', 'true');
+            localStorage.setItem(STORAGE_KEY, 'true');
             setInstallState({ status: 'installed', platform });
             setDeferredPrompt(null);
         };
@@ -61,37 +63,46 @@ const InstallPWA: React.FC = () => {
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.addEventListener('appinstalled', handleAppInstalled);
 
+        // 안드로이드인데 5초간 프롬프트 신호가 없으면 수동 안내 고려
+        const timer = setTimeout(() => {
+            if (isAndroid && !deferredPrompt) {
+                setShowFallback(true);
+            }
+        }, 5000);
+
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             window.removeEventListener('appinstalled', handleAppInstalled);
+            clearTimeout(timer);
         };
-    }, []);
+    }, [deferredPrompt]);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
-
         setInstallState(prev => ({ ...prev, status: 'installing' }));
         deferredPrompt.prompt();
-
         const { outcome } = await deferredPrompt.userChoice;
-
         if (outcome === 'accepted') {
-            localStorage.setItem('pwa-installed', 'true');
+            localStorage.setItem(STORAGE_KEY, 'true');
             setInstallState(prev => ({ ...prev, status: 'installed' }));
         } else {
             setInstallState(prev => ({ ...prev, status: 'idle' }));
         }
-
         setDeferredPrompt(null);
     };
 
-    // 앱에서 직접 열린 경우 아무것도 표시하지 않음
-    if (installState.status === 'idle' && !deferredPrompt && installState.platform !== 'ios') {
+    // 앱 내부 실행 중이면 표시하지 않음
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        return null;
+    }
+
+    // 아무런 안내를 할 수 없는 상태면 숨김 (단, 안드로이드 폴백은 예외)
+    if (installState.status === 'idle' && !deferredPrompt && installState.platform === 'android' && !showFallback) {
         return null;
     }
 
     return (
-        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-3xl p-5 mb-8 shadow-2xl shadow-purple-200 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-3xl p-5 mb-8 shadow-2xl shadow-purple-200 animate-in fade-in slide-in-from-bottom-4 duration-700 mx-1">
             {/* Background Decorative Elements */}
             <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
             <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-purple-400/20 rounded-full blur-xl"></div>
@@ -115,15 +126,13 @@ const InstallPWA: React.FC = () => {
                     <div>
                         <h3 className="text-lg md:text-xl font-black text-white leading-tight">
                             {installState.status === 'installing' ? '앱 설치 중...' :
-                                (installState.status === 'installed' || installState.status === 'already-installed')
-                                    ? (window.matchMedia('(display-mode: standalone)').matches ? '앱 전용 모드 실행 중' : '이미 설치되어 있습니다')
-                                    : '바이블로그 앱 설치'}
+                                (installState.status === 'installed' || installState.status === 'already-installed') ? '이미 설치되어 있습니다' :
+                                    '바이블로그 앱 설치'}
                         </h3>
-                        <p className="text-sm text-purple-100 font-medium opacity-90">
+                        <p className="text-sm text-purple-100 font-medium opacity-90 leading-snug">
                             {installState.status === 'installing' ? '잠시만 기다려주세요' :
-                                (installState.status === 'installed' || installState.status === 'already-installed')
-                                    ? (window.matchMedia('(display-mode: standalone)').matches ? '완전한 전체 화면으로 기도에 집중하세요' : '앱 목록에서 바이블로그를 찾아보세요')
-                                    : '삭제하셨다면 지금 다시 설치할 수 있습니다'}
+                                (installState.status === 'installed' || installState.status === 'already-installed') ? '앱 목록에서 바이블로그를 찾아보세요' :
+                                    showFallback ? '점 세개(⋮) 메뉴에서 [앱 설치]를 눌러보세요' : '삭제하셨다면 지금 다시 설치할 수 있습니다'}
                         </p>
                     </div>
                 </div>
@@ -135,13 +144,12 @@ const InstallPWA: React.FC = () => {
                             onClick={handleInstallClick}
                             className="w-full sm:w-auto bg-white text-purple-700 hover:bg-purple-50 px-8 py-3.5 rounded-2xl text-base font-black transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 group"
                         >
-                            지금 앱 설치하기
-                            <span className="text-xl group-hover:translate-x-1 transition-transform">✨</span>
+                            지금 앱 설치하기 ✨
                         </button>
                     )}
 
                     {/* iOS 가이드 (설치 기록이 없을 때만 노출) */}
-                    {installState.status === 'idle' && installState.platform === 'ios' && (
+                    {installState.platform === 'ios' && installState.status === 'idle' && (
                         <div className="bg-white/15 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20">
                             <p className="text-xs text-white font-bold text-center leading-relaxed">
                                 하단 <span className="inline-block translate-y-0.5 mx-1">
@@ -155,11 +163,12 @@ const InstallPWA: React.FC = () => {
                     )}
 
                     {/* 상태 닫기 버튼 */}
-                    {(installState.status === 'already-installed' || installState.status === 'installed') && (
+                    {(installState.status === 'already-installed' || installState.status === 'installed' || showFallback) && (
                         <button
                             onClick={() => {
                                 setInstallState(prev => ({ ...prev, status: 'idle' }));
-                                localStorage.removeItem('pwa-installed');
+                                localStorage.removeItem(STORAGE_KEY);
+                                setShowFallback(false);
                             }}
                             className="ml-auto p-2 text-white/50 hover:text-white transition-colors"
                             aria-label="안내 닫기"
