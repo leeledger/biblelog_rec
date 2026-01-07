@@ -18,6 +18,7 @@ export enum ReadingState {
   LISTENING = "LISTENING",
   PROCESSING = "PROCESSING", // Not actively used but kept for potential future
   SESSION_COMPLETED = "SESSION_COMPLETED", // Current reading session's selection completed
+  SAVING = "SAVING", // Progress is being saved
   ERROR = "ERROR",
 }
 

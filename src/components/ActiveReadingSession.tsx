@@ -79,7 +79,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   }
 
   // Case 2: LISTENING or SESSION_COMPLETED state
-  if ((readingState === ReadingState.LISTENING || readingState === ReadingState.SESSION_COMPLETED) && sessionTargetVerses.length > 0) {
+  if ((readingState === ReadingState.LISTENING || readingState === ReadingState.SESSION_COMPLETED || readingState === ReadingState.SAVING) && sessionTargetVerses.length > 0) {
     return (
       <>
         <ProgressBar progress={sessionProgress} />
@@ -175,6 +175,20 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
 
         {readingState === ReadingState.LISTENING && (
           <p className="mt-3 text-xs text-center text-gray-600">내용을 다 읽으면 자동으로 진행 상황이 저장됩니다. 읽기를 중단하려면 '중단' 버튼을 누르세요.</p>
+        )}
+
+        {readingState === ReadingState.SAVING && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full mx-4 transform animate-in zoom-in-95 duration-300">
+              <div className="mb-4 flex justify-center">
+                <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+              </div>
+              <h2 className="text-xl font-black text-gray-800 mb-2">진도 저장 중</h2>
+              <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                오늘의 통독 여정을 안전하게<br />기록하고 있습니다. 잠시만 기다려주세요.
+              </p>
+            </div>
+          </div>
         )}
 
         {readingState === ReadingState.SESSION_COMPLETED && (

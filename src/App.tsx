@@ -645,6 +645,7 @@ const App: React.FC = () => {
   const handleStopReadingAndSave = useCallback((overrideSessionCompletedCount?: number | React.MouseEvent<HTMLButtonElement>, isNaturalCompletion: boolean = false) => {
     if (!isNaturalCompletion) {
       stopListening();
+      setReadingState(ReadingState.SAVING);
     }
 
     const currentSessionCompletedVersesCount = (typeof overrideSessionCompletedCount === 'number')
@@ -729,23 +730,16 @@ const App: React.FC = () => {
         .finally(() => {
           // 저장 완료(성공/실패 무관) 후 reload
           if (!isNaturalCompletion) {
-            setTimeout(() => {
-              window.location.reload();
-            }, 200); // 300 -> 200
+            window.location.reload();
           }
         });
 
     } else if (versesActuallyReadThisSessionCount <= 0 && !isNaturalCompletion) {
       setSessionCertificationMessage("이번 세션에서 읽은 구절이 없습니다.");
       // 읽은 구절이 없을 때도 reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 200); // 300 -> 200
+      window.location.reload();
     }
 
-    if (!isNaturalCompletion) {
-      setReadingState(ReadingState.IDLE);
-    }
   }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId]);
 
   const handleRetryVerse = useCallback(() => {
