@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import ActiveReadingSession from './components/ActiveReadingSession';
 import InstallPWA from './components/InstallPWA';
 import LandingPage from './components/LandingPage';
+import { Analytics } from "@vercel/analytics/react";
 
 // Define the type for the flat Bible data structure from bible_fixed.json
 type RawBibleDataType = { [key: string]: string; };
@@ -868,6 +869,7 @@ const App: React.FC = () => {
 
   return (
     <>
+      <Analytics />
       <BrowserRecommendation />
       <div className="container mx-auto p-4 max-w-4xl bg-amber-50 shadow-lg rounded-lg">
         {currentUser && currentUser.must_change_password && showPasswordChangePrompt && (
