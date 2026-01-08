@@ -253,7 +253,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // [Surgical Fix for iOS] Session Recovery after Hardware Permission Refresh
+  // [Surgical Fix for iOS] 1. Session Recovery after Hardware Permission Refresh
   useEffect(() => {
     if (!isIOS || !currentUser || readingState !== ReadingState.IDLE) return;
 
@@ -261,32 +261,40 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        // 5분 이내의 유효한 세션만 복구
         if (Date.now() - data.timestamp < 300000) {
-          console.log('[iOS Recovery] Restoring reading session after refresh...', data);
+          console.log('[iOS Recovery] Restoring reading session...', data);
           sessionStorage.removeItem('ios_reading_recovery_v2');
-
           setSessionTargetVerses(data.verses);
           setCurrentVerseIndexInSession(data.index);
           setReadingState(data.state);
           setSessionProgress(data.progress);
           setMatchedVersesContentForSession(data.content);
-
-          // 만약 LISTENING 상태로 가려 했다면 즉시 마이크 가동
           if (data.state === ReadingState.LISTENING) {
-            setTimeout(() => {
-              startListening();
-            }, 800);
+            setTimeout(() => startListening(), 800);
           }
         } else {
           sessionStorage.removeItem('ios_reading_recovery_v2');
         }
       } catch (e) {
-        console.error('[iOS Recovery] Failed to restore session', e);
         sessionStorage.removeItem('ios_reading_recovery_v2');
       }
     }
   }, [isIOS, currentUser, readingState, startListening]);
+
+  // [Surgical Fix for iOS] 2. Pre-warm Microphone on Dashboard to prevent refresh in reading view
+  useEffect(() => {
+    if (!isIOS || !currentUser || readingState !== ReadingState.IDLE) return;
+    const preWarmMic = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.warn('[iOS Mic Pre-warm] failed:', err);
+      }
+    };
+    const timer = setTimeout(preWarmMic, 1500); // UI가 완전히 안정된 후 조용히 실행
+    return () => clearTimeout(timer);
+  }, [isIOS, currentUser, readingState]);
 
   const backupIOSSession = useCallback((targetState: ReadingState) => {
     if (!isIOS) return;
