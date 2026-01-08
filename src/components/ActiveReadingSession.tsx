@@ -121,13 +121,19 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
 
               {/* iOS 마이크 복구 버튼 (Rescue Button) */}
               {isStalled && (
-                <div className="mt-4 p-4 bg-red-50 border-2 border-red-500 rounded-xl text-center shadow-lg animate-bounce">
-                  <p className="font-bold text-red-700 mb-2">🎤 아이폰 마이크가 잠시 쉬고 있어요!</p>
+                <div className="mt-4 p-5 bg-gradient-to-br from-red-50 to-white border-2 border-red-500 rounded-[2rem] text-center shadow-xl animate-bounce">
+                  <p className="font-black text-red-700 mb-1 flex items-center justify-center gap-2 text-lg">
+                    <span>🎤</span> 마이크가 잠시 멈췄어요!
+                  </p>
+                  <p className="text-[11px] text-red-500 font-medium mb-4 leading-relaxed">
+                    전화 수신이나 다른 앱 사용으로 인해 마이크 연결이 끊겼을 수 있습니다. <br />
+                    아래 버튼을 눌러 다시 활성화해주세요.
+                  </p>
                   <button
                     onClick={onStartListening}
-                    className="w-full py-3 bg-red-600 text-white rounded-lg font-bold text-lg shadow-md hover:bg-red-700 transition"
+                    className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
                   >
-                    여기 눌러 다시 깨우기
+                    마이크 다시 켜기
                   </button>
                 </div>
               )}

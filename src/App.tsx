@@ -116,30 +116,54 @@ const App: React.FC = () => {
 
   const [sessionProgress, setSessionProgress] = useState<SessionReadingProgress>(initialSessionProgress);
 
+  const {
+    isListening,
+    transcript: sttTranscript,
+    error: sttError,
+    startListening,
+    stopListening,
+    browserSupportsSpeechRecognition,
+    resetTranscript,
+    markVerseTransition,
+    isStalled // 추가
+  } = useSpeechRecognition({ lang: 'ko-KR' });
+
   // 외부 이벤트(전화 수신 등) 감지 및 자동 복구 로직
   useEffect(() => {
     const handleVisibilityOrFocusChange = () => {
       // 페이지가 다시 보여지거나 포커스를 받았을 때
       if (!document.hidden && document.visibilityState === 'visible') {
-        // 현재 '읽기 중'인 상태에서 돌아왔다면 마이크 리셋을 위해 새로고침 실행
-        if (readingState === ReadingState.READING || readingState === ReadingState.LISTENING) {
-          console.log('Visibility/Focus regained during reading session. Reloading to reset speech engine...');
-          // 잠시 지연 후 새로고침 (데이터 저장과의 충돌 방지)
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
+        // 현재 '읽기 중'인 상태에서 돌아왔다면
+        if (readingState === ReadingState.LISTENING) {
+          console.log('Visibility/Focus regained during listening. Checking mic status...');
+
+          if (isStalled || !isListening) {
+            // 마이크가 멈춰있다면 재시작 시도
+            console.log('Mic is stalled or stopped. Attempting auto-restart...');
+            startListening();
+
+            // 만약 iOS이고 재시작이 안 될 경우를 대비해 1.5초 후에도 안 켜지면 새로고침 유도 고려
+            setTimeout(() => {
+              if (readingState === ReadingState.LISTENING && !isListening) {
+                console.log('Auto-restart failed. Reloading to reset speech engine...');
+                window.location.reload();
+              }
+            }, 1500);
+          }
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityOrFocusChange);
     window.addEventListener('focus', handleVisibilityOrFocusChange);
+    window.addEventListener('pageshow', handleVisibilityOrFocusChange); // iOS 대응 추가
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocusChange);
       window.removeEventListener('focus', handleVisibilityOrFocusChange);
+      window.removeEventListener('pageshow', handleVisibilityOrFocusChange);
     };
-  }, [readingState]);
+  }, [readingState, isListening, isStalled, startListening]);
 
   const [sessionCertificationMessage, setSessionCertificationMessage] = useState<string>('');
   const [appError, setAppError] = useState<string | null>(null);
@@ -162,18 +186,6 @@ const App: React.FC = () => {
   });
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
   const [syncedVerseIndex, setSyncedVerseIndex] = useState(0); // UI 동기화용 인덱스 추가
-
-  const {
-    isListening,
-    transcript: sttTranscript,
-    error: sttError,
-    startListening,
-    stopListening,
-    browserSupportsSpeechRecognition,
-    resetTranscript,
-    markVerseTransition,
-    isStalled // 추가
-  } = useSpeechRecognition({ lang: 'ko-KR' });
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock(); // 추가
 
@@ -602,6 +614,28 @@ const App: React.FC = () => {
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
+
+  // 현재 세션 상태를 로컬 스토리지에 동기화 (전화 수신 등으로 인한 새로고침 대비)
+  useEffect(() => {
+    if (readingState === ReadingState.READING || readingState === ReadingState.LISTENING) {
+      if (sessionTargetVerses.length > 0) {
+        // 시작 구절이 아닌, 현재 읽고 있는 구절의 번호를 저장
+        const currentVerse = sessionTargetVerses[currentVerseIndexInSession];
+        if (currentVerse) {
+          const sessionParams = {
+            book: currentVerse.book,
+            startCh: currentVerse.chapter,
+            endCh: sessionTargetVerses[sessionTargetVerses.length - 1].chapter,
+            startVerse: currentVerse.verse
+          };
+          localStorage.setItem('pendingReadingSession', JSON.stringify(sessionParams));
+        }
+      }
+    } else if (readingState === ReadingState.IDLE || readingState === ReadingState.SESSION_COMPLETED) {
+      // 세션이 공식적으로 종료되면 대기 중인 세션 정보 삭제
+      localStorage.removeItem('pendingReadingSession');
+    }
+  }, [readingState, sessionTargetVerses, currentVerseIndexInSession]);
 
   // 구절 전환 동기화 로직 (마이크 예열 대기)
   useEffect(() => {
