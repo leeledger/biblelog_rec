@@ -139,41 +139,23 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
     }
   }, [selectedBookName, startChapter, endChapter, selectedBookInfo, completedChapters]);
 
-  // iOS에서 페이지 진입 시 자동으로 마이크 권한 요청
+  // iOS에서 페이지 진입 시 자동으로 마이크 권한을 요청하던 로직을 제거했습니다.
+  // 이제 App.tsx의 handleSelectChaptersAndStartReading에서 읽기 시작 버튼 클릭 시 
+  // 선제적으로 권한을 확인하고 로딩 화면을 보여주는 방식으로 개선되었습니다.
   useEffect(() => {
     if (!isIOS) return;
 
-    const checkAndRequestPermission = async () => {
-      // 먼저 권한 상태 확인
+    // 단순 권한 상태만 체크 (팝업 띄우지 않음)
+    const checkPermissionStatus = async () => {
       if (navigator.permissions) {
         try {
           const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-          if (result.state === 'granted') {
-            setMicPermission('granted');
-            return;
-          } else if (result.state === 'denied') {
-            setMicPermission('denied');
-            alert('❌ 마이크 권한이 거부된 상태입니다.\n\n설정 → Safari → 마이크에서 이 웹사이트를 허용해주세요.');
-            return;
-          }
+          setMicPermission(result.state as any);
+          result.onchange = () => setMicPermission(result.state as any);
         } catch (e) { }
       }
-
-      // 권한 요청 필요 - 시스템 팝업으로 안내 후 요청
-      alert('🎤 마이크 권한이 필요합니다.\n\n다음 화면에서 "허용"을 눌러주세요.');
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-        setMicPermission('granted');
-      } catch (err) {
-        console.error('Microphone permission denied:', err);
-        setMicPermission('denied');
-        alert('❌ 마이크 권한이 거부되었습니다.\n\n설정 → Safari → 마이크에서 이 웹사이트를 허용해주세요.');
-      }
     };
-
-    checkAndRequestPermission();
+    checkPermissionStatus();
   }, [isIOS]);
 
   const handleStart = () => {
@@ -261,7 +243,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
 
       <button
         onClick={handleStart}
-        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission !== 'granted')}
+        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission === 'denied')}
         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
         {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
