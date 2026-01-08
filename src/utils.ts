@@ -5,12 +5,44 @@ import { DIFFICULT_WORDS as DIFFICULT_WORDS_BIBLICAL } from "./difficult_words_b
 const DIFFICULT_WORDS = [...DIFFICULT_WORDS_MAIN, ...DIFFICULT_WORDS_BIBLICAL];
 
 /**
+ * 숫자를 한글 읽기로 변환합니다. (예: 34 -> 삼십사)
+ */
+function convertDigitsToKorean(text: string): string {
+  const units = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+  const positions = ['', '십', '백', '천', '만', '억', '조'];
+
+  return text.replace(/\d+/g, (match) => {
+    const num = parseInt(match, 10);
+    if (num === 0) return '영';
+
+    let result = '';
+    const len = match.length;
+
+    for (let i = 0; i < len; i++) {
+      const digit = parseInt(match[i], 10);
+      const pos = len - 1 - i;
+
+      if (digit > 0) {
+        if (digit === 1 && pos > 0 && pos <= 3) {
+          result += positions[pos];
+        } else {
+          result += units[digit] + positions[pos];
+        }
+      }
+    }
+    return result;
+  });
+}
+
+/**
  * Normalizes text by removing whitespace and punctuation.
+ * Also converts digits to Korean words for better matching.
  * @param text The text to normalize.
  * @returns The normalized text.
  */
 export function normalizeText(text: string): string {
-  return text.toLowerCase().replace(/[\s\.\!\?\,\(\)\[\]\{\}\:\"\']/g, '');
+  const textWithKoreanNumbers = convertDigitsToKorean(text);
+  return textWithKoreanNumbers.toLowerCase().replace(/[\s\.\!\?\,\(\)\[\]\{\}\:\"\']/g, '');
 }
 
 export function containsDifficultWord(text: string): boolean {
