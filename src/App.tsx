@@ -253,6 +253,54 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // [Surgical Fix for iOS] Session Recovery after Hardware Permission Refresh
+  useEffect(() => {
+    if (!isIOS || !currentUser || readingState !== ReadingState.IDLE) return;
+
+    const saved = sessionStorage.getItem('ios_reading_recovery_v2');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        // 5분 이내의 유효한 세션만 복구
+        if (Date.now() - data.timestamp < 300000) {
+          console.log('[iOS Recovery] Restoring reading session after refresh...', data);
+          sessionStorage.removeItem('ios_reading_recovery_v2');
+
+          setSessionTargetVerses(data.verses);
+          setCurrentVerseIndexInSession(data.index);
+          setReadingState(data.state);
+          setSessionProgress(data.progress);
+          setMatchedVersesContentForSession(data.content);
+
+          // 만약 LISTENING 상태로 가려 했다면 즉시 마이크 가동
+          if (data.state === ReadingState.LISTENING) {
+            setTimeout(() => {
+              startListening();
+            }, 800);
+          }
+        } else {
+          sessionStorage.removeItem('ios_reading_recovery_v2');
+        }
+      } catch (e) {
+        console.error('[iOS Recovery] Failed to restore session', e);
+        sessionStorage.removeItem('ios_reading_recovery_v2');
+      }
+    }
+  }, [isIOS, currentUser, readingState, startListening]);
+
+  const backupIOSSession = useCallback((targetState: ReadingState) => {
+    if (!isIOS) return;
+    const backupData = {
+      state: targetState,
+      index: currentVerseIndexInSession,
+      verses: sessionTargetVerses,
+      progress: sessionProgress,
+      content: matchedVersesContentForSession,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('ios_reading_recovery_v2', JSON.stringify(backupData));
+  }, [isIOS, currentVerseIndexInSession, sessionTargetVerses, sessionProgress, matchedVersesContentForSession]);
+
   // Effect to set default values for ChapterSelector based on user progress
   useEffect(() => {
     if (currentUser && userOverallProgress) {
@@ -607,6 +655,19 @@ const App: React.FC = () => {
   const handleSelectChaptersAndStartReading = useCallback((book: string, startCh: number, endCh: number, startVerse?: number) => {
     const verses = getVersesForSelection(book, startCh, endCh);
     if (verses.length > 0) {
+      // [iOS Fix] 백업 세션 생성
+      if (isIOS) {
+        const initialSkip = 0; // 실제 계산 전 임시
+        const backupData = {
+          state: ReadingState.READING,
+          index: initialSkip,
+          verses: verses,
+          progress: { totalVersesInSession: verses.length, sessionCompletedVersesCount: 0, sessionInitialSkipCount: 0 },
+          content: '',
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('ios_reading_recovery_v2', JSON.stringify(backupData));
+      }
       let initialSkip = 0;
 
       // 전달받은 startVerse가 있거나, selector의 기본값이 있으면 이어 읽기 적용
@@ -963,10 +1024,14 @@ const App: React.FC = () => {
               setTranscriptBuffer('');
             }}
             onStartListening={() => {
+              // [iOS Fix] 마이크 시작 전 현재 상태 백업
+              if (isIOS) {
+                backupIOSSession(ReadingState.LISTENING);
+              }
               setReadingState(ReadingState.LISTENING);
               setTimeout(() => {
                 startListening();
-              }, 0);
+              }, 100);
             }}
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
