@@ -63,6 +63,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                         <div className="mb-4 inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
                             <span className="text-amber-400 font-black tracking-widest text-sm uppercase">bibleLog.kr</span>
                         </div>
+                        {/* Patent Badge */}
+                        <div className="mb-6 flex justify-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 backdrop-blur-xl rounded-2xl border border-amber-400/30 animate-pulse-slow">
+                                <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-ping"></span>
+                                <span className="text-amber-100 font-bold text-xs md:text-sm">특허 출원 중: 실시간 음성 기반 낭독 진도 관리</span>
+                            </div>
+                        </div>
                         <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-6 leading-tight">
                             바이블로그 <br className="md:hidden" /> <span className="text-amber-400">함께해요</span>
                         </h1>
@@ -168,12 +175,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
             {/* Footer */}
             <footer className="py-12 border-t border-slate-200 text-center space-y-4">
-                <div className="flex justify-center gap-6 text-slate-400">
-                    <span className="text-xs">포도나무교회</span>
-                    <span className="text-xs">Dev: 이종림</span>
-                    <a href="mailto:luxual8@gmail.com" className="text-xs underline">문의</a>
+                <div className="flex flex-col items-center gap-1 text-slate-400">
+                    <div className="flex justify-center gap-6">
+                        <span className="text-xs">포도나무교회</span>
+                        <span className="text-xs">Dev: 이종림</span>
+                        <a href="mailto:luxual8@gmail.com" className="text-xs underline">문의</a>
+                    </div>
+                    <div className="mt-4 px-4 py-2 bg-slate-100 rounded-xl inline-block max-w-sm">
+                        <p className="text-[10px] text-slate-500 font-medium break-all">
+                            <span className="text-purple-600 font-bold">특허 출원 제 10-2026-0002574 호</span><br />
+                            실시간 음성 인식 기반의 텍스트 매칭을 이용한 낭독 진도 관리 시스템 및 그 방법
+                        </p>
+                    </div>
                 </div>
-                <p className="text-[10px] text-slate-300">Copyright © 2025 이종림 All rights reserved.</p>
+                <p className="text-[10px] text-slate-300">Copyright © 2026 이종림 All rights reserved.</p>
             </footer>
 
             {/* Global CSS for Animations */}

@@ -1113,6 +1113,13 @@ const App: React.FC = () => {
                     <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
                     <a href="mailto:luxual8@gmail.com" className="text-indigo-400 underline decoration-indigo-200 hover:text-indigo-600">문의 및 개선</a>
                   </div>
+
+                  {/* Patent Pending Info */}
+                  <div className="mt-4 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 inline-block">
+                    <p className="text-[10px] text-indigo-600 font-bold mb-1">특허 출원 제 10-2026-0002574 호</p>
+                    <p className="text-[9px] text-gray-400 font-medium">실시간 음성 인식 기반의 텍스트 매칭을 이용한 낭독 진도 관리 시스템 및 그 방법</p>
+                  </div>
+
                   <p className="opacity-70 mt-4">Copyright © 2026 <span className="font-extrabold text-gray-500">bibleLog.kr</span>. All rights reserved.</p>
                   <p className="italic text-gray-300 text-[10px] mt-2">"음성 인식 정확도를 위해 조용한 환경을 권장합니다"</p>
                 </div>
