@@ -772,14 +772,19 @@ const App: React.FC = () => {
     const hasDifficult = checkForDifficultWords(currentTargetVerseForSession);
     setHasDifficultWords(hasDifficult);
 
-    if (readingState === ReadingState.LISTENING) {
+    if (readingState === ReadingState.LISTENING && currentTargetVerseForSession) {
       setVerseStartTime(Date.now());
+
+      // 글자 수 기반 동적 대기 시간 계산: 기본 8초 + 글자당 0.3초 (최대 45초 한도)
+      const verseLength = currentTargetVerseForSession.text.length;
+      const dynamicWaitTime = Math.min(8000 + (verseLength * 300), 45000);
+
       const timeoutId = setTimeout(() => {
         setShowAmenPrompt(true);
-      }, 15000);
+      }, dynamicWaitTime);
       setVerseTimeoutId(timeoutId);
     }
-  }, [currentVerseIndexInSession, readingState]);
+  }, [currentVerseIndexInSession, readingState, currentTargetVerseForSession]);
 
   // 화면 꺼짐 방지 (Wake Lock) 트리거
   useEffect(() => {
