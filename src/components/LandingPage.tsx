@@ -183,7 +183,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     </div>
                     <div className="mt-4 px-4 py-2 bg-slate-100 rounded-xl inline-block max-w-sm">
                         <p className="text-[10px] text-slate-500 font-medium break-all">
-                            <span className="text-purple-600 font-bold">특허 출원 제 10-2026-0002574 호</span><br />
+                            <span className="text-purple-600 font-bold">특허 출원 중 (제 10-2026-0002574 호)</span><br />
                             실시간 음성 인식 기반의 텍스트 매칭을 이용한 낭독 진도 관리 시스템 및 그 방법
                         </p>
                     </div>

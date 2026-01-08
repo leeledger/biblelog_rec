@@ -1170,7 +1170,7 @@ const App: React.FC = () => {
 
                   {/* Patent Pending Info */}
                   <div className="mt-4 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 inline-block">
-                    <p className="text-[10px] text-indigo-600 font-bold mb-1">특허 출원 제 10-2026-0002574 호</p>
+                    <p className="text-[10px] text-indigo-600 font-bold mb-1">특허 출원 중 (제 10-2026-0002574 호)</p>
                     <p className="text-[9px] text-gray-400 font-medium">실시간 음성 인식 기반의 텍스트 매칭을 이용한 낭독 진도 관리 시스템 및 그 방법</p>
                   </div>
 
