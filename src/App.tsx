@@ -244,12 +244,30 @@ const App: React.FC = () => {
     }
   }, [isRetryingVerse, isListening, startListening]);
 
-  // Authentication Effect
+  // Authentication & Session Recovery Effect
   useEffect(() => {
     const user = authService.getCurrentUser();
     if (user) {
       setCurrentUser(user);
       if (user.id) loadUserGroups(user.id);
+
+      // 세션 복구 로직: 권한 허용 후 리프레시된 경우 자동 복구
+      const pendingSession = localStorage.getItem('pendingReadingSession');
+      if (pendingSession) {
+        try {
+          const { book, startCh, endCh, startVerse } = JSON.parse(pendingSession);
+          localStorage.removeItem('pendingReadingSession');
+          console.log('[App.tsx] Pending session found. Resuming...', book, startCh);
+
+          // 약간의 지연 후 세션 시작 (UI 안정화 대기)
+          setTimeout(() => {
+            handleSelectChaptersAndStartReading(book, startCh, endCh, startVerse);
+          }, 800);
+        } catch (e) {
+          console.error('Failed to parse pending session:', e);
+          localStorage.removeItem('pendingReadingSession');
+        }
+      }
     }
   }, []);
 
@@ -604,7 +622,43 @@ const App: React.FC = () => {
   // Removed automatic startListening useEffect to comply with mobile browser user gesture requirements.
   // startListening should now be called directly from user-initiated events (buttons).
 
-  const handleSelectChaptersAndStartReading = useCallback((book: string, startCh: number, endCh: number, startVerse?: number) => {
+  /**
+   * 마이크 권한을 선제적으로 확인합니다. (iOS 대응)
+   */
+  const checkMicPermission = async (): Promise<boolean> => {
+    try {
+      setReadingState(ReadingState.PREPARING);
+
+      // 마이크 권한 요청
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 권한 획득 성공 시 즉시 트랙 중지 (전력 소모 방지)
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (err) {
+      console.error('Mic permission check failed:', err);
+      // 권한 거부 시 메시지 처리
+      setAppError('마이크 권한이 필요합니다. 브라우저 설정에서 마이크 허용을 확인해주세요.');
+      setReadingState(ReadingState.IDLE);
+      return false;
+    }
+  };
+
+  const handleSelectChaptersAndStartReading = useCallback(async (book: string, startCh: number, endCh: number, startVerse?: number) => {
+    // 세션 정보 로컬 스토리지 저장 (리프레시 대비)
+    const sessionParams = { book, startCh, endCh, startVerse: startVerse || selectorState.startVerse };
+    localStorage.setItem('pendingReadingSession', JSON.stringify(sessionParams));
+
+    // iOS인 경우 마이크 권한 선제적 확인
+    if (isIOS) {
+      const hasPermission = await checkMicPermission();
+      if (!hasPermission) {
+        localStorage.removeItem('pendingReadingSession');
+        return;
+      }
+    }
+
+    // 권한 확인 완료 후 정상 진행
+    localStorage.removeItem('pendingReadingSession');
     const verses = getVersesForSelection(book, startCh, endCh);
     if (verses.length > 0) {
       let initialSkip = 0;

@@ -78,8 +78,8 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
     );
   }
 
-  // Case 2: LISTENING or SESSION_COMPLETED state
-  if ((readingState === ReadingState.LISTENING || readingState === ReadingState.SESSION_COMPLETED || readingState === ReadingState.SAVING) && sessionTargetVerses.length > 0) {
+  // Case 2: LISTENING, SESSION_COMPLETED, SAVING or PREPARING state
+  if ((readingState === ReadingState.LISTENING || readingState === ReadingState.SESSION_COMPLETED || readingState === ReadingState.SAVING || readingState === ReadingState.PREPARING) && (sessionTargetVerses.length > 0 || readingState === ReadingState.PREPARING)) {
     return (
       <>
         <ProgressBar progress={sessionProgress} />
@@ -186,6 +186,31 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
               <h2 className="text-xl font-black text-gray-800 mb-2">진도 저장 중</h2>
               <p className="text-sm text-gray-500 font-medium leading-relaxed">
                 오늘의 통독 여정을 안전하게<br />기록하고 있습니다. 잠시만 기다려주세요.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {readingState === ReadingState.PREPARING && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full mx-4 transform animate-in zoom-in-95 duration-300">
+              <div className="mb-6 flex justify-center">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-amber-100 border-t-amber-500 rounded-full animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl animate-pulse">🎤</span>
+                  </div>
+                </div>
+              </div>
+              <h2 className="text-xl font-black text-gray-800 mb-2">마이크 준비 중</h2>
+              <p className="text-sm text-gray-500 font-medium leading-relaxed mb-4">
+                아이폰에서 마이크 권장 설정을<br />확인하고 있습니다.
+              </p>
+              <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-amber-500 h-full w-2/3 animate-[loading_2s_ease-in-out_infinite]"></div>
+              </div>
+              <p className="mt-4 text-[11px] text-amber-600 font-bold bg-amber-50 py-2 px-3 rounded-xl">
+                팝업이 뜨면 '허용'을 눌러주세요
               </p>
             </div>
           </div>

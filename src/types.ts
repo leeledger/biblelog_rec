@@ -16,7 +16,8 @@ export enum ReadingState {
   IDLE = "IDLE", // Or "CHAPTER_SELECTION"
   READING = "READING",
   LISTENING = "LISTENING",
-  PROCESSING = "PROCESSING", // Not actively used but kept for potential future
+  PREPARING = "PREPARING", // 마이크 권한 확인 및 준비 중
+  PROCESSING = "PROCESSING",
   SESSION_COMPLETED = "SESSION_COMPLETED", // Current reading session's selection completed
   SAVING = "SAVING", // Progress is being saved
   ERROR = "ERROR",
