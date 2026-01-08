@@ -123,7 +123,7 @@ const App: React.FC = () => {
       if (!document.hidden && document.visibilityState === 'visible') {
         // 현재 '읽기 중'인 상태에서 돌아왔다면 마이크 리셋을 위해 새로고침 실행
         if (readingState === ReadingState.READING || readingState === ReadingState.LISTENING) {
-          console.log('Visibility/Focus regained during reading session. Reloading to reset speech engine...');
+          console.log('[App.tsx] App regained focus/visibility. Reloading to reset mic engine...');
           // 잠시 지연 후 새로고침 (데이터 저장과의 충돌 방지)
           setTimeout(() => {
             window.location.reload();
@@ -134,10 +134,13 @@ const App: React.FC = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityOrFocusChange);
     window.addEventListener('focus', handleVisibilityOrFocusChange);
+    // blur: 플로팅 전화 수신 등으로 브라우저가 포커스를 잃는 순간 감지
+    window.addEventListener('blur', handleVisibilityOrFocusChange);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocusChange);
       window.removeEventListener('focus', handleVisibilityOrFocusChange);
+      window.removeEventListener('blur', handleVisibilityOrFocusChange);
     };
   }, [readingState]);
 
