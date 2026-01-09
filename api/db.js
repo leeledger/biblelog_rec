@@ -170,7 +170,23 @@ export const initializeDatabase = async () => {
     `;
     await pool.query(createIndexes);
 
-    console.log('Database tables checked/created successfully.');
+    // Sync sequences for SERIAL columns (Fix for "ID index" issues after manual inserts)
+    const tablesWithSerial = ['users', 'groups', 'completed_chapters', 'reading_history', 'hall_of_fame'];
+    for (const table of tablesWithSerial) {
+      try {
+        await pool.query(`
+          SELECT setval(
+            pg_get_serial_sequence($1, 'id'),
+            COALESCE((SELECT MAX(id) FROM ${table}), 1),
+            EXISTS (SELECT 1 FROM ${table})
+          );
+        `, [table]);
+      } catch (err) {
+        console.warn(`Could not sync sequence for ${table}:`, err.message);
+      }
+    }
+
+    console.log('Database tables checked/created and sequences synced successfully.');
   } catch (err) {
     console.error('Error initializing database:', err);
   }
