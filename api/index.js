@@ -30,13 +30,13 @@ app.use(async (req, res, next) => {
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required' });
+        return res.status(400).json({ message: '아이디와 비밀번호를 모두 입력해주세요.' });
     }
 
     try {
         const existingUserResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
         if (existingUserResult.rows.length > 0) {
-            return res.status(409).json({ message: 'Username already exists' });
+            return res.status(409).json({ message: '이미 존재하는 아이디입니다.' });
         }
 
         const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -52,7 +52,7 @@ app.post('/api/register', async (req, res) => {
         });
     } catch (error) {
         console.error(`[POST /api/register] Error:`, error);
-        res.status(500).json({ message: 'Error registering user' });
+        res.status(500).json({ message: '사용자 등록 중 오류가 발생했습니다.' });
     }
 });
 
@@ -60,13 +60,13 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     const { username, password: providedPassword } = req.body;
     if (!username || !providedPassword) {
-        return res.status(400).json({ message: 'Username and password are required' });
+        return res.status(400).json({ message: '아이디와 비밀번호를 입력해주세요.' });
     }
 
     try {
         const userResult = await db.query('SELECT id, username, password, must_change_password FROM users WHERE username = $1', [username]);
         if (userResult.rows.length === 0) {
-            return res.status(401).json({ message: 'Invalid username or password' });
+            return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         }
 
         const user = userResult.rows[0];
@@ -76,27 +76,27 @@ app.post('/api/login', async (req, res) => {
                     id: user.id,
                     username: user.username,
                     must_change_password: true,
-                    message: 'Login successful. Please change your temporary password.'
+                    message: '로그인 성공. 임시 비밀번호를 변경해주세요.'
                 });
             } else {
-                return res.status(401).json({ message: 'Invalid username or password' });
+                return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
             }
         }
 
         const passwordMatch = await bcrypt.compare(providedPassword, user.password);
         if (!passwordMatch) {
-            return res.status(401).json({ message: 'Invalid username or password' });
+            return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         }
 
         res.status(200).json({
             id: user.id,
             username: user.username,
             must_change_password: user.must_change_password,
-            message: 'Login successful'
+            message: '로그인 성공'
         });
     } catch (error) {
         console.error(`[POST /api/login] Error:`, error);
-        res.status(500).json({ message: 'Error logging in' });
+        res.status(500).json({ message: '로그인 처리 중 오류가 발생했습니다.' });
     }
 });
 
@@ -104,7 +104,7 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/users/change-password', async (req, res) => {
     const { userId, newPassword } = req.body;
     if (!userId || !newPassword) {
-        return res.status(400).json({ message: 'User ID and new password are required.' });
+        return res.status(400).json({ message: '사용자 ID와 새 비밀번호가 필요합니다.' });
     }
 
     try {
@@ -115,16 +115,16 @@ app.post('/api/users/change-password', async (req, res) => {
         );
 
         if (updateResult.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found.' });
+            return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
         }
 
         res.status(200).json({
-            message: 'Password changed successfully.',
+            message: '비밀번호가 성공적으로 변경되었습니다.',
             user: updateResult.rows[0]
         });
     } catch (error) {
         console.error(`[POST /api/users/change-password] Error:`, error);
-        res.status(500).json({ message: 'Error changing password.' });
+        res.status(500).json({ message: '비밀번호 변경 중 오류가 발생했습니다.' });
     }
 });
 
@@ -173,7 +173,7 @@ app.get('/api/progress/:username', async (req, res) => {
         });
     } catch (error) {
         console.error(`[GET /api/progress/:username] Error:`, error);
-        res.status(500).json({ message: 'Error fetching progress' });
+        res.status(500).json({ message: '진도 정보를 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -277,11 +277,11 @@ app.post('/api/progress/:username', async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(200).json({ message: 'Progress saved successfully.' });
+        res.status(200).json({ message: '진도가 성공적으로 저장되었습니다.' });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error(`[POST /api/progress/:username] Error:`, error);
-        res.status(500).json({ message: 'Error saving progress' });
+        res.status(500).json({ message: '진도 저장 중 오류가 발생했습니다.' });
     } finally {
         client.release();
     }
@@ -361,7 +361,7 @@ app.get('/api/users/all', async (req, res) => {
         res.json(rows);
     } catch (error) {
         console.error('[GET /api/users/all] Error:', error);
-        res.status(500).json({ message: 'Error fetching users summary' });
+        res.status(500).json({ message: '전체 사용자 요약을 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -376,7 +376,7 @@ app.get('/api/hall-of-fame', async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching hall of fame data:', err);
-        res.status(500).json({ message: 'Error fetching hall of fame' });
+        res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -416,7 +416,7 @@ app.post('/api/groups', async (req, res) => {
         res.status(201).json(group);
     } catch (error) {
         console.error('[POST /api/groups] Error:', error);
-        res.status(500).json({ message: 'Error creating group' });
+        res.status(500).json({ message: '그룹 생성 중 오류가 발생했습니다.' });
     }
 });
 
@@ -428,21 +428,21 @@ app.post('/api/groups/join', async (req, res) => {
     try {
         const groupResult = await db.query('SELECT id, name FROM groups WHERE invite_code = $1', [inviteCode.toUpperCase()]);
         if (groupResult.rows.length === 0) {
-            return res.status(404).json({ message: 'Invalid invite code' });
+            return res.status(404).json({ message: '유효하지 않은 초대 코드입니다.' });
         }
         const group = groupResult.rows[0];
 
         // Check if already a member
         const memberCheck = await db.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [group.id, userId]);
         if (memberCheck.rows.length > 0) {
-            return res.status(409).json({ message: 'Already a member of this group' });
+            return res.status(409).json({ message: '이미 이 그룹의 멤버입니다.' });
         }
 
         await db.query('INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)', [group.id, userId]);
-        res.status(200).json({ message: `Successfully joined ${group.name}`, group });
+        res.status(200).json({ message: `${group.name} 그룹에 성공적으로 가입되었습니다.`, group });
     } catch (error) {
         console.error('[POST /api/groups/join] Error:', error);
-        res.status(500).json({ message: 'Error joining group' });
+        res.status(500).json({ message: '그룹 가입 중 오류가 발생했습니다.' });
     }
 });
 
@@ -461,7 +461,7 @@ app.get('/api/users/:userId/groups', async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('[GET /api/users/:userId/groups] Error:', error);
-        res.status(500).json({ message: 'Error fetching user groups' });
+        res.status(500).json({ message: '사용자 그룹 정보를 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -479,7 +479,7 @@ app.get('/api/groups/:groupId/members', async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('[GET /api/groups/:groupId/members] Error:', error);
-        res.status(500).json({ message: 'Error fetching group members' });
+        res.status(500).json({ message: '그룹 멤버 정보를 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
@@ -503,11 +503,11 @@ app.post('/api/groups/:groupId/leave', async (req, res) => {
         await client.query('DELETE FROM group_members WHERE user_id = $1 AND group_id = $2', [userId, groupId]);
 
         await client.query('COMMIT');
-        res.json({ message: 'Successfully left the group and all your records for this group have been deleted.' });
+        res.json({ message: '그룹탈퇴가 완료되었으며, 해당 그룹의 모든 활동 기록이 삭제되었습니다.' });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('[POST /api/groups/:groupId/leave] Error:', error);
-        res.status(500).json({ message: 'Error leaving group' });
+        res.status(500).json({ message: '그룹 탈퇴 중 오류가 발생했습니다.' });
     } finally {
         client.release();
     }
@@ -521,18 +521,18 @@ app.delete('/api/groups/:groupId', async (req, res) => {
         // Check ownership
         const groupRes = await db.query('SELECT owner_id FROM groups WHERE id = $1', [groupId]);
         if (groupRes.rows.length === 0) {
-            return res.status(404).json({ message: 'Group not found' });
+            return res.status(404).json({ message: '그룹을 찾을 수 없습니다.' });
         }
         if (groupRes.rows[0].owner_id != userId) {
-            return res.status(403).json({ message: 'Only the group owner can delete the group' });
+            return res.status(403).json({ message: '그룹장만 그룹을 삭제할 수 있습니다.' });
         }
 
         // Delete group (CASCADE handles members, records, etc.)
         await db.query('DELETE FROM groups WHERE id = $1', [groupId]);
-        res.json({ message: 'Group deleted successfully' });
+        res.json({ message: '그룹이 삭제되었습니다.' });
     } catch (error) {
         console.error('[DELETE /api/groups/:groupId] Error:', error);
-        res.status(500).json({ message: 'Error deleting group' });
+        res.status(500).json({ message: '그룹 삭제 중 오류가 발생했습니다.' });
     }
 });
 
@@ -544,24 +544,24 @@ app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
         // Check current ownership
         const groupRes = await db.query('SELECT owner_id FROM groups WHERE id = $1', [groupId]);
         if (groupRes.rows.length === 0) {
-            return res.status(404).json({ message: 'Group not found' });
+            return res.status(404).json({ message: '그룹을 찾을 수 없습니다.' });
         }
         if (groupRes.rows[0].owner_id != currentOwnerId) {
-            return res.status(403).json({ message: 'Only the current owner can transfer ownership' });
+            return res.status(403).json({ message: '현재 그룹장만 권한을 위임할 수 있습니다.' });
         }
 
         // Check if new owner is a member
         const memberRes = await db.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, newOwnerId]);
         if (memberRes.rows.length === 0) {
-            return res.status(400).json({ message: 'New owner must be a member of the group' });
+            return res.status(400).json({ message: '새 그룹장은 반드시 그룹의 멤버여야 합니다.' });
         }
 
         // Update ownership
         await db.query('UPDATE groups SET owner_id = $1 WHERE id = $2', [newOwnerId, groupId]);
-        res.json({ message: 'Ownership transferred successfully' });
+        res.json({ message: '그룹장 권한이 위임되었습니다.' });
     } catch (error) {
         console.error('[POST /api/groups/:groupId/transfer-ownership] Error:', error);
-        res.status(500).json({ message: 'Error transferring ownership' });
+        res.status(500).json({ message: '그룹장 권한 위임 중 오류가 발생했습니다.' });
     }
 });
 

@@ -23,9 +23,8 @@ export const loginUser = async (username: string, password_provided: string): Pr
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Login failed with status: ' + response.status }));
+      const errorData = await response.json().catch(() => ({ message: '로그인 실패 (상태: ' + response.status + ')' }));
       console.error('Login failed:', errorData.message);
-      // alert(`Login failed: ${errorData.message}`); // Consider a more user-friendly error display
       return null;
     }
 
@@ -66,7 +65,7 @@ export const registerUser = async (username: string, password_provided: string):
 
     if (!response.ok) {
       console.error('Registration failed:', responseData.message);
-      return { success: false, message: responseData.message || `Registration failed with status: ${response.status}` };
+      return { success: false, message: responseData.message || `회원가입 실패 (상태: ${response.status})` };
     }
 
     // Registration successful, backend returns user info and a message
@@ -77,7 +76,7 @@ export const registerUser = async (username: string, password_provided: string):
 
   } catch (error) {
     console.error('Error during registration API call:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during registration.';
+    const errorMessage = error instanceof Error ? error.message : '회원가입 중 예기치 않은 오류가 발생했습니다.';
     return { success: false, message: errorMessage };
   }
 };
@@ -97,7 +96,7 @@ export const changePassword = async (userId: number, newPassword_provided: strin
 
     if (!response.ok) {
       console.error('Password change failed:', responseData.message);
-      return { success: false, message: responseData.message || 'Password change failed with status: ' + response.status };
+      return { success: false, message: responseData.message || '비밀번호 변경 실패 (상태: ' + response.status + ')' };
     }
 
     console.log('Password change successful:', responseData.message);
@@ -117,7 +116,7 @@ export const changePassword = async (userId: number, newPassword_provided: strin
 
   } catch (error: any) {
     console.error('Error during password change:', error);
-    return { success: false, message: 'Error during password change: ' + (error.message || 'Unknown error') };
+    return { success: false, message: '비밀번호 변경 중 오류 발생: ' + (error.message || '알 수 없는 오류') };
   }
 };
 
