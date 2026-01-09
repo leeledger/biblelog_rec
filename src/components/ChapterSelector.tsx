@@ -22,9 +22,11 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   completedChapters = [],
   isLoading = false,
 }) => {
-  // 기기 환경 감지
+  // 기기 및 브라우저 환경 감지
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
   const isAndroid = useMemo(() => /Android/i.test(navigator.userAgent), []);
+  const isSamsungBrowser = useMemo(() => /SamsungBrowser/i.test(navigator.userAgent), []);
+  const isChromeBrowser = useMemo(() => /Chrome/i.test(navigator.userAgent) && !/SamsungBrowser/i.test(navigator.userAgent), []);
 
   // 마이크 권한 상태: 'unknown' | 'granted' | 'denied' | 'prompt'
   const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
@@ -167,6 +169,34 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
     // ... iOS 관련 기존 logic (필요시 micPermission만 업데이트)
   }, [isIOS]);
 
+  const handleMicGuide = () => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    let guideMessage = "";
+
+    if (isSamsungBrowser) {
+      guideMessage = "🎤 [삼성 인터넷] 마이크 켜는 법\n\n" +
+        "1. 화면 맨 위 주소창 옆의 [자물쇠 🔒] 모양을 누르세요.\n" +
+        "2. [사이트 권한] 메뉴를 누르세요.\n" +
+        "3. [마이크] 오른쪽의 스위치를 눌러 '허용한 상태'로 켜주세요.";
+    } else if (isChromeBrowser) {
+      guideMessage = "🎤 [크롬 브라우저] 마이크 켜는 법\n\n" +
+        "1. 화면 맨 위 주소창 옆의 [설정버튼 o- o-] 아이콘을 누르세요.\n" +
+        "2. [권한] 메뉴를 누르세요.\n" +
+        "3. [마이크]를 눌러 '허용'으로 바꾸세요.";
+    } else {
+      guideMessage = "🎤 마이크 권한 설정 방법\n\n" +
+        "휴대폰의 [설정] -> [애플리케이션] -> [바이블로그] -> [권한] -> [마이크]를 허용해 주세요.";
+    }
+
+    if (isPWA) {
+      guideMessage = "📱 [알림] 현재 '앱 설치 모드'라 주소창이 보이지 않습니다.\n\n" +
+        "방법 1: 바탕화면의 앱 아이콘을 1초간 '꾹' 눌러서 나타나는 [ⓘ 정보] -> [권한] -> [마이크]를 켜주세요.\n\n" +
+        "방법 2: 일반 인터넷 창(크롬/삼성 인터넷)을 직접 열어 접속하시면 주소창 옆 설정을 사용하실 수 있습니다.";
+    }
+
+    alert(guideMessage);
+  };
+
   const handleStart = () => {
     setError('');
     onStartReading(selectedBookName, startChapter, endChapter, defaultStartVerse);
@@ -250,13 +280,16 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
         </div>
       )}
 
-      {/* 안드로이드 전용: 마이크 권한이 거부된 경우 버튼 교체 */}
+      {/* 안드로이드 전용: 마이크 권한이 거부된 경우 버튼 교체 및 맞춤 가이드 제공 */}
       {isAndroid && micPermission === 'denied' ? (
         <button
-          onClick={() => alert('🎤 마이크 권한이 꺼져 있습니다.\n\n바탕화면의 앱 아이콘을 꾹 누르거나 휴대폰 설정에서 마이크 권한을 직접 허용해 주셔야 합니다.')}
-          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+          onClick={handleMicGuide}
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-4 px-4 rounded-xl shadow-lg transition-all flex flex-col items-center justify-center gap-1 leading-tight"
         >
-          <span>⚠️</span> 마이크 권한을 허용해 주세요
+          <div className="flex items-center gap-2 text-lg">
+            <span>⚠️</span> 마이크 권한이 꺼져 있습니다
+          </div>
+          <div className="text-sm font-medium opacity-90">여기를 눌러 해결 방법을 확인하세요</div>
         </button>
       ) : (
         <button
