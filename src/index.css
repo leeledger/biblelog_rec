@@ -45,3 +45,65 @@
         }
     }
 }
+
+/* 도레 판화 웅장한 효과 */
+.dore-frame {
+    position: relative;
+    border: 1px solid rgba(139, 92, 24, 0.3);
+    padding: 8px;
+    background: #fff;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.dore-frame::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    border: 2px solid #d4af37;
+    /* 금색 테두리 */
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.dore-image-container {
+    overflow: hidden;
+    position: relative;
+    background: #000;
+    border-radius: 2px;
+}
+
+.dore-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: contrast(1.1) brightness(0.9) grayscale(0.2);
+    transition: transform 15s ease-out;
+}
+
+.dore-frame:hover .dore-img {
+    transform: scale(1.1);
+    /* 아주 천천히 줌인 */
+}
+
+.dore-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 3rem 1rem 1.2rem;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+    color: white;
+    text-align: center;
+    z-index: 20;
+}
+
+.historical-text {
+    font-family: 'Noto Serif KR', serif;
+    letter-spacing: 0.1em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}

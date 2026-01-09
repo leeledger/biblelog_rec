@@ -4,6 +4,7 @@ import RecognitionDisplay from './RecognitionDisplay'; // While imported, we use
 // We will inline the UI here as well to match the original "Look and Feel" exactly.
 import ProgressBar from './ProgressBar';
 import { BibleVerse, SessionReadingProgress, ReadingState } from '../types';
+import doreMapping from '../data/dore_mapping.json';
 
 interface ActiveReadingSessionProps {
   readingState: ReadingState;
@@ -45,12 +46,38 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   isStalled, // 추가
   onSessionCompleteConfirm
 }) => {
+  // 현재 세션의 첫 번째 장 정보 추출
+  const startVerse = sessionTargetVerses[0];
+  const matchedDore = startVerse
+    ? doreMapping.find(m => m.book === startVerse.book && m.chapter === startVerse.chapter)
+    : null;
 
   // Case 1: READING state (Preview before listening)
   if (readingState === ReadingState.READING && sessionTargetVerses.length > 0) {
     return (
       <>
         <div className="my-6">
+          {/* 도레 판화 전시 (매칭되는 경우에만) */}
+          {matchedDore && (
+            <div className="mb-8 animate-fade-in">
+              <div className="dore-frame">
+                <div className="dore-image-container">
+                  <img
+                    src={`/img/dore/images/${matchedDore.filename}`}
+                    alt={matchedDore.title}
+                    className="dore-img"
+                  />
+                  <div className="dore-overlay">
+                    <p className="historical-text text-amber-200 text-xs mb-1 uppercase tracking-widest opacity-80">Gustave Doré Masterpiece</p>
+                    <h3 className="historical-text text-xl font-bold">{matchedDore.title}</h3>
+                    <p className="text-gray-300 text-xs mt-1">{matchedDore.book} {matchedDore.chapter}장</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 text-center italic">※ 이 이미지는 고전 판화가 구스타프 도레의 성경 일러스트입니다.</p>
+            </div>
+          )}
+
           <h2 className="text-xl font-bold mb-2">선택한 범위의 성경 본문</h2>
           <div className="bg-gray-50 border rounded-md p-4 max-h-96 overflow-y-auto">
             {sessionTargetVerses.map((v) => (
