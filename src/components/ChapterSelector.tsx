@@ -190,9 +190,11 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
 
     if (isPWA) {
       const browserName = isSamsungBrowser ? "삼성 인터넷" : isChromeBrowser ? "크롬" : "인터넷";
+      const method1Menu = isChromeBrowser ? "[ⓘ 정보] -> [사이트 설정] -> [마이크]" : "[ⓘ 정보] -> [권한] -> [마이크]";
+
       guideMessage = `📱 [알림] 현재 '앱'으로 실행 중이라 주소창이 보이지 않습니다.\n\n` +
-        `방법 1 (가장 쉬움):\n바탕화면의 앱 아이콘을 1초간 '꾹' 눌러서 나타나는 [ⓘ 정보] -> [권한] -> [마이크]를 켜주세요.\n\n` +
-        `방법 2 (${browserName} 창에서 풀기):\n일반 ${browserName} 창을 열어 접속하신 후, 아래 방법대로 마이크를 켜주시면 앱에서도 똑같이 풀립니다.\n\n` +
+        `방법 1 (가장 추천):\n바탕화면의 앱 아이콘을 1초간 '꾹' 눌러서 나타나는 ${method1Menu}를 '허용'으로 켜주세요.\n\n` +
+        `방법 2 (${browserName} 창에서 풀기):\n일반 ${browserName} 창을 열어 접속하신 후, 아래의 방법대로 마이크를 켜주시면 앱에서도 똑같이 풀립니다.\n\n` +
         `--------------------\n` +
         guideMessage;
     }
