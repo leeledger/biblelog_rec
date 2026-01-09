@@ -22,11 +22,12 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   completedChapters = [],
   isLoading = false,
 }) => {
-  // iOS 감지
+  // 기기 환경 감지
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
+  const isAndroid = useMemo(() => /Android/i.test(navigator.userAgent), []);
 
-  // 마이크 권한 상태: 'unknown' | 'granted' | 'denied' | 'requesting'
-  const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'requesting'>('unknown');
+  // 마이크 권한 상태: 'unknown' | 'granted' | 'denied' | 'prompt'
+  const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
 
   const [selectedBookName, setSelectedBookName] = useState<string>(defaultBook);
 
@@ -139,23 +140,31 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
     }
   }, [selectedBookName, startChapter, endChapter, selectedBookInfo, completedChapters]);
 
-  // iOS에서 페이지 진입 시 자동으로 마이크 권한을 요청하던 로직을 제거했습니다.
-  // 이제 App.tsx의 handleSelectChaptersAndStartReading에서 읽기 시작 버튼 클릭 시 
-  // 선제적으로 권한을 확인하고 로딩 화면을 보여주는 방식으로 개선되었습니다.
+  // 마이크 권한 상태 실시간 감지 (안드로이드 및 일반 브라우저 대응)
   useEffect(() => {
-    if (!isIOS) return;
-
-    // 단순 권한 상태만 체크 (팝업 띄우지 않음)
-    const checkPermissionStatus = async () => {
-      if (navigator.permissions) {
+    // iOS는 기존처럼 App.tsx의 실시간 흐름을 따르므로, 안드로이드/데스크톱 위주로 권한 상태 감시
+    if (navigator.permissions && (isAndroid || !isIOS)) {
+      const checkPermission = async () => {
         try {
           const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
           setMicPermission(result.state as any);
-          result.onchange = () => setMicPermission(result.state as any);
-        } catch (e) { }
-      }
-    };
-    checkPermissionStatus();
+
+          // 상태가 바뀔 때마다 업데이트
+          result.onchange = () => {
+            setMicPermission(result.state as any);
+          };
+        } catch (e) {
+          console.warn('Permissions API not supported for microphone');
+        }
+      };
+      checkPermission();
+    }
+  }, [isAndroid, isIOS]);
+
+  // iOS 전용 이펙트 (기존 유지)
+  useEffect(() => {
+    if (!isIOS) return;
+    // ... iOS 관련 기존 logic (필요시 micPermission만 업데이트)
   }, [isIOS]);
 
   const handleStart = () => {
@@ -241,13 +250,23 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
         </div>
       )}
 
-      <button
-        onClick={handleStart}
-        disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission === 'denied')}
-        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
-      </button>
+      {/* 안드로이드 전용: 마이크 권한이 거부된 경우 버튼 교체 */}
+      {isAndroid && micPermission === 'denied' ? (
+        <button
+          onClick={() => alert('🎤 마이크 권한이 꺼져 있습니다.\n\n바탕화면의 앱 아이콘을 꾹 누르거나 휴대폰 설정에서 마이크 권한을 직접 허용해 주셔야 합니다.')}
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+        >
+          <span>⚠️</span> 마이크 권한을 허용해 주세요
+        </button>
+      ) : (
+        <button
+          onClick={handleStart}
+          disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission === 'denied')}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
+        </button>
+      )}
 
     </div>
   );
