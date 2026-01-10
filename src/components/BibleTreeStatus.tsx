@@ -121,6 +121,18 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
 
     const completedChaptersSet = useMemo(() => new Set(userProgress?.completedChapters || []), [userProgress]);
 
+    const selectedBookProgress = useMemo(() => {
+        if (!selectedBookDetail) return 0;
+        const bookName = selectedBookDetail.name;
+        let count = 0;
+        for (let i = 1; i <= selectedBookDetail.chapterCount; i++) {
+            if (completedChaptersSet.has(`${bookName}:${i}`)) {
+                count++;
+            }
+        }
+        return selectedBookDetail.chapterCount > 0 ? (count / selectedBookDetail.chapterCount) * 100 : 0;
+    }, [selectedBookDetail, completedChaptersSet]);
+
     const treeNodes = useMemo(() => {
         return BIBLE_TREE_MAP.map(node => {
             const bookInfo = AVAILABLE_BOOKS.find(b => b.name === node.name);
@@ -281,7 +293,10 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                 {selectedBookDetail.name.substring(0, 2)}
                             </div>
                             <div>
-                                <h4 className="text-2xl font-black text-stone-800 mb-1">{selectedBookDetail.name}</h4>
+                                <h4 className="text-2xl font-black text-stone-800 mb-1">
+                                    {selectedBookDetail.name}
+                                    <span className="ml-3 text-orange-500">{Math.floor(selectedBookProgress)}%</span>
+                                </h4>
                                 <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">Chapter Journey</p>
                             </div>
                         </div>
@@ -330,7 +345,8 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
         </div>
     );
 };
