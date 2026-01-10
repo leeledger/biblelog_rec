@@ -144,6 +144,8 @@ const App: React.FC = () => {
     };
   }, [readingState]);
 
+
+
   const [sessionCertificationMessage, setSessionCertificationMessage] = useState<string>('');
   const [appError, setAppError] = useState<string | null>(null);
   const [showPasswordChangePrompt, setShowPasswordChangePrompt] = useState(false);
@@ -177,6 +179,48 @@ const App: React.FC = () => {
     markVerseTransition,
     isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
+
+  // 세션 종료(뒤로가기 포함) 통합 처리 함수
+  const handleExitSession = useCallback(() => {
+    stopListening();
+    setReadingState(ReadingState.IDLE);
+    setSessionTargetVerses([]);
+    setCurrentVerseIndexInSession(0);
+    setSyncedVerseIndex(0);
+    setMatchedVersesContentForSession('');
+    setSessionProgress(initialSessionProgress);
+    setSessionCertificationMessage('');
+    setTranscriptBuffer('');
+    // 세션 복구 정보 삭제
+    localStorage.removeItem('pendingReadingSession');
+  }, [stopListening]);
+
+  // 안드로이드 뒤로가기 버튼 인터셉트 로직
+  useEffect(() => {
+    // 앱 진입 시 현재 히스토리를 대시보드로 간주하고 상태 하나 추가
+    if (!window.history.state || window.history.state.type !== 'biblelog-state') {
+      window.history.replaceState({ type: 'biblelog-state', view: 'dashboard' }, '');
+      window.history.pushState({ type: 'biblelog-state', view: 'sub' }, '');
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (readingState !== ReadingState.IDLE || showHallOfFame || currentView !== 'IDLE_SETUP') {
+        window.history.pushState({ type: 'biblelog-state', view: 'sub' }, '');
+        if (readingState !== ReadingState.IDLE) {
+          handleExitSession();
+        } else if (showHallOfFame) {
+          setShowHallOfFame(false);
+        } else if (currentView !== 'IDLE_SETUP') {
+          setCurrentView('IDLE_SETUP');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [readingState, showHallOfFame, currentView, handleExitSession]);
+
+
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock(); // 추가
 
@@ -1009,16 +1053,7 @@ const App: React.FC = () => {
             matchedCharCount={syncedVerseIndex === currentVerseIndexInSession ? matchedCharCount : (sessionTargetVerses[syncedVerseIndex]?.text.length || 0)}
             onStopReading={() => handleStopReadingAndSave(undefined, false)}
             onRetryVerse={handleRetryVerse}
-            onExitSession={() => {
-              setReadingState(ReadingState.IDLE);
-              setSessionTargetVerses([]);
-              setCurrentVerseIndexInSession(0);
-              setSyncedVerseIndex(0);
-              setMatchedVersesContentForSession('');
-              setSessionProgress(initialSessionProgress);
-              setSessionCertificationMessage('');
-              setTranscriptBuffer('');
-            }}
+            onExitSession={handleExitSession}
             onStartListening={() => {
               setReadingState(ReadingState.LISTENING);
               setTimeout(() => {

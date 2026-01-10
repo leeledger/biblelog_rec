@@ -35,7 +35,7 @@ export const loginUser = async (username: string, password_provided: string): Pr
       must_change_password: responseData.must_change_password,
     };
 
-    sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(loggedInUser));
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(loggedInUser));
     console.log('Login successful, user data:', loggedInUser);
     return loggedInUser;
 
@@ -47,7 +47,7 @@ export const loginUser = async (username: string, password_provided: string): Pr
 };
 
 export const logoutUser = (): void => {
-  sessionStorage.removeItem(USER_SESSION_KEY);
+  localStorage.removeItem(USER_SESSION_KEY);
 };
 
 export const registerUser = async (username: string, password_provided: string): Promise<{ success: boolean; message: string; user?: User }> => {
@@ -109,7 +109,7 @@ export const changePassword = async (userId: number, newPassword_provided: strin
     // Update sessionStorage if the user object is returned and matches current user
     const currentUser = getCurrentUser();
     if (currentUser && currentUser.id === updatedUser.id) {
-      sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(updatedUser));
+      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(updatedUser));
     }
 
     return { success: true, message: responseData.message, user: updatedUser };
@@ -121,12 +121,12 @@ export const changePassword = async (userId: number, newPassword_provided: strin
 };
 
 export const getCurrentUser = (): User | null => {
-  const userJson = sessionStorage.getItem(USER_SESSION_KEY);
+  const userJson = localStorage.getItem(USER_SESSION_KEY);
   if (userJson) {
     try {
       return JSON.parse(userJson) as User;
     } catch (e) {
-      console.error("Failed to parse user from session storage", e);
+      console.error("Failed to parse user from local storage", e);
       return null;
     }
   }
