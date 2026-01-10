@@ -1,6 +1,7 @@
 import React from 'react';
 import ChapterSelector from './ChapterSelector';
 import BookCompletionStatus from './BookCompletionStatus';
+import BibleTreeStatus from './BibleTreeStatus';
 import Leaderboard from './Leaderboard';
 import GroupManagement from './GroupManagement';
 import { User, UserProgress, Group } from '../types';
@@ -17,8 +18,6 @@ interface DashboardProps {
   startChapterForSelector: number;
   endChapterForSelector: number;
   startVerseForSelector: number;
-  // Handler for chapter selection update might be needed if ChapterSelector controls are lifted, 
-  // but ChapterSelector manages its own internal state mostly, except for defaults.
 
   onStartReading: (book: string, startCh: number, endCh: number, startVerse?: number) => void;
   onShowHallOfFame: () => void;
@@ -182,17 +181,16 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="my-8 flex flex-col gap-4 items-center w-full mx-auto">
           <button
             onClick={() => setShowBookCompletionStatus(!showBookCompletionStatus)}
-            className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-blue-500 to-sky-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-emerald-500 to-teal-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            <span>�</span>
-            {showBookCompletionStatus ? '현황 숨기기' : '권별 완독 현황'}
+            <span>🌳</span>
+            {showBookCompletionStatus ? '현황 숨기기' : '생명의 말씀 나무'}
           </button>
 
           {showBookCompletionStatus && (
             <div className="w-full animate-in slide-in-from-top duration-300">
-              <BookCompletionStatus
+              <BibleTreeStatus
                 userProgress={userOverallProgress}
-                availableBooks={AVAILABLE_BOOKS}
               />
             </div>
           )}
