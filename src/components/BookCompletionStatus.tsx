@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProgress, BookChapterInfo } from '../types'; // Import BookChapterInfo
 import { AVAILABLE_BOOKS } from '../constants';
 
@@ -9,6 +9,22 @@ interface BookCompletionStatusProps {
 
 const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgress, availableBooks }) => {
   const [selectedBook, setSelectedBook] = useState<BookChapterInfo | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 책을 선택하거나 해제(닫기)할 때 스크롤 포커스 조정
+  useEffect(() => {
+    if (selectedBook && containerRef.current) {
+      // 장별 현황이 펼쳐질 때 부드럽게 스크롤
+      const offset = 80; // 상단 여백 (헤더 등 고려)
+      const elementPosition = containerRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  }, [selectedBook]);
 
   if (!userProgress || !userProgress.completedChapters) {
     return <p className="text-sm text-gray-600">완독 현황을 불러올 수 없습니다.</p>;
@@ -55,7 +71,7 @@ const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgres
   };
 
   return (
-    <div className="my-4">
+    <div className="my-4" ref={containerRef}>
       {selectedBook ? (
         // 선택된 책의 장별 읽기 현황 표시
         renderChapterList(selectedBook)
