@@ -44,6 +44,44 @@
             transform: translateX(100%);
         }
     }
+
+    @keyframes sparkle {
+
+        0%,
+        100% {
+            opacity: 0.6;
+            transform: scale(1);
+            filter: brightness(1);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+            filter: brightness(1.5);
+        }
+    }
+
+    @keyframes vibrant-pulse {
+        0% {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        50% {
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.8), 0 0 40px currentColor;
+        }
+
+        100% {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    .animate-sparkle {
+        animation: sparkle 2s infinite ease-in-out;
+    }
+
+    .animate-vibrant-pulse {
+        animation: vibrant-pulse 3s infinite ease-in-out;
+    }
 }
 
 /* 도레 판화 웅장한 효과 */
