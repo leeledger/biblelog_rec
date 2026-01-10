@@ -310,40 +310,61 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-[400px] overflow-y-auto p-2 no-scrollbar">
-                        {Array.from({ length: selectedBookDetail.chapterCount }, (_, i) => i + 1).map(chapter => {
-                            const isDone = completedChaptersSet.has(`${selectedBookDetail.name}:${chapter}`);
-                            const color = BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color || '#10B981';
+                    {selectedBookProgress === 100 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-[2.5rem] border-2 border-dashed border-orange-200 animate-in zoom-in duration-500">
+                            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-2xl mb-6 relative">
+                                <span className="text-5xl animate-bounce">🏆</span>
+                                <div className="absolute inset-0 rounded-full border-4 border-orange-400 animate-ping opacity-20" />
+                            </div>
+                            <h5 className="text-2xl font-black text-stone-800 mb-2">모든 말씀을 읽으셨습니다!</h5>
+                            <p className="text-stone-500 font-bold text-center leading-relaxed">
+                                {selectedBookDetail.name}의 모든 장을 완독하며<br />
+                                풍성한 생명의 열매를 맺으셨습니다.
+                            </p>
+                            <div className="mt-8 flex gap-2">
+                                {['✨', '👏', '🙏', '✨'].map((emoji, idx) => (
+                                    <span key={idx} className="text-xl animate-pulse" style={{ animationDelay: `${idx * 0.3}s` }}>{emoji}</span>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-[400px] overflow-y-auto p-2 no-scrollbar">
+                                {Array.from({ length: selectedBookDetail.chapterCount }, (_, i) => i + 1).map(chapter => {
+                                    const isDone = completedChaptersSet.has(`${selectedBookDetail.name}:${chapter}`);
+                                    const color = BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color || '#10B981';
 
-                            return (
-                                <div
-                                    key={chapter}
-                                    className={`
-                    aspect-square rounded-2xl flex items-center justify-center text-sm font-black transition-all cursor-default border-2
-                    ${isDone
-                                            ? 'shadow-lg text-white transform hover:scale-105 border-white'
-                                            : 'bg-stone-50 text-stone-300 border-stone-100'}
-                  `}
-                                    style={isDone ? {
-                                        background: `radial-gradient(circle at top left, ${color}, ${color}dd)`,
-                                    } : {}}
-                                >
-                                    {chapter}
+                                    return (
+                                        <div
+                                            key={chapter}
+                                            className={`
+                            aspect-square rounded-2xl flex items-center justify-center text-sm font-black transition-all cursor-default border-2
+                            ${isDone
+                                                    ? 'shadow-lg text-white transform hover:scale-105 border-white'
+                                                    : 'bg-stone-50 text-stone-300 border-stone-100'}
+                          `}
+                                            style={isDone ? {
+                                                background: `radial-gradient(circle at top left, ${color}, ${color}dd)`,
+                                            } : {}}
+                                        >
+                                            {chapter}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-10 pt-8 border-t-2 border-stone-50 flex justify-center gap-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-lg bg-stone-50 border-2 border-stone-100"></div>
+                                    <span className="text-xs text-stone-500 font-black uppercase tracking-widest">미완독</span>
                                 </div>
-                            );
-                        })}
-                    </div>
-
-                    <div className="mt-10 pt-8 border-t-2 border-stone-50 flex justify-center gap-10">
-                        <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-lg bg-stone-50 border-2 border-stone-100"></div>
-                            <span className="text-xs text-stone-500 font-black uppercase tracking-widest">미완독</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-lg shadow-lg border-2 border-white" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
-                            <span className="text-xs text-stone-900 font-extrabold uppercase tracking-widest">완독 완료</span>
-                        </div>
-                    </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-lg shadow-lg border-2 border-white" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
+                                    <span className="text-xs text-stone-900 font-extrabold uppercase tracking-widest">완독 완료</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )
             }
