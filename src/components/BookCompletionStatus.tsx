@@ -9,21 +9,21 @@ interface BookCompletionStatusProps {
 
 const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgress, availableBooks }) => {
   const [selectedBook, setSelectedBook] = useState<BookChapterInfo | null>(null);
-  
+
   if (!userProgress || !userProgress.completedChapters) {
     return <p className="text-sm text-gray-600">완독 현황을 불러올 수 없습니다.</p>;
   }
 
   const { completedChapters } = userProgress;
   const completedChaptersSet = new Set(completedChapters);
-  
+
   // 선택된 책의 장별 읽기 현황을 보여주는 함수
   const renderChapterList = (book: BookChapterInfo) => {
     return (
       <div className="mt-4 p-4 bg-white border border-green-200 rounded-lg shadow">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-lg font-semibold text-green-700">{book.name} 장별 읽기 현황</h4>
-          <button 
+          <button
             onClick={() => setSelectedBook(null)}
             className="text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
           >
@@ -34,7 +34,7 @@ const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgres
           {Array.from({ length: book.chapterCount }, (_, i) => i + 1).map(chapter => {
             const isCompleted = completedChaptersSet.has(`${book.name}:${chapter}`);
             return (
-              <div 
+              <div
                 key={chapter}
                 className={`p-2 text-center rounded-md ${isCompleted ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}
               >
@@ -63,7 +63,7 @@ const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgres
         // 권별 완독 현황 표시
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-green-700 mb-3">권별 완독 현황</h3>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
             {availableBooks.map((book: BookChapterInfo) => {
               let completedInBook = 0;
               for (let i = 1; i <= book.chapterCount; i++) {
@@ -74,14 +74,14 @@ const BookCompletionStatus: React.FC<BookCompletionStatusProps> = ({ userProgres
               const progressPercentage = book.chapterCount > 0 ? (completedInBook / book.chapterCount) * 100 : 0;
 
               return (
-                <div 
-                  key={book.name} 
-                  className="p-3 bg-white border border-green-100 rounded-md shadow-sm cursor-pointer hover:shadow-md hover:border-green-300 transition-all duration-200"
+                <div
+                  key={book.name}
+                  className="p-2 sm:p-3 bg-white border border-green-100 rounded-md shadow-sm cursor-pointer hover:shadow-md hover:border-green-300 transition-all duration-200"
                   onClick={() => setSelectedBook(book)}
                 >
-                  <h4 className="text-md font-semibold text-green-800">{book.name}</h4>
+                  <h4 className="text-sm sm:text-md font-semibold text-green-800 whitespace-nowrap break-keep truncate">{book.name}</h4>
                   <div className="w-full bg-gray-200 rounded-full h-3 my-1">
-                    <div 
+                    <div
                       className="bg-green-500 h-3 rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${progressPercentage}%` }}
                     >

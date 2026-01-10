@@ -1071,7 +1071,7 @@ const App: React.FC = () => {
         {/* Unified Global Footer */}
         {readingState === ReadingState.IDLE && (
           <footer className="mt-16 pb-12 px-4 border-t border-gray-100 pt-12 text-center">
-            <div className="max-w-md mx-auto space-y-10">
+            <div className="max-w-md md:max-w-2xl lg:max-w-full mx-auto space-y-10">
               {/* Support Section */}
               {currentUser && (
                 <div className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl border border-indigo-50 shadow-sm overflow-hidden transition-all duration-300">

@@ -179,7 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Control Buttons */}
       {currentUser && userOverallProgress && (
-        <div className="my-8 flex flex-col gap-4 items-center w-full max-w-md mx-auto">
+        <div className="my-8 flex flex-col gap-4 items-center w-full mx-auto">
           <button
             onClick={() => setShowBookCompletionStatus(!showBookCompletionStatus)}
             className="w-full h-16 px-6 text-xl font-black bg-gradient-to-r from-blue-500 to-sky-400 text-white rounded-3xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
