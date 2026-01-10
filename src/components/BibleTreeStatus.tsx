@@ -221,13 +221,6 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                     })}
                 </div>
 
-                {/* 도움말 안내 */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border-2 border-orange-100 pointer-events-none z-10 flex items-center gap-3">
-                    <span className="text-xl animate-bounce">🍎</span>
-                    <p className="text-xs text-stone-600 font-black">
-                        큰 열매를 터치해 상세 내용을 확인하세요
-                    </p>
-                </div>
             </div>
 
             {/* 하단 상세 정보 (장별 열매 그리드) */}
@@ -285,12 +278,12 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
 
                     <div className="mt-10 pt-8 border-t-2 border-stone-50 flex justify-center gap-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-5 h-5 rounded-lg bg-stone-100 border-2 border-stone-200"></div>
-                            <span className="text-xs text-stone-400 font-black uppercase tracking-wider">읽을 말씀</span>
+                            <div className="w-6 h-6 rounded-lg bg-stone-50 border-2 border-stone-100"></div>
+                            <span className="text-xs text-stone-500 font-black uppercase tracking-widest">미완독</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="w-5 h-5 rounded-lg shadow-md border-2 border-white" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
-                            <span className="text-xs text-stone-400 font-black uppercase tracking-wider">완독 장</span>
+                            <div className="w-6 h-6 rounded-lg shadow-lg border-2 border-white" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
+                            <span className="text-xs text-stone-900 font-extrabold uppercase tracking-widest">완독 완료</span>
                         </div>
                     </div>
                 </div>
