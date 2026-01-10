@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { UserProgress, BookChapterInfo } from '../types';
 import { AVAILABLE_BOOKS } from '../constants';
 
@@ -103,7 +103,21 @@ const BIBLE_TREE_MAP: FlowerNode[] = [
 
 const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelectBook }) => {
     const [selectedBookDetail, setSelectedBookDetail] = useState<BookChapterInfo | null>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const detailRef = useRef<HTMLDivElement>(null);
+
+    // 상세 정보 선택 시 자동 스크롤
+    useEffect(() => {
+        if (selectedBookDetail && detailRef.current) {
+            const offset = 100;
+            const elementPosition = detailRef.current.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
+    }, [selectedBookDetail]);
 
     const completedChaptersSet = useMemo(() => new Set(userProgress?.completedChapters || []), [userProgress]);
 
@@ -129,12 +143,12 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
     return (
         <div className="w-full bg-[#fdf8f1] rounded-[2.5rem] p-4 sm:p-6 shadow-2xl border border-orange-100 overflow-hidden relative">
             <div className="text-center mb-6 relative z-10">
-                <h3 className="text-2xl font-black text-[#4a342e] mb-1">열매 맺는 성경 나무</h3>
-                <p className="text-xs text-[#826a5c] font-bold opacity-80 uppercase tracking-widest">수정과 같은 66권의 열매를 맺어보세요</p>
+                <h3 className="text-2xl font-black text-[#4a342e] mb-1">성경 열매 나무</h3>
+                <p className="text-sm text-[#826a5c] font-black opacity-80 uppercase tracking-widest">풍성한 열매를 터치해 보세요</p>
             </div>
 
             {/* 나무 컨테이너: 세로로 긴 이미지 배경과 스크롤 적용 */}
-            <div className="relative h-[120vh] sm:h-[1000px] overflow-y-auto no-scrollbar rounded-3xl bg-white shadow-inner border border-stone-100 group">
+            <div className="relative h-[130vh] sm:h-[1100px] overflow-y-auto no-scrollbar rounded-3xl bg-white shadow-inner border border-stone-100 group">
 
                 {/* 실제 나무 배경 이미지 */}
                 <div
@@ -179,21 +193,21 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                     {/* 실제 열매 알맹이 */}
                                     <div
                                         className={`
-                      w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center shadow-lg
-                      ${isCompleted ? 'scale-110' : 'scale-90'}
+                      w-11 h-11 sm:w-14 sm:h-14 rounded-full border-4 transition-all duration-300 flex items-center justify-center shadow-2xl
+                      ${isCompleted ? 'scale-110 shadow-white/50' : 'scale-105'}
                     `}
                                         style={{
-                                            backgroundColor: node.progress > 0 ? node.color : 'rgba(255,255,255,0.4)',
-                                            borderColor: node.progress > 0 ? 'white' : 'rgba(150,150,150,0.2)',
-                                            boxShadow: node.progress > 0 ? `0 0 15px ${node.color}88` : 'none'
+                                            backgroundColor: node.progress > 0 ? node.color : 'rgba(255,255,255,0.6)',
+                                            borderColor: node.progress > 0 ? 'white' : 'rgba(200,200,200,0.3)',
+                                            boxShadow: node.progress > 0 ? `0 10px 25px ${node.color}66` : 'none'
                                         }}
                                     >
-                                        {/* 약어 첫 글자 (매우 작게) */}
+                                        {/* 약어 2글자 (크게) */}
                                         <span
-                                            className="text-[8px] sm:text-[10px] font-black pointer-events-none"
-                                            style={{ color: node.progress > 60 ? 'white' : '#666' }}
+                                            className="text-[12px] sm:text-[14px] font-black pointer-events-none tracking-tighter"
+                                            style={{ color: node.progress > 50 ? 'white' : '#4a342e' }}
                                         >
-                                            {node.name[0]}
+                                            {node.name.substring(0, 2)}
                                         </span>
                                     </div>
 
@@ -208,40 +222,44 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                 </div>
 
                 {/* 도움말 안내 */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-orange-100/50 pointer-events-none z-10">
-                    <p className="text-[10px] text-stone-500 font-bold flex items-center gap-2">
-                        <span className="animate-bounce">👆</span> 나무의 열매를 터치하여 성경 장별 현황을 확인하세요
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border-2 border-orange-100 pointer-events-none z-10 flex items-center gap-3">
+                    <span className="text-xl animate-bounce">🍎</span>
+                    <p className="text-xs text-stone-600 font-black">
+                        큰 열매를 터치해 상세 내용을 확인하세요
                     </p>
                 </div>
             </div>
 
             {/* 하단 상세 정보 (장별 열매 그리드) */}
             {selectedBookDetail && (
-                <div className="mt-6 p-5 sm:p-8 bg-white rounded-[2rem] border-2 border-orange-50 shadow-2xl animate-in fade-in slide-in-from-bottom duration-500 relative z-30">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-4">
+                <div
+                    ref={detailRef}
+                    className="mt-8 p-6 sm:p-10 bg-white rounded-[3rem] border-4 border-orange-50 shadow-2xl animate-in fade-in slide-in-from-bottom duration-700 relative z-30"
+                >
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="flex items-center gap-5">
                             <div
-                                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg transform -rotate-3"
+                                className="w-16 h-16 rounded-3xl flex items-center justify-center text-white text-2xl font-black shadow-xl ring-8 ring-stone-50"
                                 style={{ backgroundColor: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}
                             >
-                                {selectedBookDetail.name[0]}
+                                {selectedBookDetail.name.substring(0, 2)}
                             </div>
                             <div>
-                                <h4 className="text-xl font-black text-stone-800 leading-none mb-1">{selectedBookDetail.name}</h4>
-                                <p className="text-[11px] text-stone-400 font-bold uppercase tracking-widest">Chapter Journey</p>
+                                <h4 className="text-2xl font-black text-stone-800 mb-1">{selectedBookDetail.name} 여정</h4>
+                                <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">Chapter Journey</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setSelectedBookDetail(null)}
-                            className="w-10 h-10 bg-stone-50 hover:bg-stone-100 rounded-full flex items-center justify-center transition-colors group"
+                            className="w-12 h-12 bg-stone-50 hover:bg-stone-200 rounded-2xl flex items-center justify-center transition-all active:scale-95 group"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-stone-400 group-hover:text-stone-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-stone-400 group-hover:text-stone-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-2.5 justify-center max-h-[250px] overflow-y-auto p-2 no-scrollbar">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 max-h-[400px] overflow-y-auto p-2 no-scrollbar">
                         {Array.from({ length: selectedBookDetail.chapterCount }, (_, i) => i + 1).map(chapter => {
                             const isDone = completedChaptersSet.has(`${selectedBookDetail.name}:${chapter}`);
                             const color = BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color || '#10B981';
@@ -250,10 +268,10 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                 <div
                                     key={chapter}
                                     className={`
-                    w-11 h-11 rounded-2xl flex items-center justify-center text-xs font-black transition-all cursor-default
+                    aspect-square rounded-2xl flex items-center justify-center text-sm font-black transition-all cursor-default border-2
                     ${isDone
-                                            ? 'shadow-lg text-white transform hover:scale-105'
-                                            : 'bg-stone-50 text-stone-300 border border-stone-100'}
+                                            ? 'shadow-lg text-white transform hover:scale-105 border-white'
+                                            : 'bg-stone-50 text-stone-300 border-stone-100'}
                   `}
                                     style={isDone ? {
                                         background: `radial-gradient(circle at top left, ${color}, ${color}dd)`,
@@ -265,14 +283,14 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                         })}
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-stone-50 flex justify-center gap-8">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-4 h-4 rounded-lg bg-stone-100 border border-stone-200"></div>
-                            <span className="text-[10px] text-stone-400 font-black uppercase tracking-wider">Remaining</span>
+                    <div className="mt-10 pt-8 border-t-2 border-stone-50 flex justify-center gap-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 rounded-lg bg-stone-100 border-2 border-stone-200"></div>
+                            <span className="text-xs text-stone-400 font-black uppercase tracking-wider">읽을 말씀</span>
                         </div>
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-4 h-4 rounded-lg shadow-md" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
-                            <span className="text-[10px] text-stone-400 font-black uppercase tracking-wider">Completed</span>
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 rounded-lg shadow-md border-2 border-white" style={{ background: BIBLE_TREE_MAP.find(n => n.name === selectedBookDetail.name)?.color }}></div>
+                            <span className="text-xs text-stone-400 font-black uppercase tracking-wider">완독 장</span>
                         </div>
                     </div>
                 </div>
