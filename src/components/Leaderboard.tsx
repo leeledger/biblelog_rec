@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProgress } from '../types';
 import * as authService from '../services/authService';
 import { AVAILABLE_BOOKS } from '../constants'; // To get book order if needed
@@ -36,6 +36,21 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
   const [myEntry, setMyEntry] = useState<LeaderboardEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(10); // 초기 노출 개수
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  // 순위표가 열리고 로딩이 완료되었을 때 스크롤 포커스
+  useEffect(() => {
+    if (!isLoading && boardRef.current) {
+      const offset = 80;
+      const elementPosition = boardRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     const fetchLeaderboardData = async () => {
@@ -108,7 +123,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
   const hasMore = leaderboardData.length > visibleCount;
 
   return (
-    <div className="mt-8 bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100 flex flex-col font-sans">
+    <div ref={boardRef} className="mt-8 bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100 flex flex-col font-sans">
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 py-6 px-6 shadow-inner">
         <h2 className="text-xl sm:text-2xl font-black text-center text-white mb-1 break-keep drop-shadow-md tracking-tight uppercase">
           {groupId ? '🏅 그룹 랭킹 🏅' : '✨ 개인 통독 랭킹 ✨'}
@@ -133,7 +148,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
               <div className="flex-grow min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
                   <h4 className="font-black text-gray-900 leading-none truncate overflow-hidden">
-                    {myEntry.username} 성도님
+                    {myEntry.username}
                   </h4>
                 </div>
                 <div className="flex items-center gap-3">
