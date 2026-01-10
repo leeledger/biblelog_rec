@@ -33,6 +33,7 @@ interface LeaderboardProps {
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [myEntry, setMyEntry] = useState<LeaderboardEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(10); // 초기 노출 개수
 
@@ -62,7 +63,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
           };
         });
 
-        setLeaderboardData(formattedData);
+        const sortedData = formattedData;
+        setLeaderboardData(sortedData);
+
+        // 내 순위 찾기
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          const found = sortedData.find(e => e.username === currentUser.username);
+          setMyEntry(found || null);
+        }
       } catch (error) {
         console.error("Failed to fetch leaderboard data:", error);
         setLeaderboardData([]);
@@ -109,7 +118,37 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
         </p>
       </div>
 
-      <div className="flex-grow overflow-hidden">
+      <div className="flex-grow overflow-hidden flex flex-col">
+        {/* 나의 특별 순위 카드 - 감각적인 최상단 배치 */}
+        {myEntry && (
+          <div className="p-4 bg-gradient-to-br from-indigo-50 to-white border-b-2 border-indigo-100 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+              <span className="text-4xl">⭐</span>
+            </div>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="flex-shrink-0 flex flex-col items-center justify-center w-16 h-16 bg-gradient-to-tr from-indigo-600 to-purple-500 rounded-2xl shadow-lg ring-4 ring-indigo-50">
+                <span className="text-[10px] text-white font-bold opacity-80 uppercase leading-none mb-1">Rank</span>
+                <span className="text-2xl text-white font-black leading-none">{myEntry.rank}</span>
+              </div>
+              <div className="flex-grow">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black px-1.5 py-0.5 bg-indigo-600 text-white rounded uppercase tracking-tighter shadow-sm">My Status</span>
+                  <h4 className="font-black text-gray-900 leading-none">{myEntry.username} 성도님</h4>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-indigo-600">{myEntry.completionRate.toFixed(1)}%</span>
+                  <span className="text-[11px] text-gray-400 font-medium truncate max-w-[150px] sm:max-w-none">📍 {myEntry.progressDisplay}</span>
+                </div>
+              </div>
+              {myEntry.completed_count > 0 && (
+                <div className="flex flex-col items-center flex-shrink-0 bg-amber-50 px-2 py-1 rounded-xl border border-amber-100">
+                  <span className="text-[18px]">🏆</span>
+                  <span className="text-[10px] font-black text-amber-600">{myEntry.completed_count}회 완독</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {/* 모바일 뷰 (Card Layout) */}
         <div className="md:hidden p-4 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
           {displayedData.map((entry) => (
