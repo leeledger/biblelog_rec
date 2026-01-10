@@ -194,35 +194,24 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                 <div className="relative">
                                     {/* 외곽 광채 (진행률 비례) */}
                                     <div
-                                        className={`absolute inset-[-12px] rounded-full blur-xl transition-all duration-1000 ${isCompleted ? 'animate-vibrant-pulse' : ''}`}
+                                        className={`absolute inset-[-12px] rounded-full blur-xl transition-all duration-1000 ${isCompleted ? 'animate-radiant' : ''}`}
                                         style={{
                                             background: node.color,
-                                            opacity: isCompleted ? 0.8 : node.progress / 150,
-                                            transform: `scale(${1 + (node.progress / 100) * 0.5})`,
-                                            color: node.color // for currentColor in animation
+                                            opacity: isCompleted ? 0.7 : node.progress / 150,
+                                            transform: `scale(${1 + (node.progress / 100) * 0.4})`,
                                         }}
                                     />
-
-                                    {/* 완독 시 반짝이는 별 효과 (네 귀퉁이) */}
-                                    {isCompleted && (
-                                        <>
-                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-sparkle shadow-[0_0_8px_white]" />
-                                            <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-white rounded-full animate-sparkle shadow-[0_0_8px_white]" style={{ animationDelay: '0.5s' }} />
-                                            <div className="absolute top-1/2 -left-2 w-1 h-1 bg-white rounded-full animate-sparkle shadow-[0_0_8px_white]" style={{ animationDelay: '1.2s' }} />
-                                            <div className="absolute top-1/4 -right-2 w-1.5 h-1.5 bg-yellow-200 rounded-full animate-sparkle shadow-[0_0_8px_gold]" style={{ animationDelay: '0.8s' }} />
-                                        </>
-                                    )}
 
                                     {/* 실제 열매 알맹이 */}
                                     <div
                                         className={`
                       relative w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-300 flex items-center justify-center shadow-2xl z-10
-                      ${isCompleted ? 'scale-110 border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'scale-100 border-white/40'}
+                      ${isCompleted ? 'scale-110 border-white' : 'scale-100 border-white/40'}
                     `}
                                         style={{
                                             backgroundColor: node.progress > 0 ? (isCompleted ? node.color : `${node.color}CC`) : 'rgba(255,255,255,0.4)',
                                             boxShadow: isCompleted
-                                                ? `0 0 35px ${node.color}, inset 0 0 15px rgba(255,255,255,0.7)`
+                                                ? `0 0 25px ${node.color}, 0 0 50px ${node.color}44, inset 0 0 12px rgba(255,255,255,0.8)`
                                                 : (node.progress > 0 ? `0 8px 20px ${node.color}44` : 'none')
                                         }}
                                     >
