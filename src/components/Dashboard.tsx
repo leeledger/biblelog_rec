@@ -207,7 +207,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           {currentView === 'LEADERBOARD' && (
             <div className="my-4 p-4 bg-white rounded-3xl shadow-xl border border-gray-100 w-full animate-in slide-in-from-top duration-300">
-              <h3 className="text-xl font-black text-gray-800 mb-6 text-center italic">"말씀의 발자국"</h3>
               <Leaderboard
                 key={`lb-${selectedGroupId}`}
                 groupId={selectedGroupId}

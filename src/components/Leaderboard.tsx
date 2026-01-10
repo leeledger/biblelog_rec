@@ -78,7 +78,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
     return (
       <div className="mt-8 p-8 bg-white shadow-xl rounded-2xl text-center">
         <div className="animate-spin inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mb-4"></div>
-        <p className="text-gray-600 font-medium font-sans">말씀의 발자국을 찾는 중...</p>
+        <p className="text-gray-600 font-medium font-sans">순위표를 불러오는 중...</p>
       </div>
     );
   }
