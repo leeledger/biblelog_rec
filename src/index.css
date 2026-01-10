@@ -62,6 +62,22 @@
     .animate-radiant {
         animation: radiant-glow 4s infinite ease-in-out;
     }
+
+    @keyframes fruit-breathe {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.12);
+        }
+    }
+
+    .animate-breathe {
+        animation: fruit-breathe 3.5s infinite ease-in-out;
+    }
 }
 
 /* 도레 판화 웅장한 효과 */

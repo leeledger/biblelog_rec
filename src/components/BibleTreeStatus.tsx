@@ -191,10 +191,10 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                 style={{ left: `${node.x}%`, top: `${node.y}%` }}
                             >
                                 {/* 열매 디자인: 진행률에 따라 빛나는 세기 조절 */}
-                                <div className="relative">
+                                <div className={`relative ${isCompleted ? 'animate-breathe' : ''}`}>
                                     {/* 외곽 광채 (진행률 비례) */}
                                     <div
-                                        className={`absolute inset-[-12px] rounded-full blur-xl transition-all duration-1000 ${isCompleted ? 'animate-radiant' : ''}`}
+                                        className="absolute inset-[-12px] rounded-full blur-xl transition-all duration-1000"
                                         style={{
                                             background: node.color,
                                             opacity: isCompleted ? 0.7 : node.progress / 150,
