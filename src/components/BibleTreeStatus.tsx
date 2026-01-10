@@ -204,21 +204,51 @@ const BibleTreeStatus: React.FC<BibleTreeStatusProps> = ({ userProgress, onSelec
                                     {/* 실제 열매 알맹이 */}
                                     <div
                                         className={`
-                      w-11 h-11 sm:w-14 sm:h-14 rounded-full border-4 transition-all duration-300 flex items-center justify-center shadow-2xl
-                      ${isCompleted ? 'scale-110 border-white ring-4 ring-white/30' : 'scale-105'}
+                      relative w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-300 flex items-center justify-center shadow-2xl z-10
+                      ${isCompleted ? 'scale-110 border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'scale-100 border-white/40'}
                     `}
                                         style={{
-                                            backgroundColor: node.progress > 0 ? node.color : 'rgba(255,255,255,0.6)',
-                                            borderColor: node.progress > 0 ? 'white' : 'rgba(200,200,200,0.3)',
+                                            backgroundColor: node.progress > 0 ? (isCompleted ? node.color : `${node.color}CC`) : 'rgba(255,255,255,0.4)',
                                             boxShadow: isCompleted
-                                                ? `0 0 30px ${node.color}, inset 0 0 15px rgba(255,255,255,0.6)`
-                                                : (node.progress > 0 ? `0 10px 25px ${node.color}66` : 'none')
+                                                ? `0 0 35px ${node.color}, inset 0 0 15px rgba(255,255,255,0.7)`
+                                                : (node.progress > 0 ? `0 8px 20px ${node.color}44` : 'none')
                                         }}
                                     >
-                                        {/* 약어 2글자 (크게) */}
+                                        {/* 진행률 게이지 링 (SVG) */}
+                                        <svg className="absolute -inset-[6px] w-[calc(100%+12px)] h-[calc(100%+12px)] -rotate-90 pointer-events-none overflow-visible">
+                                            {/* 배경 트랙 */}
+                                            <circle
+                                                cx="50%"
+                                                cy="50%"
+                                                r="50%"
+                                                fill="none"
+                                                stroke="rgba(255,255,255,0.3)"
+                                                strokeWidth="4"
+                                                pathLength="100"
+                                            />
+                                            {/* 진행 바 */}
+                                            <circle
+                                                cx="50%"
+                                                cy="50%"
+                                                r="50%"
+                                                fill="none"
+                                                stroke={isCompleted ? '#FFFFFF' : node.color}
+                                                strokeWidth={isCompleted ? "5" : "4"}
+                                                strokeDasharray="100"
+                                                strokeDashoffset={100 - node.progress}
+                                                strokeLinecap="round"
+                                                pathLength="100"
+                                                className="transition-all duration-1000"
+                                                style={{
+                                                    filter: isCompleted ? 'drop-shadow(0 0 5px white)' : 'none'
+                                                }}
+                                            />
+                                        </svg>
+
+                                        {/* 약어 2글자 */}
                                         <span
-                                            className={`text-[12px] sm:text-[14px] font-black pointer-events-none tracking-tighter ${isCompleted ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]' : ''}`}
-                                            style={{ color: !isCompleted && node.progress > 50 ? 'white' : (isCompleted ? undefined : '#4a342e') }}
+                                            className={`text-[12px] sm:text-[14px] font-black pointer-events-none tracking-tighter z-20 ${isCompleted ? 'text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.4)]' : ''}`}
+                                            style={{ color: !isCompleted ? (node.progress > 50 ? 'white' : '#4a342e') : undefined }}
                                         >
                                             {node.name.substring(0, 2)}
                                         </span>
