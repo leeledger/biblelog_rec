@@ -130,14 +130,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ groupId }) => {
                 <span className="text-[10px] text-white font-bold opacity-80 uppercase leading-none mb-1">Rank</span>
                 <span className="text-2xl text-white font-black leading-none">{myEntry.rank}</span>
               </div>
-              <div className="flex-grow">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black px-1.5 py-0.5 bg-indigo-600 text-white rounded uppercase tracking-tighter shadow-sm">My Status</span>
-                  <h4 className="font-black text-gray-900 leading-none">{myEntry.username} 성도님</h4>
+              <div className="flex-grow min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <h4 className="font-black text-gray-900 leading-none truncate overflow-hidden">
+                    {myEntry.username} 성도님
+                  </h4>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-indigo-600">{myEntry.completionRate.toFixed(1)}%</span>
-                  <span className="text-[11px] text-gray-400 font-medium truncate max-w-[150px] sm:max-w-none">📍 {myEntry.progressDisplay}</span>
+                  <span className="text-sm font-extrabold text-indigo-600">{myEntry.completionRate.toFixed(1)}%</span>
+                  <span className="text-[11px] text-gray-400 font-medium truncate">📍 {myEntry.progressDisplay}</span>
                 </div>
               </div>
               {myEntry.completed_count > 0 && (
