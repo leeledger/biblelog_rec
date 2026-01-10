@@ -46,35 +46,61 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   isStalled, // 추가
   onSessionCompleteConfirm
 }) => {
-  // 현재 세션의 첫 번째 장 정보 추출
-  const startVerse = sessionTargetVerses[0];
-  const matchedDore = startVerse
-    ? doreMapping.find(m => m.book === startVerse.book && m.chapter === startVerse.chapter)
-    : null;
+  // 현재 세션 범위 내의 모든 장 정보 추출 및 매칭되는 도레 판화들 찾기
+  const matchedDores = React.useMemo(() => {
+    if (!sessionTargetVerses || sessionTargetVerses.length === 0) return [];
+
+    // 세션 본문에서 모든 고유한 장 번호 추출
+    const chaptersInSession = Array.from(new Set(sessionTargetVerses.map(v => v.chapter)));
+    const bookName = sessionTargetVerses[0].book;
+
+    // 해당 권과 장 범위에 맞는 모든 판화 필터링
+    return doreMapping.filter(m =>
+      m.book === bookName && chaptersInSession.includes(m.chapter)
+    ).sort((a, b) => a.chapter - b.chapter || parseInt(a.id) - parseInt(b.id));
+  }, [sessionTargetVerses]);
+
+  const hasMultipleImages = matchedDores.length > 1;
 
   // Case 1: READING state (Preview before listening)
   if (readingState === ReadingState.READING && sessionTargetVerses.length > 0) {
     return (
       <>
         <div className="my-6">
-          {/* 도레 판화 전시 (매칭되는 경우에만) */}
-          {matchedDore && (
-            <div className="mb-8 animate-fade-in">
-              <div className="dore-frame">
-                <div className="dore-image-container">
-                  <img
-                    src={`/img/dore/images/${matchedDore.filename}`}
-                    alt={matchedDore.title}
-                    className="dore-img"
-                  />
-                  <div className="dore-overlay">
-                    <p className="historical-text text-amber-200 text-xs mb-1 uppercase tracking-widest opacity-80">Gustave Doré Masterpiece</p>
-                    <h3 className="historical-text text-xl font-bold">{matchedDore.title}</h3>
-                    <p className="text-gray-300 text-xs mt-1">{matchedDore.book} {matchedDore.chapter}장</p>
-                  </div>
+          {/* 도레 판화 전시 (범위 내 매칭되는 모든 판화) */}
+          {matchedDores.length > 0 && (
+            <div className={`mb-8 animate-fade-in ${hasMultipleImages ? 'relative' : ''}`}>
+              {hasMultipleImages && (
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <span className="text-amber-600">📜</span>
+                  <p className="text-sm font-bold text-gray-700 historical-text">이번 통독 범위의 성화들 ({matchedDores.length}장)</p>
+                  <p className="text-[10px] text-gray-400 ml-auto">좌우로 밀어서 감상하세요 →</p>
                 </div>
+              )}
+
+              <div className={`${hasMultipleImages ? 'flex overflow-x-auto gap-4 pb-4 snap-x no-scrollbar' : ''}`}>
+                {matchedDores.map((img) => (
+                  <div key={img.id} className={`${hasMultipleImages ? 'flex-shrink-0 w-72 snap-center' : 'w-full'}`}>
+                    <div className="dore-frame">
+                      <div className="dore-image-container">
+                        <img
+                          src={`/img/dore/images/${img.filename}`}
+                          alt={img.title}
+                          className="dore-img"
+                        />
+                        <div className="dore-overlay">
+                          <p className="historical-text text-amber-200 text-[10px] mb-1 uppercase tracking-widest opacity-80">Gustave Doré</p>
+                          <h3 className={`historical-text font-bold ${hasMultipleImages ? 'text-lg' : 'text-xl'}`}>{img.title}</h3>
+                          <p className="text-gray-300 text-[10px] mt-1">{img.book} {img.chapter}장</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="text-[10px] text-gray-400 mt-2 text-center italic">※ 이 이미지는 고전 판화가 구스타프 도레의 성경 일러스트입니다.</p>
+              {!hasMultipleImages && (
+                <p className="text-[10px] text-gray-400 mt-2 text-center italic">※ 이 이미지는 고전 판화가 구스타프 도레의 성경 일러스트입니다.</p>
+              )}
             </div>
           )}
 
