@@ -323,7 +323,7 @@ app.get('/api/users/all', async (req, res) => {
             LEFT JOIN hof_counts hf ON u.id = hf.user_id
             WHERE gm.group_id = $1
               AND (COALESCE(cc.count, 0) > 0 OR COALESCE(hf.count, 0) > 0)
-            ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, u.username;
+            ORDER BY "completedChaptersCount" DESC, "completed_count" DESC, u.username;
         `;
             params = [groupId];
         } else {
@@ -353,7 +353,7 @@ app.get('/api/users/all', async (req, res) => {
             LEFT JOIN chapter_counts cc ON u.id = cc.user_id
             LEFT JOIN hof_counts hf ON u.id = hf.user_id
             WHERE (COALESCE(cc.count, 0) > 0 OR COALESCE(hf.count, 0) > 0)
-            ORDER BY "completed_count" DESC, "completedChaptersCount" DESC, u.username;
+            ORDER BY "completedChaptersCount" DESC, "completed_count" DESC, u.username;
         `;
         }
 
