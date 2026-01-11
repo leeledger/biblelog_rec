@@ -569,6 +569,15 @@ const App: React.FC = () => {
 
     let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
+    // 22번 안드로이드 유저를 위한 보완 로직: 
+    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(minLengthRatio 이상)를 채웠다면 완료로 인정
+    if (!isIOS && currentUser?.id === 22 && currentTargetVerseForSession) {
+      const completionRatio = matchedCharCount / currentTargetVerseForSession.text.length;
+      if (completionRatio >= minLengthRatio) {
+        isMatch = true;
+      }
+    }
+
     if (isIOS && isMatch && normalizedTargetVerseText.length > LONG_VERSE_CHAR_COUNT) {
       const targetEnd = normalizedTargetVerseText.slice(-END_PORTION_LENGTH);
       const bufferEnd = bufferPortionToCompare.slice(-END_PORTION_LENGTH);
