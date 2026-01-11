@@ -128,6 +128,22 @@ app.post('/api/users/change-password', async (req, res) => {
     }
 });
 
+// Endpoint for user withdrawal (delete account)
+app.delete('/api/users/:userId', async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) {
+        return res.status(400).json({ message: '사용자 ID가 필요합니다.' });
+    }
+
+    try {
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+        res.status(200).json({ message: '회원 탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.' });
+    } catch (error) {
+        console.error(`[DELETE /api/users/${userId}] Error:`, error);
+        res.status(500).json({ message: '회원 탈퇴 처리 중 오류가 발생했습니다.' });
+    }
+});
+
 // Get user progress (Optionally for a specific group)
 app.get('/api/progress/:username', async (req, res) => {
     const { username } = req.params;

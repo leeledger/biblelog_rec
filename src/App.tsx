@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import ActiveReadingSession from './components/ActiveReadingSession';
 import InstallPWA from './components/InstallPWA';
 import LandingPage from './components/LandingPage';
+import MyPage from './components/MyPage';
 import { Analytics } from "@vercel/analytics/react";
 
 // Define the type for the flat Bible data structure from bible_fixed.json
@@ -83,6 +84,7 @@ const App: React.FC = () => {
   // 푸터 섹션 확장 상태
   const [footerSupportExpanded, setFooterSupportExpanded] = useState(false);
   const [footerChurchExpanded, setFooterChurchExpanded] = useState(false);
+  const [showMyPage, setShowMyPage] = useState(false);
 
 
   // Prevent pull-to-refresh on mobile during speech recognition
@@ -1131,7 +1133,7 @@ const App: React.FC = () => {
             // Group Props
             userGroups={userGroups}
             selectedGroupId={selectedGroupId}
-            onSelectGroup={(id) => setSelectedGroupId(id)}
+            onSelectGroup={(id: number | null) => setSelectedGroupId(id)}
             onGroupAction={async () => {
               if (currentUser?.id) await loadUserGroups(currentUser.id);
             }}
@@ -1298,6 +1300,24 @@ const App: React.FC = () => {
                   </p>
                 </div>
 
+                {/* 3. 푸터 하단에 마이페이지 접근 버튼을 배치합니다. */}
+                <div className="pt-4 border-t border-gray-100 flex flex-col items-center gap-4">
+                  <button
+                    onClick={() => setShowMyPage(true)}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-500 rounded-full text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                  >
+                    <span>👤</span> 마이페이지 (관리)
+                  </button>
+
+                  <div className="flex items-center justify-center gap-2 text-gray-400">
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                    <p className="text-[10px] font-bold uppercase tracking-widest">
+                      © 2026 Leeledger Lab.
+                    </p>
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   <span>개인정보 처리방침</span>
                   <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
@@ -1326,6 +1346,18 @@ const App: React.FC = () => {
               </div>
             </div>
           </footer>
+        )}
+        {/* My Page Modal */}
+        {currentUser && (
+          <MyPage
+            isOpen={showMyPage}
+            onClose={() => setShowMyPage(false)}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            onPasswordChange={() => {
+              setShowPasswordChangePrompt(true);
+            }}
+          />
         )}
       </div>
     </>

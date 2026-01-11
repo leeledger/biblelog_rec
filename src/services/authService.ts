@@ -120,6 +120,30 @@ export const changePassword = async (userId: number, newPassword_provided: strin
   }
 };
 
+export const withdrawalUser = async (userId: number): Promise<{ success: boolean; message: string }> => {
+  console.log(`authService.withdrawalUser called for userId: ${userId}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'DELETE',
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error('Withdrawal failed:', responseData.message);
+      return { success: false, message: responseData.message || '회원 탈퇴 실패 (상태: ' + response.status + ')' };
+    }
+
+    console.log('Withdrawal successful:', responseData.message);
+    logoutUser(); // 세션 정보 삭제
+    return { success: true, message: responseData.message };
+
+  } catch (error: any) {
+    console.error('Error during withdrawal:', error);
+    return { success: false, message: '회원 탈퇴 중 오류 발생: ' + (error.message || '알 수 없는 오류') };
+  }
+};
+
 export const getCurrentUser = (): User | null => {
   const userJson = localStorage.getItem(USER_SESSION_KEY);
   if (userJson) {
