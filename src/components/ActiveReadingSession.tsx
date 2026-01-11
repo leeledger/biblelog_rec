@@ -69,7 +69,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
         <div className="my-6">
           {/* 도레 판화 전시 (범위 내 매칭되는 모든 판화) */}
           {matchedDores.length > 0 && (
-            <div className={`mb-8 animate-fade-in ${hasMultipleImages ? 'relative' : ''}`}>
+            <div className={`mb-6 animate-fade-in ${hasMultipleImages ? 'relative' : ''}`}>
               {hasMultipleImages && (
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <span className="text-amber-600">📜</span>
@@ -82,11 +82,12 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                 {matchedDores.map((img) => (
                   <div key={img.id} className={`${hasMultipleImages ? 'flex-shrink-0 w-72 snap-center' : 'w-full'}`}>
                     <div className="dore-frame">
-                      <div className="dore-image-container">
+                      <div className="dore-image-container max-h-[50vh]">
                         <img
                           src={`/img/dore/images/${img.filename}`}
                           alt={img.title}
-                          className="dore-img"
+                          className="dore-img object-contain"
+                          style={{ maxHeight: 'inherit' }}
                         />
                         <div className="dore-overlay">
                           <p className="historical-text text-amber-200 text-[10px] mb-1 uppercase tracking-widest opacity-80">Gustave Doré</p>
@@ -104,28 +105,30 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             </div>
           )}
 
+          {/* 버튼 영역을 본문 위로 이동하여 스크롤 없이 보이도록 조치 */}
+          <div className="flex gap-4 mb-8">
+            <button
+              className="flex-1 px-6 py-3 bg-gray-400 text-white rounded-xl font-bold hover:bg-gray-500 transition shadow-md"
+              onClick={onExitSession}
+            >
+              뒤로가기
+            </button>
+            <button
+              className="flex-[2] px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg ripple-effect active:scale-95"
+              onClick={onStartListening}
+            >
+              성경 읽기 시작
+            </button>
+          </div>
+
           <h2 className="text-xl font-bold mb-2">선택한 범위의 성경 본문</h2>
-          <div className="bg-gray-50 border rounded-md p-4 max-h-96 overflow-y-auto">
+          <div className="bg-gray-50 border rounded-md p-4 max-h-60 overflow-y-auto shadow-inner">
             {sessionTargetVerses.map((v) => (
-              <div key={`${v.book}-${v.chapter}-${v.verse}`} className="py-1 border-b last:border-b-0">
-                <span className="font-semibold">{v.book} {v.chapter}:{v.verse}</span> <span>{v.text}</span>
+              <div key={`${v.book}-${v.chapter}-${v.verse}`} className="py-2 border-b last:border-b-0">
+                <span className="font-semibold text-indigo-700">{v.book} {v.chapter}:{v.verse}</span> <span className="text-gray-800">{v.text}</span>
               </div>
             ))}
           </div>
-        </div>
-        <div className="flex gap-4 mt-4">
-          <button
-            className="px-6 py-2 bg-gray-400 text-white rounded-lg font-bold hover:bg-gray-500 transition"
-            onClick={onExitSession}
-          >
-            뒤로가기
-          </button>
-          <button
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition"
-            onClick={onStartListening}
-          >
-            음성 인식 시작
-          </button>
         </div>
       </>
     );
