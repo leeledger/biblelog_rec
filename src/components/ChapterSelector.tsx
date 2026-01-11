@@ -302,7 +302,11 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
           disabled={isLoading || !selectedBookInfo || !dataAvailableForBook || startChapter <= 0 || endChapter <= 0 || startChapter > endChapter || (isIOS && micPermission === 'denied')}
           className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isLoading ? '성경 데이터 로딩 중...' : '선택 범위 읽기 시작'}
+          {isLoading ? '성경 데이터 로딩 중...' : (
+            (selectedBookName === defaultBook && startChapter === defaultStartChapter && endChapter === defaultEndChapter)
+              ? '이어서 읽기'
+              : '선택 범위 읽기 시작'
+          )}
         </button>
       )}
 
