@@ -78,6 +78,22 @@
     .animate-breathe {
         animation: fruit-breathe 3.5s infinite ease-in-out;
     }
+
+    @keyframes bounce-subtle {
+
+        0%,
+        100% {
+            transform: translateY(-50%) scale(1);
+        }
+
+        50% {
+            transform: translateY(-70%) scale(1.1);
+        }
+    }
+
+    .animate-bounce-subtle {
+        animation: bounce-subtle 3s infinite ease-in-out;
+    }
 }
 
 /* 도레 판화 웅장한 효과 */

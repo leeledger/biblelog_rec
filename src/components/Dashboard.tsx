@@ -67,23 +67,42 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <>
-      {/* Overall Bible Progress Display */}
+      {/* 말씀의 열매 맺기 진행률 - 새로운 테마 적용 */}
       {currentUser && totalBibleChapters > 0 && (
-        <div className="my-4 p-4 bg-sky-50 border border-sky-200 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-sky-700 mb-2">성경 전체 완독 진행률</h3>
-          <div className="w-full bg-gray-200 rounded-full h-4">
+        <div className="my-6 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-100 rounded-[2rem] shadow-lg shadow-emerald-100/50 relative overflow-hidden group">
+          {/* 장식용 배경 나뭇잎 아이콘 (선택 사항) */}
+          <div className="absolute top-[-10px] right-[-10px] text-4xl opacity-10 rotate-12 group-hover:rotate-45 transition-transform duration-700">🌿</div>
+
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl animate-pulse">🌳</span>
+            <h3 className="text-lg font-bold text-emerald-800 tracking-tight">생명의 말씀 나무 열매 맺기</h3>
+          </div>
+
+          <div className="relative h-6 w-full bg-emerald-900/10 rounded-full p-1 border border-emerald-200 shadow-inner">
             <div
-              className="bg-sky-500 h-4 rounded-full transition-all duration-300 ease-out relative"
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-1000 ease-out relative group"
               style={{ width: `${totalBibleChapters > 0 ? (overallCompletedChaptersCount / totalBibleChapters) * 100 : 0}%` }}
             >
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
-                {totalBibleChapters > 0 ? ((overallCompletedChaptersCount / totalBibleChapters) * 100).toFixed(1) : '0.0'}%
-              </span>
+              {/* 진행 바 위의 은은한 광택 효과 */}
+              <div className="absolute inset-0 bg-white/20 rounded-full animate-radiant"></div>
+
+              {/* 끝부분 열매 포인트 */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-amber-500 rounded-full border-2 border-white shadow-md animate-bounce-subtle"></div>
             </div>
           </div>
-          <p className="text-sm text-gray-600 mt-1.5 text-right">
-            {overallCompletedChaptersCount} / {totalBibleChapters} 장 완독
-          </p>
+
+          <div className="flex justify-between items-end mt-3 px-1">
+            <div className="flex flex-col">
+              <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-widest">Growth Progress</p>
+              <p className="text-2xl font-black text-emerald-900 leading-none">
+                {totalBibleChapters > 0 ? ((overallCompletedChaptersCount / totalBibleChapters) * 100).toFixed(1) : '0.0'}
+                <span className="text-sm font-bold ml-0.5">%</span>
+              </p>
+            </div>
+            <p className="text-sm font-bold text-emerald-700/80 mb-0.5">
+              전체 1,189장 중 <span className="text-emerald-900 underline decoration-amber-400 decoration-2 underline-offset-4">{overallCompletedChaptersCount}장</span> 결실
+            </p>
+          </div>
         </div>
       )}
 
