@@ -164,7 +164,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                       className="text-amber-900 font-bold"
                       style={{
                         textShadow: '0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(252, 211, 77, 0.3)',
-                        letterSpacing: '0.01em',
+                        opacity: 0.7,
                         transition: 'all 0.5s ease-out'
                       }}
                     >
