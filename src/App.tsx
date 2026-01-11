@@ -619,9 +619,17 @@ const App: React.FC = () => {
       const isPartReading = (matchedCharCount > 0) && (wholeMatchScore < matchedCharCount * 0.7);
 
       if (isPartReading) {
-        // [중간부터 끊어 읽는 경우] 안드로이드 리셋을 감안하여 85% 도달 시 완료 인정
+        // [중간부터 끊어 읽는 경우] 누적 85% 도달 시 완료 후보
         if (matchedCharCount / currentTargetVerseForSession.text.length >= 0.85) {
-          isMatch = true;
+          // [적당한 끝단 검증] 구절의 마지막 약 10글자가 음성 버퍼 끝부분에 들어있는지 확인
+          const targetEndPortion = normalizeText(currentTargetVerseForSession.text).slice(-10);
+          const bufferEndPortion = normalizeText(sttTranscript).slice(-15); // 약간 더 넓은 범위 탐색
+          const endSimilarity = calculateSimilarity(targetEndPortion, bufferEndPortion);
+
+          // 아이폰(60)보다 완화된 40점 기준으로 체크하여 답답함을 방지하면서도 끝맺음을 확인
+          if (endSimilarity >= 40) {
+            isMatch = true;
+          }
         }
       } else {
         // [처음부터 쭉 읽는 경우] 숏컷(85%)을 허용하지 않고, 기존의 엄격한 similarity와 lengthRatio 기준을 그대로 따름
