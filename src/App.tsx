@@ -485,11 +485,23 @@ const App: React.FC = () => {
 
           // 2. 이미 매칭된 이후의 '남은 본문'과 현재 음성을 비교 (안드로이드 엔진 리셋 대응)
           const remainingVerse = currentTargetVerseForSession.text.substring(prev);
-          const addedMatch = findMatchedPrefixLength(remainingVerse, sttTranscript, 60);
-          const cumulativeMatch = prev + addedMatch;
 
-          // 세 가지 값 중 가장 큰 값(가장 멀리 진행된 상태)을 선택하여 취소선 유지
-          // prev: 어떤 결과가 나오더라도 기존에 그어진 취소선을 후퇴시키지 않음
+          // 22번 유저 전용 유연한 매칭: 
+          // 멈췄다 읽을 때의 소음이나 중복 단어(마지막 단어 다시 읽기)를 감안하여
+          // 현재 음성의 어느 지점에서든 남은 본문이 시작되는지 찾고, 유사도 임계값도 45로 대폭 완화
+          let bestAddedMatch = 0;
+          const words = sttTranscript.trim().split(/\s+/);
+
+          // 앞부분의 최대 4단어까지 시작 지점을 옮겨가며 최적의 매칭 지점 탐색
+          for (let i = 0; i < Math.min(words.length, 4); i++) {
+            const testTranscript = words.slice(i).join(' ');
+            if (!testTranscript) continue;
+
+            const match = findMatchedPrefixLength(remainingVerse, testTranscript, 45);
+            if (match > bestAddedMatch) bestAddedMatch = match;
+          }
+
+          const cumulativeMatch = prev + bestAddedMatch;
           return Math.max(prev, wholeMatch, cumulativeMatch);
         });
       } else {
@@ -570,10 +582,11 @@ const App: React.FC = () => {
     let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
     // 22번 안드로이드 유저를 위한 보완 로직: 
-    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(minLengthRatio 이상)를 채웠다면 완료로 인정
+    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(85% 이상)를 채웠다면 완료로 인정
+    // 끊어 읽기 시의 오차와 안드로이드 엔진의 불안정성을 감안하여 완료 기준을 85%로 소폭 완화
     if (!isIOS && currentUser?.id === 22 && currentTargetVerseForSession) {
       const completionRatio = matchedCharCount / currentTargetVerseForSession.text.length;
-      if (completionRatio >= minLengthRatio) {
+      if (completionRatio >= 0.85) {
         isMatch = true;
       }
     }
