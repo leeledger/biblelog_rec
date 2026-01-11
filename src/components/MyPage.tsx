@@ -106,7 +106,7 @@ const MyPage: React.FC<MyPageProps> = ({ isOpen, onClose, currentUser, onLogout,
 
                 {/* Footer info */}
                 <div className="p-6 text-center bg-gray-50 border-t border-gray-100">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Bible Companion v2.0</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">bibleLog v2.0</p>
                 </div>
             </div>
 

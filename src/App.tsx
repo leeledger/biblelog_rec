@@ -19,6 +19,7 @@ import ActiveReadingSession from './components/ActiveReadingSession';
 import InstallPWA from './components/InstallPWA';
 import LandingPage from './components/LandingPage';
 import MyPage from './components/MyPage';
+import PasswordChangeModal from './components/PasswordChangeModal';
 import { Analytics } from "@vercel/analytics/react";
 
 // Define the type for the flat Bible data structure from bible_fixed.json
@@ -1080,6 +1081,7 @@ const App: React.FC = () => {
     setMatchedVersesContentForSession('');
     setSessionProgress(initialSessionProgress);
     setSessionCertificationMessage('');
+    setShowMyPage(false);
   };
 
   return (
@@ -1087,28 +1089,6 @@ const App: React.FC = () => {
       <Analytics />
       <BrowserRecommendation />
       <div className="container mx-auto p-4 max-w-4xl bg-amber-50 shadow-lg rounded-lg">
-        {currentUser && currentUser.must_change_password && showPasswordChangePrompt && (
-          <div className="p-4 mb-4 text-sm text-orange-700 bg-orange-100 rounded-lg border border-orange-300 shadow-md" role="alert">
-            <h3 className="font-bold text-lg mb-2">비밀번호 변경 필요</h3>
-            <p className="mb-1">현재 임시 비밀번호(1234)를 사용하고 있습니다. 보안을 위해 즉시 새 비밀번호를 설정해주세요.</p>
-            <form onSubmit={handlePasswordChangeSubmit} className="mt-3 space-y-3">
-              <div>
-                <label htmlFor="newPassword" className="block text-xs font-medium text-orange-800">새 비밀번호:</label>
-                <input type="password" id="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-0.5 block w-full px-2 py-1 text-xs text-orange-900 bg-orange-50 border border-orange-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 placeholder-orange-400" placeholder="새 비밀번호 입력" />
-              </div>
-              <div>
-                <label htmlFor="confirmNewPassword" className="block text-xs font-medium text-orange-800">새 비밀번호 확인:</label>
-                <input type="password" id="confirmNewPassword" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="mt-0.5 block w-full px-2 py-1 text-xs text-orange-900 bg-orange-50 border border-orange-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 placeholder-orange-400" placeholder="새 비밀번호 다시 입력" />
-              </div>
-              {passwordChangeError && <p className="text-xs text-red-600">{passwordChangeError}</p>}
-              {passwordChangeSuccess && <p className="text-xs text-green-600">{passwordChangeSuccess}</p>}
-              <div className="flex items-center justify-between">
-                <button type="submit" className="px-3 py-1.5 text-xs font-semibold text-white bg-orange-600 rounded hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-1">비밀번호 변경하기</button>
-                <button type="button" onClick={() => { setShowPasswordChangePrompt(false); setPasswordChangeError(null); setPasswordChangeSuccess(null); setNewPassword(''); setConfirmNewPassword(''); }} className="px-3 py-1.5 text-xs font-medium text-orange-700 bg-transparent border border-orange-700 rounded hover:bg-orange-200 focus:ring-2 focus:ring-orange-300">나중에 변경</button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Dashboard View */}
         {readingState === ReadingState.IDLE && (
@@ -1300,7 +1280,6 @@ const App: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 3. 푸터 하단에 마이페이지 접근 버튼을 배치합니다. */}
                 <div className="pt-4 border-t border-gray-100 flex flex-col items-center gap-4">
                   <button
                     onClick={() => setShowMyPage(true)}
@@ -1308,14 +1287,6 @@ const App: React.FC = () => {
                   >
                     <span>👤</span> 마이페이지 (관리)
                   </button>
-
-                  <div className="flex items-center justify-center gap-2 text-gray-400">
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">
-                      © 2026 Leeledger Lab.
-                    </p>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -1356,6 +1327,26 @@ const App: React.FC = () => {
             onLogout={handleLogout}
             onPasswordChange={() => {
               setShowPasswordChangePrompt(true);
+            }}
+          />
+        )}
+
+        {/* Password Change Modal */}
+        {currentUser && (
+          <PasswordChangeModal
+            isOpen={showPasswordChangePrompt}
+            onClose={() => {
+              setShowPasswordChangePrompt(false);
+              setPasswordChangeError('');
+              setPasswordChangeSuccess('');
+              setNewPassword('');
+              setConfirmNewPassword('');
+            }}
+            currentUser={currentUser}
+            onSuccess={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              setShowPasswordChangePrompt(false);
+              alert('비밀번호가 안전하게 변경되었습니다.');
             }}
           />
         )}
