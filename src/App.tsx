@@ -610,13 +610,22 @@ const App: React.FC = () => {
 
     let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
-    // 22번 안드로이드 유저를 위한 보완 로직: 
-    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(80% 이상)를 채웠다면 완료로 인정
-    // 끊어 읽기 시의 오차와 안드로이드 엔진의 불안정성을 감안하여 완료 기준을 80%로 대폭 완화
+    // 22번 안드로이드 유저를 위한 스마트 완료 판정 로직:
     if (!isIOS && currentUser?.id === 22 && currentTargetVerseForSession) {
-      const completionRatio = matchedCharCount / currentTargetVerseForSession.text.length;
-      if (completionRatio >= 0.80) {
-        isMatch = true;
+      // 현재 음성 버퍼가 처음부터 얼마나 매칭되는지 확인
+      const wholeMatchScore = findMatchedPrefixLength(currentTargetVerseForSession.text, sttTranscript, 60);
+
+      // '끊어 읽기' 상태 판별: 누적 진행도는 높은데, 현재 버퍼의 처음부터 매칭되는 점수는 현저히 낮을 때
+      const isPartReading = (matchedCharCount > 0) && (wholeMatchScore < matchedCharCount * 0.7);
+
+      if (isPartReading) {
+        // [중간부터 끊어 읽는 경우] 안드로이드 리셋을 감안하여 85% 도달 시 완료 인정
+        if (matchedCharCount / currentTargetVerseForSession.text.length >= 0.85) {
+          isMatch = true;
+        }
+      } else {
+        // [처음부터 쭉 읽는 경우] 숏컷(85%)을 허용하지 않고, 기존의 엄격한 similarity와 lengthRatio 기준을 그대로 따름
+        // (사용자가 끝까지 다 읽기 전에 구절이 미리 넘어가는 것을 방지)
       }
     }
 
