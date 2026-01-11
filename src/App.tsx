@@ -483,26 +483,47 @@ const App: React.FC = () => {
             60
           );
 
-          // 2. 이미 매칭된 이후의 '남은 본문'과 현재 음성을 비교 (안드로이드 엔진 리셋 대응)
-          const remainingVerse = currentTargetVerseForSession.text.substring(prev);
+          // 2. 스마트 누적 & 겹쳐 읽기 대응 (앵커 기반 탐색)
+          // 음성 인식 결과의 앞부분 단어들을 '앵커(시작점)'로 삼아 본문의 어디와 일치하는지 찾습니다.
+          // 이를 통해 사용자가 멈춘 후 이전 단어를 겹쳐 읽어도 현재 위치를 정확히 찾아낼 수 있습니다.
+          let maximalReach = prev;
+          const fullText = currentTargetVerseForSession.text;
+          const normFullText = normalizeText(fullText);
+          const words = sttTranscript.trim().split(/\s+/).filter(w => w.length > 0);
 
-          // 22번 유저 전용 유연한 매칭: 
-          // 멈췄다 읽을 때의 소음이나 중복 단어(마지막 단어 다시 읽기)를 감안하여
-          // 현재 음성의 어느 지점에서든 남은 본문이 시작되는지 찾고, 유사도 임계값도 45로 대폭 완화
-          let bestAddedMatch = 0;
-          const words = sttTranscript.trim().split(/\s+/);
+          // 음성의 앞 8단어까지 앵커 후보로 사용하여 본문 내 시작 지점 탐색
+          for (let i = 0; i < Math.min(words.length, 8); i++) {
+            const anchor = normalizeText(words[i]);
+            if (anchor.length < 2) continue; // 너무 짧은 조사는 무시
 
-          // 앞부분의 최대 4단어까지 시작 지점을 옮겨가며 최적의 매칭 지점 탐색
-          for (let i = 0; i < Math.min(words.length, 4); i++) {
-            const testTranscript = words.slice(i).join(' ');
-            if (!testTranscript) continue;
+            let searchIdx = 0;
+            while ((searchIdx = normFullText.indexOf(anchor, searchIdx)) !== -1) {
+              // 찾은 앵커 지점의 원본 텍스트(공백 포함) 인덱스 계산
+              let originalStart = 0;
+              let currentNormIdx = 0;
+              for (let j = 0; j < fullText.length; j++) {
+                if (!/[\s\.\!\?\,\(\)\[\]\{\}\:\"\']/g.test(fullText[j])) {
+                  if (currentNormIdx === searchIdx) {
+                    originalStart = j;
+                    break;
+                  }
+                  currentNormIdx++;
+                }
+              }
 
-            const match = findMatchedPrefixLength(remainingVerse, testTranscript, 45);
-            if (match > bestAddedMatch) bestAddedMatch = match;
+              // 해당 지점부터 음성이 일치하는지 체크 (임계값 45로 유연하게 판정)
+              const testTranscript = words.slice(i).join(' ');
+              const matchLen = findMatchedPrefixLength(fullText.substring(originalStart), testTranscript, 45);
+
+              if (matchLen > 0) {
+                const totalReach = originalStart + matchLen;
+                if (totalReach > maximalReach) maximalReach = totalReach;
+              }
+              searchIdx++; // 다음 앵커 검색
+            }
           }
 
-          const cumulativeMatch = prev + bestAddedMatch;
-          return Math.max(prev, wholeMatch, cumulativeMatch);
+          return Math.max(maximalReach, wholeMatch);
         });
       } else {
         // 기존 로직: 아이폰 사용자이거나 29번이 아닌 타 유저용
