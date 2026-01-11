@@ -473,12 +473,34 @@ const App: React.FC = () => {
 
     // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
     if (currentTargetVerseForSession && sttTranscript) {
-      const matchedCount = findMatchedPrefixLength(
-        currentTargetVerseForSession.text,
-        sttTranscript,
-        60 // 임계값 60으로 통일하여 정확성 향상
-      );
-      setMatchedCharCount(matchedCount);
+      // 신중한 작업: 아이폰은 절대 건드리지 않고(isIOS), 29번 유저이면서 안드로이드(!isIOS)인 경우만 누적 로직 적용
+      if (!isIOS && currentUser?.id === 29) {
+        setMatchedCharCount(prev => {
+          // 1. 전체 본문과 현재 음성을 기존 방식대로 비교 (혹시라도 음성 버퍼가 유지되는 경우 대비)
+          const wholeMatch = findMatchedPrefixLength(
+            currentTargetVerseForSession.text,
+            sttTranscript,
+            60
+          );
+
+          // 2. 이미 매칭된 이후의 '남은 본문'과 현재 음성을 비교 (안드로이드 엔진 리셋 대응)
+          const remainingVerse = currentTargetVerseForSession.text.substring(prev);
+          const addedMatch = findMatchedPrefixLength(remainingVerse, sttTranscript, 60);
+          const cumulativeMatch = prev + addedMatch;
+
+          // 세 가지 값 중 가장 큰 값(가장 멀리 진행된 상태)을 선택하여 취소선 유지
+          // prev: 어떤 결과가 나오더라도 기존에 그어진 취소선을 후퇴시키지 않음
+          return Math.max(prev, wholeMatch, cumulativeMatch);
+        });
+      } else {
+        // 기존 로직: 아이폰 사용자이거나 29번이 아닌 타 유저용
+        const matchedCount = findMatchedPrefixLength(
+          currentTargetVerseForSession.text,
+          sttTranscript,
+          60 // 임계값 60으로 통일하여 정확성 향상
+        );
+        setMatchedCharCount(matchedCount);
+      }
     }
 
     if (readingState !== ReadingState.LISTENING || !showAmenPrompt) return;
