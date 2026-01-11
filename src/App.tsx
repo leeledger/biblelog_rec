@@ -511,6 +511,14 @@ const App: React.FC = () => {
                 }
               }
 
+              // [중요] 미래 점프 방지: 
+              // 찾은 앵커 위치가 현재 취소선 위치(prev)보다 너무 멀리(10자 이상) 앞서있다면
+              // 성경 특성상 '반복되는 다른 단어'를 찾은 것으로 간주하고 무시합니다.
+              if (originalStart > prev + 10) {
+                searchIdx++;
+                continue;
+              }
+
               // 해당 지점부터 음성이 일치하는지 체크 (임계값 45로 유연하게 판정)
               const testTranscript = words.slice(i).join(' ');
               const matchLen = findMatchedPrefixLength(fullText.substring(originalStart), testTranscript, 45);
@@ -603,11 +611,11 @@ const App: React.FC = () => {
     let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
     // 22번 안드로이드 유저를 위한 보완 로직: 
-    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(85% 이상)를 채웠다면 완료로 인정
-    // 끊어 읽기 시의 오차와 안드로이드 엔진의 불안정성을 감안하여 완료 기준을 85%로 소폭 완화
+    // 음성 버퍼가 리셋되어도 이미 누적된 취소선(matchedCharCount)이 구절의 충분한 길이(80% 이상)를 채웠다면 완료로 인정
+    // 끊어 읽기 시의 오차와 안드로이드 엔진의 불안정성을 감안하여 완료 기준을 80%로 대폭 완화
     if (!isIOS && currentUser?.id === 22 && currentTargetVerseForSession) {
       const completionRatio = matchedCharCount / currentTargetVerseForSession.text.length;
-      if (completionRatio >= 0.85) {
+      if (completionRatio >= 0.80) {
         isMatch = true;
       }
     }
