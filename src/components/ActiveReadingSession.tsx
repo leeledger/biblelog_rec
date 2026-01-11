@@ -121,11 +121,13 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             </button>
           </div>
 
-          <h2 className="text-xl font-bold mb-2">선택한 범위의 성경 본문</h2>
-          <div className="bg-gray-50 border rounded-md p-4 max-h-60 overflow-y-auto shadow-inner">
+          <h2 className="text-xl font-bold mb-2 text-gray-800">선택한 범위의 성경 본문</h2>
+          <div className={`bg-white border-2 border-indigo-50 rounded-xl p-4 overflow-y-auto shadow-inner transition-all duration-500 ${matchedDores.length > 0 ? 'max-h-64' : 'max-h-[65vh]'
+            }`}>
             {sessionTargetVerses.map((v) => (
-              <div key={`${v.book}-${v.chapter}-${v.verse}`} className="py-2 border-b last:border-b-0">
-                <span className="font-semibold text-indigo-700">{v.book} {v.chapter}:{v.verse}</span> <span className="text-gray-800">{v.text}</span>
+              <div key={`${v.book}-${v.chapter}-${v.verse}`} className="py-2.5 border-b border-gray-100 last:border-b-0">
+                <span className="font-bold text-indigo-600 mr-2">{v.book} {v.chapter}:{v.verse}</span>
+                <span className="text-gray-800 leading-relaxed text-lg">{v.text}</span>
               </div>
             ))}
           </div>
