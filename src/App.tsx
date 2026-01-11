@@ -473,8 +473,8 @@ const App: React.FC = () => {
 
     // 점진적 매칭: 현재 구절에서 매칭된 글자 수 업데이트
     if (currentTargetVerseForSession && sttTranscript) {
-      // 신중한 작업: 아이폰은 절대 건드리지 않고(isIOS), 22번 유저이면서 안드로이드(!isIOS)인 경우만 누적 로직 적용
-      if (!isIOS && currentUser?.id === 22) {
+      // 신중한 작업: 아이폰은 절대 건드리지 않고(isIOS), 안드로이드(!isIOS)인 경우만 누적 로직 적용
+      if (!isIOS) {
         setMatchedCharCount(prev => {
           // 1. 전체 본문과 현재 음성을 기존 방식대로 비교 (혹시라도 음성 버퍼가 유지되는 경우 대비)
           const wholeMatch = findMatchedPrefixLength(
@@ -610,8 +610,8 @@ const App: React.FC = () => {
 
     let isMatch = similarity >= adjustedSimilarityThreshold && (isLengthSufficientByRatio || isLengthSufficientByAbsoluteDiff);
 
-    // 22번 안드로이드 유저를 위한 스마트 완료 판정 로직:
-    if (!isIOS && currentUser?.id === 22 && currentTargetVerseForSession) {
+    // 모든 안드로이드 유저를 위한 스마트 완료 판정 로직:
+    if (!isIOS && currentTargetVerseForSession) {
       // 현재 음성 버퍼가 처음부터 얼마나 매칭되는지 확인
       const wholeMatchScore = findMatchedPrefixLength(currentTargetVerseForSession.text, sttTranscript, 60);
 
