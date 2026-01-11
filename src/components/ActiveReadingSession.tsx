@@ -160,7 +160,14 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
               >
                 {currentTargetVerse ? (
                   <>
-                    <span className="text-amber-600 font-bold" style={{ textShadow: '0 0 5px rgba(217, 119, 6, 0.3)' }}>
+                    <span
+                      className="text-amber-900 font-bold"
+                      style={{
+                        textShadow: '0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(252, 211, 77, 0.3)',
+                        letterSpacing: '0.01em',
+                        transition: 'all 0.5s ease-out'
+                      }}
+                    >
                       {currentTargetVerse.text.substring(0, matchedCharCount)}
                     </span>
                     <span className="text-black">
