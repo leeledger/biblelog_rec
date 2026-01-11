@@ -4,14 +4,18 @@ const { Pool } = require('pg');
 // if it's set, which we configured in docker-compose.yml.
 // For local development outside Docker, you might need to set these explicitly or use a .env file.
 const pool = new Pool({
-  // By explicitly setting these, we ensure that the connection works both in
-  // a Docker environment (which might set DATABASE_URL) and in a local environment
-  // using a .env file loaded by our admin script.
   user: process.env.PGUSER,
   host: process.env.PGHOST,
   database: process.env.PGDATABASE,
   password: process.env.PGPASSWORD,
   port: process.env.PGPORT,
+  // 서버리스 환경(Vercel) 최적화 설정
+  max: 3, // 한 인스턴스가 점유하는 최대 커넥션 제한
+  idleTimeoutMillis: 30000, // 유휴 커넥션 반환 시간 (30초)
+  connectionTimeoutMillis: 2000, // 연결 타임아웃
+  ssl: {
+    rejectUnauthorized: false // Supabase 등 외부 DB 연결을 위해 필요
+  }
 });
 
 pool.on('connect', () => {
