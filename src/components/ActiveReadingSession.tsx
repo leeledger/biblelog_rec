@@ -160,7 +160,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
               >
                 {currentTargetVerse ? (
                   <>
-                    <span className="line-through text-gray-400">
+                    <span className="text-amber-600 font-bold" style={{ textShadow: '0 0 5px rgba(217, 119, 6, 0.3)' }}>
                       {currentTargetVerse.text.substring(0, matchedCharCount)}
                     </span>
                     <span className="text-black">
