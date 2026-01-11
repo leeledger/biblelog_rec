@@ -26,6 +26,7 @@ interface ActiveReadingSessionProps {
   sessionCertificationMessage: string;
   isStalled: boolean; // 추가
   onSessionCompleteConfirm: () => void;
+  isResume?: boolean; // 추가
 }
 
 const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
@@ -44,7 +45,8 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   onStartListening,
   sessionCertificationMessage,
   isStalled, // 추가
-  onSessionCompleteConfirm
+  onSessionCompleteConfirm,
+  isResume // 추가
 }) => {
   // 현재 세션 범위 내의 모든 장 정보 추출 및 매칭되는 도레 판화들 찾기
   const matchedDores = React.useMemo(() => {
@@ -117,7 +119,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
               className="flex-[2] px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg ripple-effect active:scale-95"
               onClick={onStartListening}
             >
-              성경 읽기 시작
+              {isResume ? '이어서 읽기' : '선택범위 읽기 시작'}
             </button>
           </div>
 

@@ -75,6 +75,7 @@ const App: React.FC = () => {
 
   // 점진적 매칭: 현재 구절에서 매칭된 글자 수
   const [matchedCharCount, setMatchedCharCount] = useState(0);
+  const [isResumeSession, setIsResumeSession] = useState(false);
 
   // 데이터 로딩 상태
   const [isProgressLoading, setIsProgressLoading] = useState(true);
@@ -187,6 +188,7 @@ const App: React.FC = () => {
     setSessionTargetVerses([]);
     setCurrentVerseIndexInSession(0);
     setSyncedVerseIndex(0);
+    setIsResumeSession(false);
     setMatchedVersesContentForSession('');
     setSessionProgress(initialSessionProgress);
     setSessionCertificationMessage('');
@@ -815,6 +817,21 @@ const App: React.FC = () => {
         }
       }
 
+      // 이어서 읽기 여부 판별 (마지막 읽은 위치의 다음 포인트와 현재 선택이 일치하는지)
+      const lastReadPoint = userOverallProgress ? {
+        book: userOverallProgress.lastReadBook || '',
+        chapter: userOverallProgress.lastReadChapter || 1,
+        verse: userOverallProgress.lastReadVerse || 0
+      } : null;
+
+      const nextSuggested = getNextReadingStart(lastReadPoint);
+      const isActuallyNext = nextSuggested &&
+        book === nextSuggested.book &&
+        startCh === nextSuggested.chapter &&
+        actualStartVerse === nextSuggested.verse;
+
+      setIsResumeSession(!!isActuallyNext);
+
       setSessionTargetVerses(verses);
       setReadingState(ReadingState.READING);
       setCurrentVerseIndexInSession(initialSkip);
@@ -1155,6 +1172,7 @@ const App: React.FC = () => {
             onSessionCompleteConfirm={() => {
               handleStopReadingAndSave(sessionTargetVerses.length, false);
             }}
+            isResume={isResumeSession}
           />
         )}
 
