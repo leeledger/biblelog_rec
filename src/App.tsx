@@ -626,8 +626,8 @@ const App: React.FC = () => {
           const bufferEndPortion = normalizeText(sttTranscript).slice(-15); // 약간 더 넓은 범위 탐색
           const endSimilarity = calculateSimilarity(targetEndPortion, bufferEndPortion);
 
-          // 아이폰(60)보다 완화된 40점 기준으로 체크하여 답답함을 방지하면서도 끝맺음을 확인
-          if (endSimilarity >= 40) {
+          // 아이폰(60)보다 완화된 50점 기준으로 체크하여 답답함을 방지하면서도 끝맺음을 확인
+          if (endSimilarity >= 50) {
             isMatch = true;
           }
         }
@@ -642,7 +642,7 @@ const App: React.FC = () => {
       const bufferEnd = bufferPortionToCompare.slice(-END_PORTION_LENGTH);
       const endSimilarity = calculateSimilarity(targetEnd, bufferEnd);
 
-      if (endSimilarity < 60) {
+      if (endSimilarity < 50) {
         const endPortionHasDifficultWord = containsDifficultWord(targetEnd);
         if (!endPortionHasDifficultWord) {
           isMatch = false;
