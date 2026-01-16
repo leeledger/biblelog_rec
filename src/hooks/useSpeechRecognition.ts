@@ -21,6 +21,7 @@ interface UseSpeechRecognitionReturn {
   error: string | null;
   startListening: () => void;
   stopListening: () => void;
+  abortListening: () => void; // 추가
   browserSupportsSpeechRecognition: boolean;
   resetTranscript: () => void;
   markVerseTransition: () => void;
@@ -175,6 +176,15 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     setIsListening(false);
   }, []);
 
+  const abortListening = useCallback(() => {
+    if (!recognitionRef.current) return;
+    intentionalStopRef.current = true;
+    recognitionRef.current.abort(); // 즉시 중단 및 버퍼 파기
+    setIsListening(false);
+    setTranscript('');
+    finalTranscriptRef.current = '';
+  }, []);
+
   const resetTranscript = useCallback(() => {
     setTranscript('');
     finalTranscriptRef.current = '';
@@ -197,6 +207,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     error,
     startListening,
     stopListening,
+    abortListening, // 추가
     browserSupportsSpeechRecognition,
     resetTranscript,
     markVerseTransition,

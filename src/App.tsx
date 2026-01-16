@@ -178,6 +178,7 @@ const App: React.FC = () => {
     error: sttError,
     startListening,
     stopListening,
+    abortListening, // 추가
     browserSupportsSpeechRecognition,
     resetTranscript,
     markVerseTransition,
@@ -735,12 +736,12 @@ const App: React.FC = () => {
         resetTranscript();
         setMatchedCharCount(0); // 구절 전환 시 리셋
 
-        // 구절 전환 시 마이크 리셋 (안드로이드/iOS 공통)
-        // 이전 구절의 잔여 인식이 다음 구절에 섞이지 않도록 하기 위함
+        // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
+        // abortListening()을 사용하여 이전 구절의 잔여 인식을 즉시 파기하고 엔진을 초기화함
         setTimeout(() => {
-          stopListening();
+          abortListening();
           setIsRetryingVerse(true);
-        }, isIOS ? 50 : 200); // 아주 짧은 찰나에 정지 명령 (Android는 안정성을 위해 200ms로 상향)
+        }, isIOS ? 50 : 200);
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
