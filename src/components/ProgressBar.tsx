@@ -5,7 +5,7 @@ interface ProgressBarProps {
   progress: SessionReadingProgress;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
+const ProgressBar: React.FC<ProgressBarProps> = React.memo(({ progress }) => {
   const {
     totalVersesInSession,
     sessionCompletedVersesCount,
@@ -14,7 +14,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
 
   // The number of verses the user is actually expected to read in this session
   const totalVersesToRead = totalVersesInSession - sessionInitialSkipCount;
-  
+
   // The number of verses the user has read *after* the initial skip point
   const versesEffectivelyRead = sessionCompletedVersesCount - sessionInitialSkipCount;
 
@@ -36,6 +36,6 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
       </div>
     </div>
   );
-};
+});
 
 export default ProgressBar;

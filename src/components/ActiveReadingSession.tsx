@@ -29,6 +29,19 @@ interface ActiveReadingSessionProps {
   isResume?: boolean; // 추가
 }
 
+// 성능 최적화: 읽은 누적 구절 영역을 별도 컴포넌트로 분리하여
+// 음성 인식 중(transcript 업데이트 시) 불필요하게 리렌더링되지 않도록 함
+const MatchedHistoryDisplay = React.memo(({ content }: { content: string }) => {
+  return (
+    <div>
+      <p className="text-sm text-gray-500 font-medium mb-1">지금까지 읽은 내용:</p>
+      <div className="text-sm text-gray-600 whitespace-pre-wrap p-3 bg-gray-50 rounded-xl border border-gray-100 max-h-40 overflow-y-auto shadow-inner">
+        {content || <span className="text-gray-400 italic">아직 읽은 구절이 없습니다.</span>}
+      </div>
+    </div>
+  );
+});
+
 const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   readingState,
   sessionTargetVerses,
@@ -232,12 +245,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             </p>
           </div>
 
-          <div>
-            <p className="text-sm text-gray-500">지금까지 읽은 내용:</p>
-            <div className="text-sm text-gray-600 whitespace-pre-wrap p-2 bg-gray-50 rounded-md border max-h-40 overflow-y-auto">
-              {matchedVersesContent || <span className="text-gray-400 italic">아직 읽은 구절이 없습니다.</span>}
-            </div>
-          </div>
+          <MatchedHistoryDisplay content={matchedVersesContent} />
         </div>
 
         {readingState === ReadingState.LISTENING && (
