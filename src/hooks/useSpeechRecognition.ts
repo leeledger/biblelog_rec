@@ -173,14 +173,14 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     if (!recognitionRef.current) return;
     intentionalStopRef.current = true;
     recognitionRef.current.stop();
-    setIsListening(false);
+    // setIsListening(false); // Removed: Let onend handle this to avoid race conditions
   }, []);
 
   const abortListening = useCallback(() => {
     if (!recognitionRef.current) return;
     intentionalStopRef.current = true;
     recognitionRef.current.abort(); // 즉시 중단 및 버퍼 파기
-    setIsListening(false);
+    // setIsListening(false); // Removed: Let onend handle this to avoid race conditions
     setTranscript('');
     finalTranscriptRef.current = '';
   }, []);
