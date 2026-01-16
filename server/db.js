@@ -32,17 +32,48 @@ const initializeDatabase = async () => {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255),
+      must_change_password BOOLEAN DEFAULT TRUE,
+      completed_count INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  const createGroupsTable = `
+    CREATE TABLE IF NOT EXISTS groups (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      invite_code VARCHAR(255) NOT NULL UNIQUE,
+      owner_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  const createGroupMembersTable = `
+    CREATE TABLE IF NOT EXISTS group_members (
+      group_id INTEGER REFERENCES groups(id),
+      user_id INTEGER REFERENCES users(id),
+      joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (group_id, user_id)
+    );
+  `;
+
+  const createBibleStructureTable = `
+    CREATE TABLE IF NOT EXISTS bible_structure (
+      book_name VARCHAR(255),
+      total_chapters INTEGER,
+      book_order INTEGER
     );
   `;
 
   const createReadingProgressTable = `
     CREATE TABLE IF NOT EXISTS reading_progress (
-      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       last_read_book VARCHAR(255),
       last_read_chapter INTEGER,
       last_read_verse INTEGER,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      group_id INTEGER REFERENCES groups(id)
     );
   `;
 
@@ -53,6 +84,7 @@ const initializeDatabase = async () => {
       book_name VARCHAR(255) NOT NULL,
       chapter_number INTEGER NOT NULL,
       completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      group_id INTEGER REFERENCES groups(id),
       UNIQUE (user_id, book_name, chapter_number)
     );
   `;
@@ -66,7 +98,8 @@ const initializeDatabase = async () => {
       chapter_number INTEGER NOT NULL,
       verse_number INTEGER NOT NULL, 
       read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      session_id VARCHAR(255) 
+      session_id VARCHAR(255),
+      group_id INTEGER REFERENCES groups(id)
     );
   `;
 
@@ -77,12 +110,16 @@ const initializeDatabase = async () => {
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       round INTEGER NOT NULL,
       completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      group_id INTEGER REFERENCES groups(id),
       UNIQUE (user_id, round)
     );
   `;
 
   try {
     await pool.query(createUsersTable);
+    await pool.query(createGroupsTable);
+    await pool.query(createGroupMembersTable);
+    await pool.query(createBibleStructureTable);
     await pool.query(createReadingProgressTable);
     await pool.query(createCompletedChaptersTable);
     await pool.query(createReadingHistoryTable);
@@ -107,6 +144,34 @@ const initializeDatabase = async () => {
       await pool.query('ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT TRUE');
       console.log("Column 'must_change_password' added to 'users' table.");
     }
+
+    // Add completed_count column if it doesn't exist
+    const completedCountColExists = await pool.query(`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name='users' AND column_name='completed_count' AND table_schema = 'public'
+    `);
+    if (completedCountColExists.rowCount === 0) {
+      await pool.query('ALTER TABLE users ADD COLUMN completed_count INTEGER DEFAULT 0');
+      console.log("Column 'completed_count' added to 'users' table.");
+    }
+
+    // Helper to add group_id if missing
+    const addGroupIdColumn = async (tableName) => {
+      const colExists = await pool.query(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name=$1 AND column_name='group_id' AND table_schema = 'public'
+      `, [tableName]);
+
+      if (colExists.rowCount === 0) {
+        await pool.query(`ALTER TABLE ${tableName} ADD COLUMN group_id INTEGER REFERENCES groups(id)`);
+        console.log(`Column 'group_id' added to '${tableName}' table.`);
+      }
+    };
+
+    await addGroupIdColumn('reading_progress');
+    await addGroupIdColumn('completed_chapters');
+    await addGroupIdColumn('reading_history');
+    await addGroupIdColumn('hall_of_fame');
 
     console.log('Database tables checked/created/altered successfully.');
   } catch (err) {

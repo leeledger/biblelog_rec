@@ -13,6 +13,7 @@ interface MyPageProps {
 const MyPage: React.FC<MyPageProps> = ({ isOpen, onClose, currentUser, onLogout, onPasswordChange }) => {
     const [isWithdrawalConfirmOpen, setIsWithdrawalConfirmOpen] = useState(false);
     const [isWithdrawalLoading, setIsWithdrawalLoading] = useState(false);
+    const [withdrawalInput, setWithdrawalInput] = useState('');
 
     if (!isOpen) return null;
 
@@ -123,9 +124,27 @@ const MyPage: React.FC<MyPageProps> = ({ isOpen, onClose, currentUser, onLogout,
                                 복구가 불가능합니다.
                             </p>
                         </div>
+
+                        <div className="space-y-3">
+                            <p className="text-xs text-gray-500 font-medium">
+                                확인을 위해 아래 입력창에 <br />
+                                <span className="text-red-500 font-bold">회원탈퇴</span>를 입력해주세요.
+                            </p>
+                            <input
+                                type="text"
+                                value={withdrawalInput}
+                                onChange={(e) => setWithdrawalInput(e.target.value)}
+                                placeholder="회원탈퇴"
+                                className="w-full p-4 text-center bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 font-bold text-gray-700 placeholder-gray-300 transition-all"
+                            />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3">
                             <button
-                                onClick={() => setIsWithdrawalConfirmOpen(false)}
+                                onClick={() => {
+                                    setIsWithdrawalConfirmOpen(false);
+                                    setWithdrawalInput('');
+                                }}
                                 className="p-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors"
                                 disabled={isWithdrawalLoading}
                             >
@@ -133,8 +152,11 @@ const MyPage: React.FC<MyPageProps> = ({ isOpen, onClose, currentUser, onLogout,
                             </button>
                             <button
                                 onClick={handleWithdrawal}
-                                className="p-4 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-200"
-                                disabled={isWithdrawalLoading}
+                                className={`p-4 font-bold rounded-xl transition-all shadow-lg ${withdrawalInput === '회원탈퇴'
+                                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200'
+                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                                    }`}
+                                disabled={isWithdrawalLoading || withdrawalInput !== '회원탈퇴'}
                             >
                                 {isWithdrawalLoading ? '처리 중...' : '네, 탈퇴할게요'}
                             </button>
