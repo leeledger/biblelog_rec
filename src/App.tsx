@@ -740,7 +740,7 @@ const App: React.FC = () => {
         setTimeout(() => {
           stopListening();
           setIsRetryingVerse(true);
-        }, 50); // 아주 짧은 찰나에 정지 명령
+        }, isIOS ? 50 : 200); // 아주 짧은 찰나에 정지 명령 (Android는 안정성을 위해 200ms로 상향)
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
