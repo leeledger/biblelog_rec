@@ -540,13 +540,14 @@ const App: React.FC = () => {
           return Math.max(maximalReach, wholeMatch);
         });
       } else {
-        // 기존 로직: 아이폰 사용자이거나 29번이 아닌 타 유저용
+        // 아이폰용 로직: 사파리의 중간 인식 수정으로 인한 마킹 깜빡임(Flickering) 방지
         const matchedCount = findMatchedPrefixLength(
           currentTargetVerseForSession.text,
           sttTranscript,
-          60 // 임계값 60으로 통일하여 정확성 향상
+          60
         );
-        setMatchedCharCount(matchedCount);
+        // 이미 마킹된 뒷부분은 인식이 요동쳐도 후퇴하지 않고 고정되도록 최대값 유지
+        setMatchedCharCount(prev => Math.max(prev, matchedCount));
       }
     }
 
