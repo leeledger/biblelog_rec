@@ -316,12 +316,12 @@ app.post('/api/progress/:username', async (req, res) => {
     // 4. Save reading_history (versesReadInSession)
     if (history && history.length > 0) {
       for (const entry of history) {
-        // 어떤 이름으로 오든 숫자로 변환 (최소 1 보장)
-        const rawDur = entry.duration_minutes || entry.durationMinutes || 0;
-        const rawVerses = entry.verses_read || entry.versesRead || 0;
+        // [필독] 모든 가능한 이름들에서 값을 추출하고 숫자로 강제 변환
+        const dur = Number(entry.duration_minutes || entry.durationMinutes || entry.duration || 0);
+        const verses = Number(entry.verses_read || entry.versesRead || entry.verses || 0);
 
-        const durMin = Math.max(1, parseInt(rawDur, 10) || 0);
-        const vRead = Math.max(1, parseInt(rawVerses, 10) || 0);
+        const durMin = Math.max(1, dur);
+        const vRead = Math.max(1, verses);
         const readAt = new Date(entry.date);
 
         // 동일한 시간대의 기록 확인
@@ -333,7 +333,7 @@ app.post('/api/progress/:username', async (req, res) => {
         const existing = await client.query(checkQuery, [userId, entry.book, entry.startChapter, entry.startVerse, readAt]);
 
         if (existing.rows.length > 0) {
-          // COALESCE를 사용하여 NULL 값인 경우에도 올바르게 GREATEST가 작동하도록 수정
+          // 기존 기록 업데이트 (0이나 NULL이더라도 GREATEST로 가장 큰 값 유지)
           const updateQuery = `
             UPDATE reading_history 
             SET duration_minutes = GREATEST(COALESCE(duration_minutes, 0), $1), 
@@ -343,6 +343,7 @@ app.post('/api/progress/:username', async (req, res) => {
           `;
           await client.query(updateQuery, [durMin, vRead, groupId, existing.rows[0].id]);
         } else {
+          // 새로 삽입
           const historyInsertQuery = `
             INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id, verses_read)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
