@@ -197,8 +197,9 @@ async function handleBibleCompletion(userId, groupId = null) {
     const nextRound = rows[0].last_round + 1;
 
     // 2. hall_of_fame에 insert
+    console.log(`[db.js] handleBibleCompletion: user ${userId}, group ${groupId}, round ${nextRound}`);
     await client.query(
-      'INSERT INTO hall_of_fame (user_id, round, group_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      'INSERT INTO hall_of_fame (user_id, round, group_id) VALUES ($1, $2, $3) ON CONFLICT ON CONSTRAINT hall_of_fame_user_group_round_unique DO NOTHING',
       [userId, nextRound, groupId]
     );
 

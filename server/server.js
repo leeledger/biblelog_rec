@@ -398,24 +398,26 @@ app.get('/api/users/all', async (req, res) => {
 
 // Hall of Fame 엔드포인트 - 완독자 목록 조회
 app.get('/api/hall-of-fame', async (req, res) => {
-  const groupIdParam = req.query.groupId;
+  const { groupId: groupIdParam } = req.query;
 
-  // groupId를 더 견고하게 파싱
+  // groupId를 숫자로 엄격하게 변환 (부정확한 문자열 등 방어)
   let groupId = null;
   if (groupIdParam !== undefined && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== '') {
-    groupId = parseInt(groupIdParam, 10);
+    groupId = parseInt(String(groupIdParam), 10);
     if (isNaN(groupId)) groupId = null;
   }
 
-  console.log(`[GET /api/hall-of-fame] groupIdParam: "${groupIdParam}", interpreted groupId: ${groupId}`);
+  console.log(`[GET /api/hall-of-fame] Final Filtering - groupId: ${groupId}`);
 
   try {
+    // 쿼리 파라미터에 따라 group_id가 NULL인 것만 가져오거나, 특정 숫자와 일치하는 것만 가져옴
     let query = `
       SELECT 
         h.user_id, 
         u.username, 
         h.round, 
-        h.completed_at 
+        h.completed_at,
+        h.group_id
       FROM 
         hall_of_fame h 
       JOIN 
@@ -432,23 +434,33 @@ app.get('/api/hall-of-fame', async (req, res) => {
 
     query += ` ORDER BY h.completed_at DESC `;
 
-    console.log(`[GET /api/hall-of-fame] Executing query with params:`, params);
     const result = await db.query(query, params);
+    console.log(`[GET /api/hall-of-fame] Found ${result.rows.length} entries for groupId: ${groupId}`);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching hall of fame data:', err);
+    console.error('[GET /api/hall-of-fame] Error:', err);
     res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
   }
 });
 
 // Bible Reset (Completion) 엔드포인트
 app.post('/api/bible-reset', async (req, res) => {
-  const { userId, groupId } = req.body;
+  const { userId, groupId: rawGroupId } = req.body;
+
+  // groupId 파싱 (숫자로 보장)
+  let groupId = null;
+  if (rawGroupId !== undefined && rawGroupId !== null && rawGroupId !== 'null') {
+    groupId = parseInt(String(rawGroupId), 10);
+    if (isNaN(groupId)) groupId = null;
+  }
+
+  console.log(`[POST /api/bible-reset] userId: ${userId}, groupId: ${groupId}`);
+
   try {
     const result = await db.handleBibleCompletion(userId, groupId);
     res.json({ success: true, ...result });
   } catch (err) {
-    console.error('Error resetting bible progress:', err);
+    console.error('[POST /api/bible-reset] Error:', err);
     res.status(500).json({ success: false, error: 'Bible reset failed' });
   }
 });
