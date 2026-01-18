@@ -315,8 +315,8 @@ app.post('/api/progress/:username', async (req, res) => {
     // history entry: {date, book, startChapter, startVerse, endChapter, endVerse, versesRead, duration_minutes}
     if (history && history.length > 0) {
       const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7);
+        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id, verses_read)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
       `;
       for (const entry of history) {
         await client.query(historyInsertQuery, [
@@ -326,7 +326,8 @@ app.post('/api/progress/:username', async (req, res) => {
           entry.startVerse,
           new Date(entry.date),
           entry.duration_minutes || 0,
-          groupId
+          groupId,
+          entry.versesRead || 0
         ]);
       }
     }

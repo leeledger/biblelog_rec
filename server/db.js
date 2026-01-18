@@ -183,6 +183,16 @@ const initializeDatabase = async () => {
       console.log("Column 'duration_minutes' added to 'reading_history' table.");
     }
 
+    // Add verses_read column to reading_history if it doesn't exist
+    const versesReadColExists = await pool.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name='reading_history' AND column_name='verses_read' AND table_schema = 'public'
+    `);
+    if (versesReadColExists.rowCount === 0) {
+      await pool.query('ALTER TABLE reading_history ADD COLUMN verses_read INTEGER DEFAULT 0');
+      console.log("Column 'verses_read' added to 'reading_history' table.");
+    }
+
     console.log('Database tables checked/created/altered successfully.');
   } catch (err) {
     console.error('Error initializing database (creating/altering tables):', err);
