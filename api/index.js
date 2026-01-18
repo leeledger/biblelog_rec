@@ -382,16 +382,35 @@ app.get('/api/users/all', async (req, res) => {
 });
 
 app.get('/api/hall-of-fame', async (req, res) => {
+    const { groupId: groupIdParam } = req.query;
+
+    // NaN, 'null', 'undefined', 빈 문자열 모두 개인 통독(null)으로 처리
+    let groupId = null;
+    if (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== 'NaN') {
+        const parsed = parseInt(groupIdParam, 10);
+        groupId = isNaN(parsed) ? null : parsed;
+    }
+
+    console.log(`[HOF] Filtering for: ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
+
     try {
-        const result = await db.query(`
-      SELECT h.user_id, u.username, h.round, h.completed_at 
-      FROM hall_of_fame h 
-      JOIN users u ON h.user_id = u.id 
-      ORDER BY h.completed_at DESC
-    `);
+        let query = 'SELECT h.user_id, u.username, h.round, h.completed_at, h.group_id FROM hall_of_fame h JOIN users u ON h.user_id = u.id';
+        let params = [];
+
+        if (groupId === null) {
+            query += ' WHERE h.group_id IS NULL';
+        } else {
+            query += ' WHERE h.group_id = $1';
+            params.push(groupId);
+        }
+
+        query += ' ORDER BY h.completed_at DESC';
+
+        const result = await db.query(query, params);
+        console.log(`[HOF] Found ${result.rows.length} entries`);
         res.json(result.rows);
     } catch (err) {
-        console.error('Error fetching hall of fame data:', err);
+        console.error('[HOF] Error:', err);
         res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
     }
 });
