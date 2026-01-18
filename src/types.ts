@@ -67,7 +67,6 @@ export interface UserSessionRecord {
   endChapter: number;
   endVerse: number;
   versesRead: number; // Verses *actually* read in this session
-  duration_minutes?: number; // 세션 동안 읽은 시간 (추가)
 }
 
 

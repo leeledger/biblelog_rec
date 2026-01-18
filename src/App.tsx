@@ -171,7 +171,6 @@ const App: React.FC = () => {
   });
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
   const [syncedVerseIndex, setSyncedVerseIndex] = useState(0); // UI 동기화용 인덱스 추가
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null); // 세션 시작 시간 (추가)
 
   const {
     isListening,
@@ -850,9 +849,6 @@ const App: React.FC = () => {
         sessionCompletedVersesCount: initialSkip,
         sessionInitialSkipCount: initialSkip,
       });
-      const startTime = Date.now();
-      setSessionStartTime(startTime);
-      localStorage.setItem('bible_session_start_time', startTime.toString()); // 새로고침 대비 저장
       setSessionCertificationMessage("");
       setAppError(null);
     } else {
@@ -888,29 +884,15 @@ const App: React.FC = () => {
         setSessionCertificationMessage(certMsg);
       }
 
-      const durationMillis = sessionStartTime ? Date.now() - sessionStartTime : 0;
-      // localStorage에서 백업 시간 시도
-      const backupStartTime = localStorage.getItem('bible_session_start_time');
-      const finalDurationMillis = (durationMillis === 0 && backupStartTime)
-        ? Date.now() - parseInt(backupStartTime, 10)
-        : durationMillis;
-
-      const durationMinutes = Math.max(1, Math.round(finalDurationMillis / (1000 * 60)));
-
-      const historyEntry: any = {
+      const historyEntry: UserSessionRecord = {
         date: new Date().toISOString(),
         book: firstEffectivelyReadVerse.book,
         startChapter: firstEffectivelyReadVerse.chapter,
         startVerse: firstEffectivelyReadVerse.verse,
         endChapter: lastEffectivelyReadVerse.chapter,
         endVerse: lastEffectivelyReadVerse.verse,
-        versesRead: versesActuallyReadThisSessionCount, // 호환용
-        verses_read: versesActuallyReadThisSessionCount, // 서버용
-        duration_minutes: durationMinutes, // 서버용
-        durationMinutes: durationMinutes // 호환용
+        versesRead: versesActuallyReadThisSessionCount
       };
-
-      localStorage.removeItem('bible_session_start_time'); // 저장 후 초기화
 
       const newCompletedChaptersInSession = new Set<string>(userOverallProgress?.completedChapters || []);
 
@@ -972,7 +954,7 @@ const App: React.FC = () => {
       window.location.reload();
     }
 
-  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId, sessionStartTime]);
+  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
