@@ -434,6 +434,7 @@ app.get('/api/hall-of-fame', async (req, res) => {
 
     query += ` ORDER BY h.completed_at DESC `;
 
+    console.log(`[GET /api/hall-of-fame] FULL QUERY: ${query} | PARAMS: ${JSON.stringify(params)}`);
     const result = await db.query(query, params);
     console.log(`[GET /api/hall-of-fame] Found ${result.rows.length} entries for groupId: ${groupId}`);
     res.json(result.rows);

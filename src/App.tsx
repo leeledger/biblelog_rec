@@ -1126,6 +1126,7 @@ const App: React.FC = () => {
         {showHallOfFame && (
           <HallOfFame
             groupId={selectedGroupId}
+            groupName={userGroups.find(g => g.id === selectedGroupId)?.name}
             onClose={() => setShowHallOfFame(false)}
           />
         )}
