@@ -314,34 +314,40 @@ app.post('/api/progress/:username', async (req, res) => {
     }
 
     // 4. Save reading_history (versesReadInSession)
-    // history entry: {date, book, startChapter, startVerse, endChapter, endVerse, versesRead, duration_minutes}
     if (history && history.length > 0) {
-      const historyInsertQuery = `
-        INSERT INTO reading_history (
-          user_id, book_name, chapter_number, verse_number, 
-          read_at, duration_minutes, group_id, verses_read
-        )
-        SELECT $1, $2, $3, $4, $5, $6, $7, $8
-        WHERE NOT EXISTS (
-          SELECT 1 FROM reading_history 
-          WHERE user_id = $1 
-            AND book_name = $2 
-            AND chapter_number = $3 
-            AND verse_number = $4 
-            AND read_at = $5
-        );
-      `;
       for (const entry of history) {
-        await client.query(historyInsertQuery, [
-          userId,
-          entry.book,
-          entry.startChapter,
-          entry.startVerse,
-          new Date(entry.date),
-          entry.duration_minutes || 0,
-          groupId,
-          entry.versesRead || 0
-        ]);
+        const durMin = Math.max(1, entry.duration_minutes || entry.durationMinutes || 0);
+        const vRead = Math.max(1, entry.verses_read || entry.versesRead || 0);
+        const readAt = new Date(entry.date);
+
+        // 이미 동일한 시각(분 단위까지)의 기록이 있는지 확인
+        const checkQuery = `
+          SELECT id FROM reading_history 
+          WHERE user_id = $1 AND book_name = $2 AND chapter_number = $3 AND verse_number = $4 
+          AND ABS(EXTRACT(EPOCH FROM (read_at - $5))) < 60
+        `;
+        const existing = await client.query(checkQuery, [userId, entry.book, entry.startChapter, entry.startVerse, readAt]);
+
+        if (existing.rows.length > 0) {
+          // 기존 기록이 있으면 더 큰 값으로 업데이트 (0으로 저장된 기록 구제)
+          const updateQuery = `
+            UPDATE reading_history 
+            SET duration_minutes = GREATEST(duration_minutes, $1), 
+                verses_read = GREATEST(verses_read, $2),
+                group_id = $3
+            WHERE id = $4
+          `;
+          await client.query(updateQuery, [durMin, vRead, groupId, existing.rows[0].id]);
+        } else {
+          // 기록이 없으면 새로 삽입
+          const historyInsertQuery = `
+            INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id, verses_read)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+          `;
+          await client.query(historyInsertQuery, [
+            userId, entry.book, entry.startChapter, entry.startVerse, readAt, durMin, groupId, vRead
+          ]);
+        }
       }
     }
 
