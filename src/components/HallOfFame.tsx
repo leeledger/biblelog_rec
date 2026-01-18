@@ -20,6 +20,9 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
       ? `/api/hall-of-fame?groupId=${groupId}&t=${Date.now()}`
       : `/api/hall-of-fame?t=${Date.now()}`;
 
+    console.log(`[HallOfFame] groupId prop: ${groupId}, type: ${typeof groupId}, isValid: ${isValidGroupId}`);
+    console.log(`[HallOfFame] Fetching URL: ${url}`);
+
     fetch(url)
       .then(res => res.json())
       .then(data => {
