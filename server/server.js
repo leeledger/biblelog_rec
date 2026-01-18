@@ -396,7 +396,7 @@ app.get('/api/users/all', async (req, res) => {
   }
 });
 
-// Hall of Fame 엔드포인트 - 완독자 목록 조회 (최종 통합 버전)
+// Hall of Fame 엔드포인트 - 완독자 목록 조회 (최종 통합 버전 - 엄격한 격리)
 app.get('/api/hall-of-fame', async (req, res) => {
   const { groupId: groupIdParam } = req.query;
 
@@ -406,11 +406,11 @@ app.get('/api/hall-of-fame', async (req, res) => {
     if (isNaN(groupId)) groupId = null;
   }
 
-  console.log(`[GET /api/hall-of-fame] Filtering for groupId: ${groupId}`);
+  console.log(`[GET /api/hall-of-fame] Filtering for context: ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
 
   try {
-    // 리더보드와 동일한 방식의 엄격한 그룹 필터링 적용
-    const query = `
+    // 런타임에 따른 안전한 쿼리 빌딩 (NULL 값에 대한 SQL 엔진 호환성 보장)
+    let query = `
       SELECT 
         h.user_id, 
         u.username, 
@@ -421,16 +421,24 @@ app.get('/api/hall-of-fame', async (req, res) => {
         hall_of_fame h 
       JOIN 
         users u ON h.user_id = u.id 
-      WHERE (h.group_id = $1 OR (h.group_id IS NULL AND $1 IS NULL))
-      ORDER BY h.completed_at DESC
     `;
+    let params = [];
 
-    const result = await db.query(query, [groupId]);
-    console.log(`[GET /api/hall-of-fame] Found ${result.rows.length} entries for groupId: ${groupId}`);
+    if (groupId === null) {
+      query += ` WHERE h.group_id IS NULL `;
+    } else {
+      query += ` WHERE h.group_id = $1 `;
+      params.push(groupId);
+    }
+
+    query += ` ORDER BY h.completed_at DESC `;
+
+    const result = await db.query(query, params);
+    console.log(`[GET /api/hall-of-fame] Successfully found ${result.rows.length} records.`);
     res.json(result.rows);
   } catch (err) {
-    console.error('[GET /api/hall-of-fame] Error:', err);
-    res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
+    console.error('[GET /api/hall-of-fame] Critical Error:', err);
+    res.status(500).json({ message: '데이터를 가져오지 못했습니다.' });
   }
 });
 

@@ -50,17 +50,22 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
           <h1 className="text-3xl font-extrabold text-amber-600 drop-shadow mb-2">
             {groupName ? `🏆 ${groupName} 명예의 전당` : '🏆 개인 통독 명예의 전당'}
           </h1>
-          <div className="mb-8 p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-4 border-white shadow-xl rounded-[2.5rem]">
-            <div className="flex flex-col items-center text-center">
-              <span className="text-4xl text-amber-200 font-serif leading-none mb-4">“</span>
-              <p className="text-lg text-amber-900 font-serif leading-relaxed break-keep max-w-[85%]">
+          <div className="mb-10 p-8 bg-gradient-to-br from-amber-50 to-orange-50 border-double border-4 border-amber-200 shadow-2xl rounded-[3rem] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-300 to-transparent opacity-50"></div>
+            <div className="flex flex-col items-center text-center relative z-10">
+              <span className="text-5xl text-amber-200 font-serif leading-none mb-6">“</span>
+              <p className="text-xl text-amber-900 font-serif leading-relaxed break-keep max-w-[90%] font-medium">
                 내가 달려갈 길과 주 예수께 받은 사명<br />
                 곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는<br />
                 나의 생명조차 조금도 귀한 것으로 여기지 아니하노라
               </p>
-              <span className="text-4xl text-amber-200 font-serif leading-none mt-4 rotate-180">“</span>
-              <div className="mt-4 bg-amber-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-sm tracking-widest uppercase">
-                Acts 20:24
+              <span className="text-5xl text-amber-200 font-serif leading-none mt-6 rotate-180">“</span>
+              <div className="mt-6 flex items-center gap-3">
+                <div className="h-[1px] w-8 bg-amber-300"></div>
+                <div className="bg-amber-600 text-white text-[11px] font-black px-5 py-2 rounded-full shadow-lg tracking-widest uppercase shadow-amber-200">
+                  Acts 20:24
+                </div>
+                <div className="h-[1px] w-8 bg-amber-300"></div>
               </div>
             </div>
           </div>
