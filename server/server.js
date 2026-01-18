@@ -255,6 +255,8 @@ app.post('/api/progress/:username', async (req, res) => {
     groupId // 추가
   } = req.body;
 
+  console.log(`[POST /api/progress] Received from ${username}:`, JSON.stringify(req.body));
+
   const client = await db.pool.connect(); // Get a client from the pool for transaction
 
   try {
