@@ -14,7 +14,10 @@ const HallOfFame: React.FC<{ groupId?: number | null; onClose?: () => void }> = 
 
   useEffect(() => {
     setLoading(true);
-    const url = groupId !== undefined ? `/api/hall-of-fame?groupId=${groupId}` : '/api/hall-of-fame';
+    // groupId가 null이면 개인 통독이므로 파라미터를 아예 보내지 않거나 명확하게 처리
+    const url = (groupId !== undefined && groupId !== null)
+      ? `/api/hall-of-fame?groupId=${groupId}`
+      : '/api/hall-of-fame';
 
     fetch(url)
       .then(res => res.json())

@@ -399,9 +399,15 @@ app.get('/api/users/all', async (req, res) => {
 // Hall of Fame 엔드포인트 - 완독자 목록 조회
 app.get('/api/hall-of-fame', async (req, res) => {
   const groupIdParam = req.query.groupId;
-  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
-    ? parseInt(groupIdParam, 10)
-    : null;
+
+  // groupId를 더 견고하게 파싱
+  let groupId = null;
+  if (groupIdParam !== undefined && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== '') {
+    groupId = parseInt(groupIdParam, 10);
+    if (isNaN(groupId)) groupId = null;
+  }
+
+  console.log(`[GET /api/hall-of-fame] groupIdParam: "${groupIdParam}", interpreted groupId: ${groupId}`);
 
   try {
     let query = `
@@ -417,7 +423,7 @@ app.get('/api/hall-of-fame', async (req, res) => {
     `;
     let params = [];
 
-    if (groupId) {
+    if (groupId !== null) {
       query += ` WHERE h.group_id = $1 `;
       params.push(groupId);
     } else {
@@ -426,6 +432,7 @@ app.get('/api/hall-of-fame', async (req, res) => {
 
     query += ` ORDER BY h.completed_at DESC `;
 
+    console.log(`[GET /api/hall-of-fame] Executing query with params:`, params);
     const result = await db.query(query, params);
     res.json(result.rows);
   } catch (err) {
