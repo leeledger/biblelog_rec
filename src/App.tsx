@@ -897,15 +897,17 @@ const App: React.FC = () => {
 
       const durationMinutes = Math.max(1, Math.round(finalDurationMillis / (1000 * 60)));
 
-      const historyEntry: UserSessionRecord = {
+      const historyEntry: any = {
         date: new Date().toISOString(),
         book: firstEffectivelyReadVerse.book,
         startChapter: firstEffectivelyReadVerse.chapter,
         startVerse: firstEffectivelyReadVerse.verse,
         endChapter: lastEffectivelyReadVerse.chapter,
         endVerse: lastEffectivelyReadVerse.verse,
-        versesRead: versesActuallyReadThisSessionCount,
-        duration_minutes: durationMinutes
+        versesRead: versesActuallyReadThisSessionCount, // 호환용
+        verses_read: versesActuallyReadThisSessionCount, // 서버용
+        duration_minutes: durationMinutes, // 서버용
+        durationMinutes: durationMinutes // 호환용
       };
 
       localStorage.removeItem('bible_session_start_time'); // 저장 후 초기화

@@ -316,11 +316,15 @@ app.post('/api/progress/:username', async (req, res) => {
     // 4. Save reading_history (versesReadInSession)
     if (history && history.length > 0) {
       for (const entry of history) {
-        const durMin = Math.max(1, entry.duration_minutes || entry.durationMinutes || 0);
-        const vRead = Math.max(1, entry.verses_read || entry.versesRead || 0);
+        // 어떤 이름으로 오든 숫자로 변환 (최소 1 보장)
+        const rawDur = entry.duration_minutes || entry.durationMinutes || 0;
+        const rawVerses = entry.verses_read || entry.versesRead || 0;
+
+        const durMin = Math.max(1, parseInt(rawDur, 10) || 0);
+        const vRead = Math.max(1, parseInt(rawVerses, 10) || 0);
         const readAt = new Date(entry.date);
 
-        // 이미 동일한 시각(분 단위까지)의 기록이 있는지 확인
+        // 동일한 시간대의 기록 확인
         const checkQuery = `
           SELECT id FROM reading_history 
           WHERE user_id = $1 AND book_name = $2 AND chapter_number = $3 AND verse_number = $4 
@@ -329,17 +333,16 @@ app.post('/api/progress/:username', async (req, res) => {
         const existing = await client.query(checkQuery, [userId, entry.book, entry.startChapter, entry.startVerse, readAt]);
 
         if (existing.rows.length > 0) {
-          // 기존 기록이 있으면 더 큰 값으로 업데이트 (0으로 저장된 기록 구제)
+          // COALESCE를 사용하여 NULL 값인 경우에도 올바르게 GREATEST가 작동하도록 수정
           const updateQuery = `
             UPDATE reading_history 
-            SET duration_minutes = GREATEST(duration_minutes, $1), 
-                verses_read = GREATEST(verses_read, $2),
+            SET duration_minutes = GREATEST(COALESCE(duration_minutes, 0), $1), 
+                verses_read = GREATEST(COALESCE(verses_read, 0), $2),
                 group_id = $3
             WHERE id = $4
           `;
           await client.query(updateQuery, [durMin, vRead, groupId, existing.rows[0].id]);
         } else {
-          // 기록이 없으면 새로 삽입
           const historyInsertQuery = `
             INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id, verses_read)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
