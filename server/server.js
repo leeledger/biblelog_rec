@@ -396,67 +396,21 @@ app.get('/api/users/all', async (req, res) => {
   }
 });
 
-// Hall of Fame 엔드포인트 - 완독자 목록 조회 (v2 - 완벽 격리용)
-app.get('/api/hall-of-fame-v2', async (req, res) => {
-  const { groupId: groupIdParam } = req.query;
-
-  let groupId = null;
-  if (groupIdParam !== undefined && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== '') {
-    groupId = parseInt(String(groupIdParam), 10);
-    if (isNaN(groupId)) groupId = null;
-  }
-
-  console.log(`[GET /api/hall-of-fame-v2] Filtering for groupId: ${groupId}`);
-
-  try {
-    let query = `
-      SELECT 
-        h.user_id, 
-        u.username, 
-        h.round, 
-        h.completed_at,
-        h.group_id
-      FROM 
-        hall_of_fame h 
-      JOIN 
-        users u ON h.user_id = u.id 
-    `;
-    let params = [];
-
-    if (groupId !== null) {
-      query += ` WHERE h.group_id = $1 `;
-      params.push(groupId);
-    } else {
-      query += ` WHERE h.group_id IS NULL `;
-    }
-
-    query += ` ORDER BY h.completed_at DESC `;
-
-    console.log(`[GET /api/hall-of-fame-v2] Executing with groupId ${groupId}`);
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('[GET /api/hall-of-fame-v2] Error:', err);
-    res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
-  }
-});
-
-// Hall of Fame 엔드포인트 - 완독자 목록 조회
+// Hall of Fame 엔드포인트 - 완독자 목록 조회 (최종 통합 버전)
 app.get('/api/hall-of-fame', async (req, res) => {
   const { groupId: groupIdParam } = req.query;
 
-  // groupId를 숫자로 엄격하게 변환 (부정확한 문자열 등 방어)
   let groupId = null;
   if (groupIdParam !== undefined && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== '') {
     groupId = parseInt(String(groupIdParam), 10);
     if (isNaN(groupId)) groupId = null;
   }
 
-  console.log(`[GET /api/hall-of-fame] Final Filtering - groupId: ${groupId}`);
+  console.log(`[GET /api/hall-of-fame] Filtering for groupId: ${groupId}`);
 
   try {
-    // 쿼리 파라미터에 따라 group_id가 NULL인 것만 가져오거나, 특정 숫자와 일치하는 것만 가져옴
-    let query = `
+    // 리더보드와 동일한 방식의 엄격한 그룹 필터링 적용
+    const query = `
       SELECT 
         h.user_id, 
         u.username, 
@@ -467,17 +421,11 @@ app.get('/api/hall-of-fame', async (req, res) => {
         hall_of_fame h 
       JOIN 
         users u ON h.user_id = u.id 
+      WHERE (h.group_id = $1 OR (h.group_id IS NULL AND $1 IS NULL))
+      ORDER BY h.completed_at DESC
     `;
-    let params = [];
-    // 리더보드와 동일한 방식의 엄격한 그룹 필터링 적용
-    // $1이 NULL이면 group_id IS NULL인 것만, $1이 숫자면 그 숫자와 일치하는 것만.
-    query += ` WHERE (h.group_id = $1 OR (h.group_id IS NULL AND $1 IS NULL)) `;
-    params.push(groupId);
 
-    query += ` ORDER BY h.completed_at DESC `;
-
-    console.log(`[GET /api/hall-of-fame] Strict filter applied for groupId: ${groupId}`);
-    const result = await db.query(query, params);
+    const result = await db.query(query, [groupId]);
     console.log(`[GET /api/hall-of-fame] Found ${result.rows.length} entries for groupId: ${groupId}`);
     res.json(result.rows);
   } catch (err) {

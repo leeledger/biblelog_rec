@@ -15,10 +15,10 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
   useEffect(() => {
     setLoading(true);
     // groupId가 null이면 개인 통독이므로 파라미터를 아예 보내지 않거나 명확하게 처리
-    // 브라우저 캐시 방지를 위해 타임스탬프와 확실한 v2 엔드포인트 사용
+    // 유니크한 요청을 위해 타임스탬프 추가 (캐시 방지)
     const url = (groupId !== undefined && groupId !== null)
-      ? `/api/hall-of-fame-v2?groupId=${groupId}&t=${Date.now()}`
-      : `/api/hall-of-fame-v2?t=${Date.now()}`;
+      ? `/api/hall-of-fame?groupId=${groupId}&t=${Date.now()}`
+      : `/api/hall-of-fame?t=${Date.now()}`;
 
     fetch(url)
       .then(res => res.json())
@@ -50,18 +50,18 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
           <h1 className="text-3xl font-extrabold text-amber-600 drop-shadow mb-2">
             {groupName ? `🏆 ${groupName} 명예의 전당` : '🏆 개인 통독 명예의 전당'}
           </h1>
-          <div className="mb-8 p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 border-y border-amber-100/50 shadow-inner rounded-3xl">
-            <div className="text-lg text-amber-900 font-serif tracking-tight leading-relaxed text-center px-2">
-              <span className="text-3xl text-amber-300 font-serif leading-none block mb-2">“</span>
-              <p className="inline-block max-w-[90%] break-keep">
+          <div className="mb-8 p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-4 border-white shadow-xl rounded-[2.5rem]">
+            <div className="flex flex-col items-center text-center">
+              <span className="text-4xl text-amber-200 font-serif leading-none mb-4">“</span>
+              <p className="text-lg text-amber-900 font-serif leading-relaxed break-keep max-w-[85%]">
                 내가 달려갈 길과 주 예수께 받은 사명<br />
                 곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는<br />
                 나의 생명조차 조금도 귀한 것으로 여기지 아니하노라
               </p>
-              <span className="text-3xl text-amber-300 font-serif leading-none block mt-2">”</span>
-            </div>
-            <div className="mt-4 text-center">
-              <span className="text-[11px] font-black text-amber-700 bg-amber-100/80 px-4 py-1.5 rounded-full tracking-widest uppercase">Acts 20:24</span>
+              <span className="text-4xl text-amber-200 font-serif leading-none mt-4 rotate-180">“</span>
+              <div className="mt-4 bg-amber-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-sm tracking-widest uppercase">
+                Acts 20:24
+              </div>
             </div>
           </div>
         </div>
