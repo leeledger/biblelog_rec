@@ -15,9 +15,10 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
   useEffect(() => {
     setLoading(true);
     // groupId가 null이면 개인 통독이므로 파라미터를 아예 보내지 않거나 명확하게 처리
+    // 브라우저 캐시 방지를 위해 타임스탬프 추가
     const url = (groupId !== undefined && groupId !== null)
-      ? `/api/hall-of-fame?groupId=${groupId}`
-      : '/api/hall-of-fame';
+      ? `/api/hall-of-fame?groupId=${groupId}&t=${Date.now()}`
+      : `/api/hall-of-fame?t=${Date.now()}`;
 
     fetch(url)
       .then(res => res.json())
@@ -49,16 +50,18 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
           <h1 className="text-3xl font-extrabold text-amber-600 drop-shadow mb-2">
             {groupName ? `🏆 ${groupName} 명예의 전당` : '🏆 개인 통독 명예의 전당'}
           </h1>
-          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-400 rounded-lg shadow-inner">
-            <div className="text-base text-gray-800 font-serif tracking-wide leading-relaxed text-center italic">
-              <span className="text-xl text-amber-700 font-semibold">"</span>
-              내가 달려갈 길과 주 예수께 받은 사명<br />
-              곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는<br />
-              나의 생명조차 조금도 귀한 것으로 여기지 아니하노라
-              <span className="text-xl text-amber-700 font-semibold">"</span>
+          <div className="mb-6 p-5 bg-gradient-to-br from-amber-50 to-orange-50 border-y border-amber-200 shadow-inner rounded-2xl">
+            <div className="text-base text-gray-800 font-serif tracking-tight leading-relaxed text-center">
+              <span className="text-2xl text-amber-500 font-serif mr-1">“</span>
+              <span className="relative z-10">내가 달려갈 길과 주 예수께 받은 사명</span>
+              <br />
+              <span className="relative z-10">곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는</span>
+              <br />
+              <span className="relative z-10">나의 생명조차 조금도 귀한 것으로 여기지 아니하노라</span>
+              <span className="text-2xl text-amber-500 font-serif ml-1">”</span>
             </div>
-            <div className="mt-2 text-center">
-              <span className="text-sm font-medium text-amber-600 tracking-wider">(사도행전 20:24)</span>
+            <div className="mt-3 text-center">
+              <span className="text-xs font-bold text-amber-600 bg-amber-100 px-3 py-1 rounded-full shadow-sm">사도행전 20:24</span>
             </div>
           </div>
         </div>
