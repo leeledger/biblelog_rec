@@ -1,23 +1,15 @@
 const express = require('express');
-// const fs = require('fs'); // No longer needed for database.json
-// const path = require('path'); // No longer needed for database.json
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const db = require('./db'); // Import the new db module
+const db = require('./db');
 const bcrypt = require('bcrypt');
-const saltRounds = 10; // For bcrypt hashing
+const saltRounds = 10;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-// const DB_PATH = path.join(__dirname, 'database.json'); // No longer needed
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// Helper functions for database.json are no longer needed
-// const readDatabase = () => { ... };
-// const writeDatabase = (data) => { ... };
-
 
 // Endpoint for user registration
 app.post('/api/register', async (req, res) => {
@@ -25,39 +17,27 @@ app.post('/api/register', async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password are required' });
   }
-
-  if (password.length < 4) { // Basic password length validation
+  if (password.length < 4) {
     return res.status(400).json({ message: 'Password must be at least 4 characters long' });
   }
-
   try {
-    // Check if user already exists
     const existingUserResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
     if (existingUserResult.rows.length > 0) {
       return res.status(409).json({ message: 'Username already exists' });
     }
-
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Insert new user with hashed password. 'must_change_password' defaults to TRUE by DB schema.
     const newUserResult = await db.query(
       'INSERT INTO users (username, password, must_change_password) VALUES ($1, $2, $3) RETURNING id, username, must_change_password',
       [username, hashedPassword, false]
     );
     const newUser = newUserResult.rows[0];
-    console.log(`[POST /api/register] Created new user ${username} with ID: ${newUser.id}`);
-
     res.status(201).json({
       id: newUser.id,
       username: newUser.username,
-      message: '사용자 등록이 완료되었습니다. 로그인해주세요.'
+      message: '사용자 등록이 완료되었습니다.'
     });
   } catch (error) {
-    console.error(`[POST /api/register] Error registering user ${username}:`, error);
-    if (error.code === '23505') { // Unique violation for username (just in case the previous check missed due to race condition)
-      return res.status(409).json({ message: 'Username already exists.' });
-    }
+    console.error(`[POST /api/register] Error:`, error);
     res.status(500).json({ message: 'Error registering user' });
   }
 });
@@ -68,415 +48,182 @@ app.post('/api/login', async (req, res) => {
   if (!username || !providedPassword) {
     return res.status(400).json({ message: 'Username and password are required' });
   }
-
   try {
     const userResult = await db.query('SELECT id, username, password, must_change_password FROM users WHERE username = $1', [username]);
-
     if (userResult.rows.length === 0) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
-
     const user = userResult.rows[0];
-    console.log('[POST /api/login] User data from DB:', JSON.stringify(user, null, 2)); // Log the user object
-
-    // Case 1: Existing user, password field is NULL (migrated user, needs to set initial password)
-    // Default temporary password is '1234'
     if (user.password === null) {
       if (providedPassword === '1234' && user.must_change_password) {
-        console.log(`[POST /api/login] User ${username} (ID: ${user.id}) logged in with temporary password. Must change.`);
         return res.status(200).json({
           id: user.id,
           username: user.username,
-          must_change_password: true, // Explicitly true
-          message: 'Login successful. Please change your temporary password.'
+          must_change_password: true,
+          message: 'Login successful. Please change your password.'
         });
       } else {
-        // If password is null and provided password is not the temporary one, or if they shouldn't be changing it (e.g. must_change_password is false)
-        return res.status(401).json({ message: 'Invalid username or password, or temporary password setup issue.' });
+        return res.status(401).json({ message: 'Invalid username or password.' });
       }
     }
-
-    // Case 2: User has a hashed password set (i.e., user.password is not null)
-    // This block is executed only if user.password was NOT null.
-    let passwordMatch = false;
-    try {
-      // Now, if user.password is not null, it MUST be a string (the hash)
-      if (typeof user.password !== 'string') {
-        console.error('[POST /api/login] User password from DB is not a string:', user.password);
-        // Potentially treat as a login failure or handle as a specific error case
-        return res.status(500).json({ message: 'User data integrity issue.' });
-      }
-      passwordMatch = await bcrypt.compare(providedPassword, user.password);
-    } catch (bcryptError) {
-      console.error('[POST /api/login] Error during bcrypt.compare:', bcryptError);
-      return res.status(500).json({ message: 'Error during password verification.' });
-    }
-
-    // This check is now correctly placed after confirming user.password is a string (hash)
+    const passwordMatch = await bcrypt.compare(providedPassword, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
-
-    console.log(`[POST /api/login] User ${username} (ID: ${user.id}) logged in successfully.`);
     res.status(200).json({
       id: user.id,
       username: user.username,
       must_change_password: user.must_change_password,
       message: 'Login successful'
     });
-
   } catch (error) {
-    console.error(`[POST /api/login] Error logging in user ${username}:`, error);
+    console.error(`[POST /api/login] Error:`, error);
     res.status(500).json({ message: 'Error logging in' });
   }
 });
 
-// Endpoint to change user password
+// Endpoint to change password
 app.post('/api/users/change-password', async (req, res) => {
   const { userId, newPassword } = req.body;
-
-  if (!userId || !newPassword) {
-    return res.status(400).json({ message: 'User ID and new password are required.' });
-  }
-
-  if (typeof newPassword !== 'string' || newPassword.length < 4) { // Basic validation
-    return res.status(400).json({ message: 'Password must be a string and at least 4 characters long.' });
-  }
-
   try {
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    // Update the user's password and set must_change_password to false
-    const updateResult = await db.query(
-      'UPDATE users SET password = $1, must_change_password = $2 WHERE id = $3 RETURNING id, username, must_change_password',
-      [hashedPassword, false, userId]
-    );
-
-    if (updateResult.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const updatedUser = updateResult.rows[0];
-    console.log(`[POST /api/users/change-password] Password changed successfully for user ID: ${userId}`);
-    res.status(200).json({
-      message: 'Password changed successfully.',
-      user: updatedUser
-    });
-
+    await db.query('UPDATE users SET password = $1, must_change_password = $2 WHERE id = $3', [hashedPassword, false, userId]);
+    res.status(200).json({ message: 'Password changed successfully.' });
   } catch (error) {
-    console.error(`[POST /api/users/change-password] Error changing password for user ID ${userId}:`, error);
     res.status(500).json({ message: 'Error changing password.' });
   }
 });
 
-
 // Get user progress
 app.get('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
-  const groupIdParam = req.query.groupId;
-  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
-    ? parseInt(groupIdParam, 10)
-    : null;
-
+  const groupId = req.query.groupId && req.query.groupId !== 'null' ? parseInt(req.query.groupId, 10) : null;
   try {
-    // 1. Get user_id from username
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
-    let userId;
-
-    if (userResult.rows.length > 0) {
-      userId = userResult.rows[0].id;
-    } else {
-      console.log(`[GET /api/progress] User ${username} not found. Returning default progress.`);
-      return res.json({ lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, history: [], completedChapters: [], lastProgressUpdateDate: null, groupId });
-    }
-
-    // 2. Get reading_progress (per group)
+    if (userResult.rows.length === 0) return res.json({ lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, history: [], completedChapters: [], groupId });
+    const userId = userResult.rows[0].id;
     const progressResult = await db.query(
       'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
       [userId, groupId]
     );
-
-    let userProgressData = { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
-    if (progressResult.rows.length > 0) {
-      const p = progressResult.rows[0];
-      userProgressData = {
-        lastReadBook: p.last_read_book,
-        lastReadChapter: p.last_read_chapter,
-        lastReadVerse: p.last_read_verse,
-        lastProgressUpdateDate: p.updated_at
-      };
-    }
-
-    // 3. Get completed_chapters (per group)
+    let userProgressData = progressResult.rows.length > 0 ? {
+      lastReadBook: progressResult.rows[0].last_read_book,
+      lastReadChapter: progressResult.rows[0].last_read_chapter,
+      lastReadVerse: progressResult.rows[0].last_read_verse,
+      lastProgressUpdateDate: progressResult.rows[0].updated_at
+    } : { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
     const completedChaptersResult = await db.query(
       'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
       [userId, groupId]
     );
-    const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
-
-    const finalProgress = {
-      ...userProgressData,
-      completedChapters: completedChapters,
-      history: [],
-      groupId: groupId
-    };
-
-    console.log(`[GET DB] Progress for ${username} (ID: ${userId}) in group ${groupId}:`, finalProgress);
-    res.json(finalProgress);
-
+    res.json({ ...userProgressData, completedChapters: completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`), groupId });
   } catch (error) {
-    console.error(`[GET DB] Error fetching progress for ${username}:`, error);
-    res.status(500).json({ message: 'Error fetching progress from database' });
+    res.status(500).json({ message: 'Error fetching progress' });
   }
 });
 
 // Save user progress
 app.post('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
-  const {
-    lastReadBook,
-    lastReadChapter,
-    lastReadVerse,
-    history,
-    completedChapters,
-    groupId
-  } = req.body;
-
-  const client = await db.pool.connect(); // Get a client from the pool for transaction
-
+  const { lastReadBook, lastReadChapter, lastReadVerse, history, completedChapters, groupId } = req.body;
+  const client = await db.pool.connect();
   try {
-    await client.query('BEGIN'); // Start transaction
-
-    // 1. Find or create user
+    await client.query('BEGIN');
     let userResult = await client.query('SELECT id FROM users WHERE username = $1', [username]);
-    let userId;
-
-    if (userResult.rows.length > 0) {
-      userId = userResult.rows[0].id;
-    } else {
-      const newUserResult = await client.query(
-        'INSERT INTO users (username) VALUES ($1) RETURNING id',
-        [username]
-      );
-      userId = newUserResult.rows[0].id;
-      console.log(`[POST DB] Created new user ${username} with ID: ${userId}`);
-    }
-
-    // 2. Save/Update reading_progress (per group)
-    const progressQuery = `
+    let userId = userResult.rows.length > 0 ? userResult.rows[0].id : (await client.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username])).rows[0].id;
+    await client.query(`
       INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at, group_id)
-      VALUES ($1, $2, $3, $4, NOW(), $5)
-      ON CONFLICT (user_id, group_id)
-      DO UPDATE SET
-        last_read_book = EXCLUDED.last_read_book,
-        last_read_chapter = EXCLUDED.last_read_chapter,
-        last_read_verse = EXCLUDED.last_read_verse,
-        updated_at = NOW();
-    `;
-    await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse, groupId]);
-
-    // 3. Save completed_chapters (per group)
-    if (completedChapters && completedChapters.length > 0) {
-      const chapterInsertQuery = `
-        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at, group_id)
-        VALUES ($1, $2, $3, NOW(), $4)
-        ON CONFLICT (user_id, book_name, chapter_number, group_id) DO NOTHING;
-      `;
-      for (const chapterStr of completedChapters) {
-        const [book, chapterNumStr] = chapterStr.split(':');
-        const chapterNum = parseInt(chapterNumStr, 10);
-        if (book && !isNaN(chapterNum)) {
-          await client.query(chapterInsertQuery, [userId, book, chapterNum, groupId]);
-        }
-      }
-    }
-
-    // 4. Save reading_history (versesReadInSession)
-    if (history && history.length > 0) {
-      const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, group_id)
-        VALUES ($1, $2, $3, $4, $5, $6);
-      `;
-      for (const entry of history) {
-        await client.query(historyInsertQuery, [
-          userId,
-          entry.book,
-          entry.startChapter,
-          entry.startVerse,
-          new Date(entry.date),
-          groupId
-        ]);
-      }
-    }
-
-    await client.query('COMMIT');
-    console.log(`[POST DB] Saved progress for ${username} (ID: ${userId}) in group: ${groupId}`);
-    res.status(200).json({ message: 'Progress saved successfully.' });
-
-  } catch (error) {
-    await client.query('ROLLBACK'); // Rollback transaction on error
-    console.error(`[POST DB] Error saving progress for ${username}:`, error);
-    res.status(500).json({ message: 'Error saving progress to database' });
-  } finally {
-    client.release(); // Release client back to the pool
-  }
-});
-
-// Get completed chapters for a user
-app.get('/api/progress/:username/completedChapters', async (req, res) => {
-  const { username } = req.params;
-  try {
-    const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      console.log(`[GET DB] User ${username} not found for completed chapters. Returning empty array.`);
-      return res.json([]);
-    }
-    const userId = userResult.rows[0].id;
-
-    const completedChaptersResult = await db.query(
-      'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 ORDER BY book_name, chapter_number',
-      [userId]
+      VALUES ($1, $2, $3, $4, NOW(), $5) ON CONFLICT (user_id, group_id) DO UPDATE SET last_read_book = EXCLUDED.last_read_book, last_read_chapter = EXCLUDED.last_read_chapter, last_read_verse = EXCLUDED.last_read_verse, updated_at = NOW()`,
+      [userId, lastReadBook, lastReadChapter, lastReadVerse, groupId]
     );
-
-    const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
-    console.log(`[GET DB] Completed chapters for ${username} (ID: ${userId}):`, completedChapters);
-    res.json(completedChapters);
-
+    if (completedChapters && completedChapters.length > 0) {
+      for (const chapterStr of completedChapters) {
+        const [book, chapterNum] = chapterStr.split(':');
+        await client.query('INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at, group_id) VALUES ($1, $2, $3, NOW(), $4) ON CONFLICT (user_id, book_name, chapter_number, group_id) DO NOTHING', [userId, book, parseInt(chapterNum, 10), groupId]);
+      }
+    }
+    if (history && history.length > 0) {
+      for (const entry of history) {
+        await client.query('INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, group_id) VALUES ($1, $2, $3, $4, $5, $6)', [userId, entry.book, entry.startChapter, entry.startVerse, new Date(entry.date), groupId]);
+      }
+    }
+    await client.query('COMMIT');
+    res.status(200).json({ message: 'Progress saved successfully.' });
   } catch (error) {
-    console.error(`[GET DB] Error fetching completed chapters for ${username}:`, error);
-    res.status(500).json({ message: 'Error fetching completed chapters' });
+    await client.query('ROLLBACK');
+    res.status(500).json({ message: 'Error saving progress' });
+  } finally {
+    client.release();
   }
 });
 
-// Get all users' progress summary for leaderboard
+// Leaderboard - 리더보드도 정확히 그룹별로만 필터링하도록 유지
 app.get('/api/users/all', async (req, res) => {
-  const groupIdParam = req.query.groupId;
-  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
-    ? parseInt(groupIdParam, 10)
-    : null;
-
+  const groupId = req.query.groupId && req.query.groupId !== 'null' ? parseInt(req.query.groupId, 10) : null;
   try {
-    // 그룹 ID 조건부 쿼리
     const query = `
-      SELECT
-        u.username,
-        COALESCE(rp.last_read_book, '') AS "lastReadBook",
-        COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
-        COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
-        rp.updated_at AS "lastProgressUpdateDate",
-        (
-          SELECT COUNT(*) 
-          FROM completed_chapters cc 
-          WHERE cc.user_id = u.id 
-          AND (cc.group_id = $1 OR (cc.group_id IS NULL AND $1 IS NULL))
-        ) AS "completedChaptersCount",
-        (
-          SELECT COUNT(*) 
-          FROM hall_of_fame hf 
-          WHERE hf.user_id = u.id 
-          AND (hf.group_id = $1 OR (hf.group_id IS NULL AND $1 IS NULL))
-        ) AS "completed_count"
-      FROM
-        users u
-      LEFT JOIN
-        reading_progress rp ON u.id = rp.user_id AND (rp.group_id = $1 OR (rp.group_id IS NULL AND $1 IS NULL))
-      WHERE 
-        -- 특정 그룹 조회시 해당 그룹 멤버만, 전체 조회(null)시 모든 사용자
-        ($1 IS NULL OR EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = u.id AND gm.group_id = $1))
-      ORDER BY
-        u.username;
+      SELECT u.username, COALESCE(rp.last_read_book, '') AS "lastReadBook", COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter", COALESCE(rp.last_read_verse, 0) AS "lastReadVerse", rp.updated_at AS "lastProgressUpdateDate",
+        (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND (cc.group_id = $1 OR (cc.group_id IS NULL AND $1 IS NULL))) AS "completedChaptersCount",
+        (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND (hf.group_id = $1 OR (hf.group_id IS NULL AND $1 IS NULL))) AS "completed_count"
+      FROM users u LEFT JOIN reading_progress rp ON u.id = rp.user_id AND (rp.group_id = $1 OR (rp.group_id IS NULL AND $1 IS NULL))
+      WHERE ($1 IS NULL OR EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = u.id AND gm.group_id = $1))
+      ORDER BY u.username;
     `;
-
     const { rows } = await db.query(query, [groupId]);
     res.json(rows);
   } catch (error) {
-    console.error('[GET DB] Error fetching all users summary:', error);
-    res.status(500).json({ message: 'Error fetching users summary for leaderboard' });
+    res.status(500).json({ message: 'Error fetching leaderboard' });
   }
 });
 
-// Hall of Fame 엔드포인트 - 완독자 목록 조회 (최종 통합 버전 - 엄격한 격리)
+// Hall of Fame - 유저님이 말씀하신 "현재 활성화된 방" 기준으로만 완벽하게 격리
 app.get('/api/hall-of-fame', async (req, res) => {
   const { groupId: groupIdParam } = req.query;
+  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined') ? parseInt(groupIdParam, 10) : null;
 
-  let groupId = null;
-  if (groupIdParam !== undefined && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== '') {
-    groupId = parseInt(String(groupIdParam), 10);
-    if (isNaN(groupId)) groupId = null;
-  }
-
-  console.log(`[GET /api/hall-of-fame] Filtering for context: ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
+  console.log(`[HOF FINAL] Filtering for Room: ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
 
   try {
-    // 런타임에 따른 안전한 쿼리 빌딩 (NULL 값에 대한 SQL 엔진 호환성 보장)
-    let query = `
-      SELECT 
-        h.user_id, 
-        u.username, 
-        h.round, 
-        h.completed_at,
-        h.group_id
-      FROM 
-        hall_of_fame h 
-      JOIN 
-        users u ON h.user_id = u.id 
-    `;
+    let query = 'SELECT h.user_id, u.username, h.round, h.completed_at, h.group_id FROM hall_of_fame h JOIN users u ON h.user_id = u.id';
     let params = [];
 
+    // NULL 여부에 따라 SQL 구문을 완전히 분리하여 절대 섞이지 않게 함
     if (groupId === null) {
-      query += ` WHERE h.group_id IS NULL `;
+      query += ' WHERE h.group_id IS NULL';
     } else {
-      query += ` WHERE h.group_id = $1 `;
+      query += ' WHERE h.group_id = $1';
       params.push(groupId);
     }
 
-    query += ` ORDER BY h.completed_at DESC `;
-
+    query += ' ORDER BY h.completed_at DESC';
     const result = await db.query(query, params);
-    console.log(`[GET /api/hall-of-fame] Successfully found ${result.rows.length} records.`);
+    console.log(`[HOF FINAL] Found ${result.rows.length} entries for ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
     res.json(result.rows);
   } catch (err) {
-    console.error('[GET /api/hall-of-fame] Critical Error:', err);
-    res.status(500).json({ message: '데이터를 가져오지 못했습니다.' });
+    console.error('[HOF FINAL] Error:', err);
+    res.status(500).json({ message: '데이터 로드 실패' });
   }
 });
 
-// Bible Reset (Completion) 엔드포인트
+// Bible Completion Reset
 app.post('/api/bible-reset', async (req, res) => {
   const { userId, groupId: rawGroupId } = req.body;
-
-  // groupId 파싱 (숫자로 보장)
-  let groupId = null;
-  if (rawGroupId !== undefined && rawGroupId !== null && rawGroupId !== 'null') {
-    groupId = parseInt(String(rawGroupId), 10);
-    if (isNaN(groupId)) groupId = null;
-  }
-
-  console.log(`[POST /api/bible-reset] userId: ${userId}, groupId: ${groupId}`);
-
+  const groupId = (rawGroupId && rawGroupId !== 'null') ? parseInt(rawGroupId, 10) : null;
   try {
     const result = await db.handleBibleCompletion(userId, groupId);
     res.json({ success: true, ...result });
   } catch (err) {
-    console.error('[POST /api/bible-reset] Error:', err);
-    res.status(500).json({ success: false, error: 'Bible reset failed' });
+    res.status(500).json({ success: false, error: 'Reset failed' });
   }
 });
 
 const startServer = async () => {
   try {
     await db.initializeDatabase();
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (err) {
-    console.error('Failed to initialize database:', err);
     process.exit(1);
   }
 };
 
-startServer().catch(err => {
-  console.error('Failed to start the server:', err);
-  process.exit(1);
-});
+startServer();
