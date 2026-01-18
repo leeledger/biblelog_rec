@@ -47,16 +47,16 @@ app.post('/api/register', async (req, res) => {
     );
     const newUser = newUserResult.rows[0];
     console.log(`[POST /api/register] Created new user ${username} with ID: ${newUser.id}`);
-    
-    res.status(201).json({ 
-      id: newUser.id, 
-      username: newUser.username, 
-      message: '사용자 등록이 완료되었습니다. 로그인해주세요.' 
+
+    res.status(201).json({
+      id: newUser.id,
+      username: newUser.username,
+      message: '사용자 등록이 완료되었습니다. 로그인해주세요.'
     });
   } catch (error) {
     console.error(`[POST /api/register] Error registering user ${username}:`, error);
     if (error.code === '23505') { // Unique violation for username (just in case the previous check missed due to race condition)
-        return res.status(409).json({ message: 'Username already exists.' });
+      return res.status(409).json({ message: 'Username already exists.' });
     }
     res.status(500).json({ message: 'Error registering user' });
   }
@@ -193,7 +193,7 @@ app.get('/api/progress/:username', async (req, res) => {
       'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1',
       [userId]
     );
-    
+
     let userProgressData = { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
     if (progressResult.rows.length > 0) {
       const p = progressResult.rows[0];
@@ -231,10 +231,10 @@ app.get('/api/progress/:username', async (req, res) => {
 // Save user progress
 app.post('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
-  const { 
-    lastReadBook, 
-    lastReadChapter, 
-    lastReadVerse, 
+  const {
+    lastReadBook,
+    lastReadChapter,
+    lastReadVerse,
     history, // This is expected to be versesReadInSession from the client
     completedChapters // Array of strings like "Genesis:1"
   } = req.body;
@@ -290,20 +290,20 @@ app.post('/api/progress/:username', async (req, res) => {
     }
 
     // 4. Save reading_history (versesReadInSession)
-    // The 'history' from client is an array of {date, book, startChapter, startVerse, endChapter, endVerse, versesRead}
+    // history entry: {date, book, startChapter, startVerse, endChapter, endVerse, versesRead, duration_minutes}
     if (history && history.length > 0) {
       const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at)
-        VALUES ($1, $2, $3, $4, $5);
+        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes)
+        VALUES ($1, $2, $3, $4, $5, $6);
       `;
-      // Client sends 'date' in history objects, which we use here.
       for (const entry of history) {
         await client.query(historyInsertQuery, [
-          userId, 
-          entry.book, 
-          entry.startChapter, // Use startChapter from client data
-          entry.startVerse,   // Use startVerse from client data
-          new Date(entry.date)  // Use date from client data
+          userId,
+          entry.book,
+          entry.startChapter,
+          entry.startVerse,
+          new Date(entry.date),
+          entry.duration_minutes || 0
         ]);
       }
     }
@@ -336,7 +336,7 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
       'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 ORDER BY book_name, chapter_number',
       [userId]
     );
-    
+
     const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
     console.log(`[GET DB] Completed chapters for ${username} (ID: ${userId}):`, completedChapters);
     res.json(completedChapters);
@@ -349,8 +349,8 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
 
 // Get all users' progress summary for leaderboard
 app.get('/api/users/all', async (req, res) => {
-try {
-const query = `
+  try {
+    const query = `
   SELECT
     u.username,
     COALESCE(rp.last_read_book, '') AS "lastReadBook",
@@ -366,13 +366,13 @@ const query = `
   ORDER BY
     u.username;
 `;
-const { rows } = await db.query(query);
-console.log('[GET DB] All users summary for leaderboard:', rows);
-res.json(rows);
-} catch (error) {
-console.error('[GET DB] Error fetching all users summary:', error);
-res.status(500).json({ message: 'Error fetching users summary for leaderboard' });
-}
+    const { rows } = await db.query(query);
+    console.log('[GET DB] All users summary for leaderboard:', rows);
+    res.json(rows);
+  } catch (error) {
+    console.error('[GET DB] Error fetching all users summary:', error);
+    res.status(500).json({ message: 'Error fetching users summary for leaderboard' });
+  }
 });
 
 // Hall of Fame 엔드포인트 - 완독자 목록 조회
@@ -391,7 +391,7 @@ app.get('/api/hall-of-fame', async (req, res) => {
       ORDER BY 
         h.completed_at DESC
     `);
-    
+
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching hall of fame data:', err);

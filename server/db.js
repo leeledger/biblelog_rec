@@ -173,6 +173,16 @@ const initializeDatabase = async () => {
     await addGroupIdColumn('reading_history');
     await addGroupIdColumn('hall_of_fame');
 
+    // Add duration_minutes column to reading_history if it doesn't exist
+    const durationColExists = await pool.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name='reading_history' AND column_name='duration_minutes' AND table_schema = 'public'
+    `);
+    if (durationColExists.rowCount === 0) {
+      await pool.query('ALTER TABLE reading_history ADD COLUMN duration_minutes INTEGER DEFAULT 0');
+      console.log("Column 'duration_minutes' added to 'reading_history' table.");
+    }
+
     console.log('Database tables checked/created/altered successfully.');
   } catch (err) {
     console.error('Error initializing database (creating/altering tables):', err);

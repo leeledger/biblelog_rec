@@ -171,6 +171,7 @@ const App: React.FC = () => {
   });
   const [showBookCompletionStatus, setShowBookCompletionStatus] = useState(false);
   const [syncedVerseIndex, setSyncedVerseIndex] = useState(0); // UI 동기화용 인덱스 추가
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null); // 세션 시작 시간 (추가)
 
   const {
     isListening,
@@ -849,6 +850,7 @@ const App: React.FC = () => {
         sessionCompletedVersesCount: initialSkip,
         sessionInitialSkipCount: initialSkip,
       });
+      setSessionStartTime(Date.now()); // 세션 시작 시간 기록
       setSessionCertificationMessage("");
       setAppError(null);
     } else {
@@ -884,6 +886,9 @@ const App: React.FC = () => {
         setSessionCertificationMessage(certMsg);
       }
 
+      const durationMillis = sessionStartTime ? Date.now() - sessionStartTime : 0;
+      const durationMinutes = Math.max(1, Math.round(durationMillis / (1000 * 60))); // 최소 1분으로 기록
+
       const historyEntry: UserSessionRecord = {
         date: new Date().toISOString(),
         book: firstEffectivelyReadVerse.book,
@@ -891,7 +896,8 @@ const App: React.FC = () => {
         startVerse: firstEffectivelyReadVerse.verse,
         endChapter: lastEffectivelyReadVerse.chapter,
         endVerse: lastEffectivelyReadVerse.verse,
-        versesRead: versesActuallyReadThisSessionCount
+        versesRead: versesActuallyReadThisSessionCount,
+        duration_minutes: durationMinutes
       };
 
       const newCompletedChaptersInSession = new Set<string>(userOverallProgress?.completedChapters || []);
@@ -954,7 +960,7 @@ const App: React.FC = () => {
       window.location.reload();
     }
 
-  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId]);
+  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId, sessionStartTime]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
