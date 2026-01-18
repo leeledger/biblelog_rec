@@ -188,11 +188,19 @@ app.get('/api/progress/:username', async (req, res) => {
       return res.json({ lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, history: [], completedChapters: [], lastProgressUpdateDate: null });
     }
 
-    // 2. Get reading_progress
-    const progressResult = await db.query(
-      'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1',
-      [userId]
-    );
+    // 2. Get reading_progress (filtered by group)
+    const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+    let progressQuery = 'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1';
+    let progressParams = [userId];
+
+    if (groupId) {
+      progressQuery += ' AND group_id = $2';
+      progressParams.push(groupId);
+    } else {
+      progressQuery += ' AND group_id IS NULL';
+    }
+
+    const progressResult = await db.query(progressQuery, progressParams);
 
     let userProgressData = { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
     if (progressResult.rows.length > 0) {
@@ -205,11 +213,18 @@ app.get('/api/progress/:username', async (req, res) => {
       };
     }
 
-    // 3. Get completed_chapters
-    const completedChaptersResult = await db.query(
-      'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1',
-      [userId]
-    );
+    // 3. Get completed_chapters (filtered by group)
+    let chaptersQuery = 'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1';
+    let chaptersParams = [userId];
+
+    if (groupId) {
+      chaptersQuery += ' AND group_id = $2';
+      chaptersParams.push(groupId);
+    } else {
+      chaptersQuery += ' AND group_id IS NULL';
+    }
+
+    const completedChaptersResult = await db.query(chaptersQuery, chaptersParams);
     const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
 
     // 4. History: For now, returning empty. This needs specific logic based on how reading_history table is used.
@@ -236,7 +251,8 @@ app.post('/api/progress/:username', async (req, res) => {
     lastReadChapter,
     lastReadVerse,
     history, // This is expected to be versesReadInSession from the client
-    completedChapters // Array of strings like "Genesis:1"
+    completedChapters, // Array of strings like "Genesis:1"
+    groupId // 추가
   } = req.body;
 
   const client = await db.pool.connect(); // Get a client from the pool for transaction
@@ -260,31 +276,37 @@ app.post('/api/progress/:username', async (req, res) => {
     }
 
     // 2. Save/Update reading_progress
-    // ON CONFLICT on user_id (primary key) DO UPDATE
-    const progressQuery = `
-      INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        last_read_book = EXCLUDED.last_read_book,
-        last_read_chapter = EXCLUDED.last_read_chapter,
-        last_read_verse = EXCLUDED.last_read_verse,
-        updated_at = NOW();
-    `;
-    await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse]);
+    // group_id가 있는 경우만 해당 그룹의 진도를 업데이트 (중복 방지 로직은 향후 고도화 가능)
+    // 현재는 간단히 user_id와 group_id 조건으로 처리
+    let checkProgress = await client.query(
+      'SELECT id FROM reading_progress WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
+    );
+
+    if (checkProgress.rows.length > 0) {
+      await client.query(
+        'UPDATE reading_progress SET last_read_book = $1, last_read_chapter = $2, last_read_verse = $3, updated_at = NOW() WHERE user_id = $4 AND (group_id = $5 OR (group_id IS NULL AND $5 IS NULL))',
+        [lastReadBook, lastReadChapter, lastReadVerse, userId, groupId]
+      );
+    } else {
+      await client.query(
+        'INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at, group_id) VALUES ($1, $2, $3, $4, NOW(), $5)',
+        [userId, lastReadBook, lastReadChapter, lastReadVerse, groupId]
+      );
+    }
 
     // 3. Save completed_chapters
     if (completedChapters && completedChapters.length > 0) {
       const chapterInsertQuery = `
-        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at)
-        VALUES ($1, $2, $3, NOW())
-        ON CONFLICT (user_id, book_name, chapter_number) DO NOTHING;
+        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at, group_id)
+        VALUES ($1, $2, $3, NOW(), $4)
+        ON CONFLICT (user_id, book_name, chapter_number) DO NOTHING; -- Note: keep original conflict target for simplicity, or update if per-group completion is needed
       `;
       for (const chapterStr of completedChapters) {
         const [book, chapterNumStr] = chapterStr.split(':');
         const chapterNum = parseInt(chapterNumStr, 10);
         if (book && !isNaN(chapterNum)) {
-          await client.query(chapterInsertQuery, [userId, book, chapterNum]);
+          await client.query(chapterInsertQuery, [userId, book, chapterNum, groupId]);
         }
       }
     }
@@ -293,8 +315,8 @@ app.post('/api/progress/:username', async (req, res) => {
     // history entry: {date, book, startChapter, startVerse, endChapter, endVerse, versesRead, duration_minutes}
     if (history && history.length > 0) {
       const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes)
-        VALUES ($1, $2, $3, $4, $5, $6);
+        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, duration_minutes, group_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7);
       `;
       for (const entry of history) {
         await client.query(historyInsertQuery, [
@@ -303,7 +325,8 @@ app.post('/api/progress/:username', async (req, res) => {
           entry.startChapter,
           entry.startVerse,
           new Date(entry.date),
-          entry.duration_minutes || 0
+          entry.duration_minutes || 0,
+          groupId
         ]);
       }
     }
@@ -349,25 +372,57 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
 
 // Get all users' progress summary for leaderboard
 app.get('/api/users/all', async (req, res) => {
+  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
   try {
-    const query = `
-  SELECT
-    u.username,
-    COALESCE(rp.last_read_book, '') AS "lastReadBook",
-    COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
-    COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
-    rp.updated_at AS "lastProgressUpdateDate",
-    (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id) AS "completedChaptersCount",
-    (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id) AS "completed_count"
-  FROM
-    users u
-  LEFT JOIN
-    reading_progress rp ON u.id = rp.user_id
-  ORDER BY
-    u.username;
-`;
-    const { rows } = await db.query(query);
-    console.log('[GET DB] All users summary for leaderboard:', rows);
+    let query = '';
+    let params = [];
+
+    if (groupId) {
+      // 특정 그룹 멤버의 해당 그룹 진도 조회
+      query = `
+        SELECT
+          u.username,
+          COALESCE(rp.last_read_book, '') AS "lastReadBook",
+          COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
+          COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
+          rp.updated_at AS "lastProgressUpdateDate",
+          (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND (cc.group_id = $1)) AS "completedChaptersCount",
+          (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND (hf.group_id = $1)) AS "completed_count"
+        FROM
+          group_members gm
+        JOIN
+          users u ON gm.user_id = u.id
+        LEFT JOIN
+          reading_progress rp ON u.id = rp.user_id AND (rp.group_id = $1)
+        WHERE
+          gm.group_id = $1
+        ORDER BY
+          "completedChaptersCount" DESC, u.username;
+      `;
+      params = [groupId];
+    } else {
+      // 개인 통독 진도 조회 (group_id가 NULL인 데이터)
+      query = `
+        SELECT
+          u.username,
+          COALESCE(rp.last_read_book, '') AS "lastReadBook",
+          COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
+          COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
+          rp.updated_at AS "lastProgressUpdateDate",
+          (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id AND cc.group_id IS NULL) AS "completedChaptersCount",
+          (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id AND hf.group_id IS NULL) AS "completed_count"
+        FROM
+          users u
+        LEFT JOIN
+          reading_progress rp ON u.id = rp.user_id AND rp.group_id IS NULL
+        ORDER BY
+          "completedChaptersCount" DESC, u.username;
+      `;
+      params = [];
+    }
+
+    const { rows } = await db.query(query, params);
+    console.log(`[GET DB] All users summary for leaderboard (Group: ${groupId}):`, rows.length, 'users');
     res.json(rows);
   } catch (error) {
     console.error('[GET DB] Error fetching all users summary:', error);
