@@ -15,10 +15,10 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
   useEffect(() => {
     setLoading(true);
     // groupId가 null이면 개인 통독이므로 파라미터를 아예 보내지 않거나 명확하게 처리
-    // 브라우저 캐시 방지를 위해 타임스탬프 추가
+    // 브라우저 캐시 방지를 위해 타임스탬프와 확실한 v2 엔드포인트 사용
     const url = (groupId !== undefined && groupId !== null)
-      ? `/api/hall-of-fame?groupId=${groupId}&t=${Date.now()}`
-      : `/api/hall-of-fame?t=${Date.now()}`;
+      ? `/api/hall-of-fame-v2?groupId=${groupId}&t=${Date.now()}`
+      : `/api/hall-of-fame-v2?t=${Date.now()}`;
 
     fetch(url)
       .then(res => res.json())
@@ -50,18 +50,18 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
           <h1 className="text-3xl font-extrabold text-amber-600 drop-shadow mb-2">
             {groupName ? `🏆 ${groupName} 명예의 전당` : '🏆 개인 통독 명예의 전당'}
           </h1>
-          <div className="mb-6 p-5 bg-gradient-to-br from-amber-50 to-orange-50 border-y border-amber-200 shadow-inner rounded-2xl">
-            <div className="text-base text-gray-800 font-serif tracking-tight leading-relaxed text-center">
-              <span className="text-2xl text-amber-500 font-serif mr-1">“</span>
-              <span className="relative z-10">내가 달려갈 길과 주 예수께 받은 사명</span>
-              <br />
-              <span className="relative z-10">곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는</span>
-              <br />
-              <span className="relative z-10">나의 생명조차 조금도 귀한 것으로 여기지 아니하노라</span>
-              <span className="text-2xl text-amber-500 font-serif ml-1">”</span>
+          <div className="mb-8 p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 border-y border-amber-100/50 shadow-inner rounded-3xl">
+            <div className="text-lg text-amber-900 font-serif tracking-tight leading-relaxed text-center px-2">
+              <span className="text-3xl text-amber-300 font-serif leading-none block mb-2">“</span>
+              <p className="inline-block max-w-[90%] break-keep">
+                내가 달려갈 길과 주 예수께 받은 사명<br />
+                곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는<br />
+                나의 생명조차 조금도 귀한 것으로 여기지 아니하노라
+              </p>
+              <span className="text-3xl text-amber-300 font-serif leading-none block mt-2">”</span>
             </div>
-            <div className="mt-3 text-center">
-              <span className="text-xs font-bold text-amber-600 bg-amber-100 px-3 py-1 rounded-full shadow-sm">사도행전 20:24</span>
+            <div className="mt-4 text-center">
+              <span className="text-[11px] font-black text-amber-700 bg-amber-100/80 px-4 py-1.5 rounded-full tracking-widest uppercase">Acts 20:24</span>
             </div>
           </div>
         </div>
@@ -85,11 +85,6 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
             ))}
           </div>
         )}
-        <div className="mt-8 pt-4 border-t border-amber-50 text-center">
-          <p className="text-[10px] text-amber-200 uppercase tracking-[0.2em] font-serif">
-            Ver 2.1.0 • Isolated completion records for {groupName || 'Personal Journey'}
-          </p>
-        </div>
       </div>
     </div>
   );
