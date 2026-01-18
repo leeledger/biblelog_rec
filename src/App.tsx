@@ -1124,7 +1124,10 @@ const App: React.FC = () => {
 
         {/* Hall of Fame Modal */}
         {showHallOfFame && (
-          <HallOfFame onClose={() => setShowHallOfFame(false)} />
+          <HallOfFame
+            groupId={selectedGroupId}
+            onClose={() => setShowHallOfFame(false)}
+          />
         )}
 
         {/* Active Reading Session View */}

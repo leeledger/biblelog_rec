@@ -7,14 +7,16 @@ interface HallOfFameEntry {
   completed_at: string;
 }
 
-const HallOfFame: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+const HallOfFame: React.FC<{ groupId?: number | null; onClose?: () => void }> = ({ groupId, onClose }) => {
   const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/hall-of-fame')
+    const url = groupId !== undefined ? `/api/hall-of-fame?groupId=${groupId}` : '/api/hall-of-fame';
+
+    fetch(url)
       .then(res => res.json())
       .then(data => {
         setEntries(data);
@@ -22,11 +24,10 @@ const HallOfFame: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
       })
       .catch(err => {
         console.error('명예의 전당 정보를 불러올 수 없습니다:', err);
-        // 에러 발생 시에도 빈 배열로 설정하여 "아직 완독자가 없습니다" 메시지가 표시되도록 함
         setEntries([]);
         setLoading(false);
       });
-  }, []);
+  }, [groupId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
@@ -46,7 +47,7 @@ const HallOfFame: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
           <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-400 rounded-lg shadow-inner">
             <div className="text-base text-gray-800 font-serif tracking-wide leading-relaxed text-center italic">
               <span className="text-xl text-amber-700 font-semibold">"</span>
-              내가 달려갈 길과 주 예수께 받은 사명<br /> 
+              내가 달려갈 길과 주 예수께 받은 사명<br />
               곧 하나님의 은혜의 복음을 증언하는 일을 마치려 함에는<br />
               나의 생명조차 조금도 귀한 것으로 여기지 아니하노라
               <span className="text-xl text-amber-700 font-semibold">"</span>

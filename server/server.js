@@ -174,7 +174,10 @@ app.post('/api/users/change-password', async (req, res) => {
 // Get user progress
 app.get('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
-  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+  const groupIdParam = req.query.groupId;
+  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
+    ? parseInt(groupIdParam, 10)
+    : null;
 
   try {
     // 1. Get user_id from username
@@ -348,7 +351,10 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
 
 // Get all users' progress summary for leaderboard
 app.get('/api/users/all', async (req, res) => {
-  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+  const groupIdParam = req.query.groupId;
+  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
+    ? parseInt(groupIdParam, 10)
+    : null;
 
   try {
     // 그룹 ID 조건부 쿼리
@@ -392,7 +398,11 @@ app.get('/api/users/all', async (req, res) => {
 
 // Hall of Fame 엔드포인트 - 완독자 목록 조회
 app.get('/api/hall-of-fame', async (req, res) => {
-  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+  const groupIdParam = req.query.groupId;
+  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined')
+    ? parseInt(groupIdParam, 10)
+    : null;
+
   try {
     let query = `
       SELECT 
@@ -421,6 +431,18 @@ app.get('/api/hall-of-fame', async (req, res) => {
   } catch (err) {
     console.error('Error fetching hall of fame data:', err);
     res.status(500).json({ message: '명예의 전당 정보를 불러오는 중 오류가 발생했습니다.' });
+  }
+});
+
+// Bible Reset (Completion) 엔드포인트
+app.post('/api/bible-reset', async (req, res) => {
+  const { userId, groupId } = req.body;
+  try {
+    const result = await db.handleBibleCompletion(userId, groupId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Error resetting bible progress:', err);
+    res.status(500).json({ success: false, error: 'Bible reset failed' });
   }
 });
 
