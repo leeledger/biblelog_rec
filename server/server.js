@@ -179,7 +179,12 @@ app.get('/api/users/all', async (req, res) => {
 // Hall of Fame - 유저님이 말씀하신 "현재 활성화된 방" 기준으로만 완벽하게 격리
 app.get('/api/hall-of-fame', async (req, res) => {
   const { groupId: groupIdParam } = req.query;
-  const groupId = (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined') ? parseInt(groupIdParam, 10) : null;
+  // NaN, 'null', 'undefined', 빈 문자열 모두 개인 통독(null)으로 처리
+  let groupId = null;
+  if (groupIdParam && groupIdParam !== 'null' && groupIdParam !== 'undefined' && groupIdParam !== 'NaN') {
+    const parsed = parseInt(groupIdParam, 10);
+    groupId = isNaN(parsed) ? null : parsed;
+  }
 
   console.log(`[HOF FINAL] Filtering for Room: ${groupId === null ? 'Personal' : 'Group ' + groupId}`);
 

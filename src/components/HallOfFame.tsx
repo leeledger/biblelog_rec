@@ -14,8 +14,9 @@ const HallOfFame: React.FC<{ groupId?: number | null; groupName?: string; onClos
 
   useEffect(() => {
     setLoading(true);
-    // 현재 선택된 groupId를 기반으로 데이터를 가져옴 (리더보드와 동일한 방식)
-    const url = (groupId !== undefined && groupId !== null)
+    // groupId가 유효한 숫자인지 확인 (NaN, undefined, null 모두 개인 통독으로 처리)
+    const isValidGroupId = typeof groupId === 'number' && !isNaN(groupId);
+    const url = isValidGroupId
       ? `/api/hall-of-fame?groupId=${groupId}&t=${Date.now()}`
       : `/api/hall-of-fame?t=${Date.now()}`;
 

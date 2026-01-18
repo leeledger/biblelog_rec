@@ -55,7 +55,12 @@ const App: React.FC = () => {
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(() => {
     const saved = localStorage.getItem('selectedGroupId');
-    return saved ? parseInt(saved, 10) : null;
+    // "null", "undefined", 빈 문자열, 또는 숫자가 아닌 값은 모두 null로 처리
+    if (!saved || saved === 'null' || saved === 'undefined') {
+      return null;
+    }
+    const parsed = parseInt(saved, 10);
+    return isNaN(parsed) ? null : parsed;
   }); // null means Private Journey
   const [userOverallProgress, setUserOverallProgress] = useState<UserProgress | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('IDLE_SETUP');
