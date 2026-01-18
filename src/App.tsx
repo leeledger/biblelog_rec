@@ -850,7 +850,9 @@ const App: React.FC = () => {
         sessionCompletedVersesCount: initialSkip,
         sessionInitialSkipCount: initialSkip,
       });
-      setSessionStartTime(Date.now()); // 세션 시작 시간 기록
+      const startTime = Date.now();
+      setSessionStartTime(startTime);
+      localStorage.setItem('bible_session_start_time', startTime.toString()); // 새로고침 대비 저장
       setSessionCertificationMessage("");
       setAppError(null);
     } else {
@@ -887,7 +889,13 @@ const App: React.FC = () => {
       }
 
       const durationMillis = sessionStartTime ? Date.now() - sessionStartTime : 0;
-      const durationMinutes = Math.max(1, Math.round(durationMillis / (1000 * 60))); // 최소 1분으로 기록
+      // localStorage에서 백업 시간 시도
+      const backupStartTime = localStorage.getItem('bible_session_start_time');
+      const finalDurationMillis = (durationMillis === 0 && backupStartTime)
+        ? Date.now() - parseInt(backupStartTime, 10)
+        : durationMillis;
+
+      const durationMinutes = Math.max(1, Math.round(finalDurationMillis / (1000 * 60)));
 
       const historyEntry: UserSessionRecord = {
         date: new Date().toISOString(),
@@ -899,6 +907,8 @@ const App: React.FC = () => {
         versesRead: versesActuallyReadThisSessionCount,
         duration_minutes: durationMinutes
       };
+
+      localStorage.removeItem('bible_session_start_time'); // 저장 후 초기화
 
       const newCompletedChaptersInSession = new Set<string>(userOverallProgress?.completedChapters || []);
 
