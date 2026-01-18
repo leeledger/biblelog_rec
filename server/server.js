@@ -47,16 +47,16 @@ app.post('/api/register', async (req, res) => {
     );
     const newUser = newUserResult.rows[0];
     console.log(`[POST /api/register] Created new user ${username} with ID: ${newUser.id}`);
-    
-    res.status(201).json({ 
-      id: newUser.id, 
-      username: newUser.username, 
-      message: '사용자 등록이 완료되었습니다. 로그인해주세요.' 
+
+    res.status(201).json({
+      id: newUser.id,
+      username: newUser.username,
+      message: '사용자 등록이 완료되었습니다. 로그인해주세요.'
     });
   } catch (error) {
     console.error(`[POST /api/register] Error registering user ${username}:`, error);
     if (error.code === '23505') { // Unique violation for username (just in case the previous check missed due to race condition)
-        return res.status(409).json({ message: 'Username already exists.' });
+      return res.status(409).json({ message: 'Username already exists.' });
     }
     res.status(500).json({ message: 'Error registering user' });
   }
@@ -174,6 +174,8 @@ app.post('/api/users/change-password', async (req, res) => {
 // Get user progress
 app.get('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
+  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+
   try {
     // 1. Get user_id from username
     const userResult = await db.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -182,18 +184,16 @@ app.get('/api/progress/:username', async (req, res) => {
     if (userResult.rows.length > 0) {
       userId = userResult.rows[0].id;
     } else {
-      // If user not found by GET /api/progress, it means they haven't saved any progress yet.
-      // User creation is handled by POST /api/users/ensure on login or by POST /api/progress when saving.
-      console.log(`[GET /api/progress] User ${username} not found or no progress recorded. Returning default progress.`);
-      return res.json({ lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, history: [], completedChapters: [], lastProgressUpdateDate: null });
+      console.log(`[GET /api/progress] User ${username} not found. Returning default progress.`);
+      return res.json({ lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, history: [], completedChapters: [], lastProgressUpdateDate: null, groupId });
     }
 
-    // 2. Get reading_progress
+    // 2. Get reading_progress (per group)
     const progressResult = await db.query(
-      'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1',
-      [userId]
+      'SELECT last_read_book, last_read_chapter, last_read_verse, updated_at FROM reading_progress WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
     );
-    
+
     let userProgressData = { lastReadBook: '', lastReadChapter: 0, lastReadVerse: 0, lastProgressUpdateDate: null };
     if (progressResult.rows.length > 0) {
       const p = progressResult.rows[0];
@@ -205,21 +205,21 @@ app.get('/api/progress/:username', async (req, res) => {
       };
     }
 
-    // 3. Get completed_chapters
+    // 3. Get completed_chapters (per group)
     const completedChaptersResult = await db.query(
-      'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1',
-      [userId]
+      'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
     );
     const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
 
-    // 4. History: For now, returning empty. This needs specific logic based on how reading_history table is used.
     const finalProgress = {
       ...userProgressData,
       completedChapters: completedChapters,
-      history: [] // Placeholder for history, to be implemented based on reading_history table
+      history: [],
+      groupId: groupId
     };
 
-    console.log(`[GET DB] Progress for ${username} (ID: ${userId}):`, finalProgress);
+    console.log(`[GET DB] Progress for ${username} (ID: ${userId}) in group ${groupId}:`, finalProgress);
     res.json(finalProgress);
 
   } catch (error) {
@@ -231,12 +231,13 @@ app.get('/api/progress/:username', async (req, res) => {
 // Save user progress
 app.post('/api/progress/:username', async (req, res) => {
   const { username } = req.params;
-  const { 
-    lastReadBook, 
-    lastReadChapter, 
-    lastReadVerse, 
-    history, // This is expected to be versesReadInSession from the client
-    completedChapters // Array of strings like "Genesis:1"
+  const {
+    lastReadBook,
+    lastReadChapter,
+    lastReadVerse,
+    history,
+    completedChapters,
+    groupId
   } = req.body;
 
   const client = await db.pool.connect(); // Get a client from the pool for transaction
@@ -259,57 +260,55 @@ app.post('/api/progress/:username', async (req, res) => {
       console.log(`[POST DB] Created new user ${username} with ID: ${userId}`);
     }
 
-    // 2. Save/Update reading_progress
-    // ON CONFLICT on user_id (primary key) DO UPDATE
+    // 2. Save/Update reading_progress (per group)
     const progressQuery = `
-      INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (user_id)
+      INSERT INTO reading_progress (user_id, last_read_book, last_read_chapter, last_read_verse, updated_at, group_id)
+      VALUES ($1, $2, $3, $4, NOW(), $5)
+      ON CONFLICT (user_id, group_id)
       DO UPDATE SET
         last_read_book = EXCLUDED.last_read_book,
         last_read_chapter = EXCLUDED.last_read_chapter,
         last_read_verse = EXCLUDED.last_read_verse,
         updated_at = NOW();
     `;
-    await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse]);
+    await client.query(progressQuery, [userId, lastReadBook, lastReadChapter, lastReadVerse, groupId]);
 
-    // 3. Save completed_chapters
+    // 3. Save completed_chapters (per group)
     if (completedChapters && completedChapters.length > 0) {
       const chapterInsertQuery = `
-        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at)
-        VALUES ($1, $2, $3, NOW())
-        ON CONFLICT (user_id, book_name, chapter_number) DO NOTHING;
+        INSERT INTO completed_chapters (user_id, book_name, chapter_number, completed_at, group_id)
+        VALUES ($1, $2, $3, NOW(), $4)
+        ON CONFLICT (user_id, book_name, chapter_number, group_id) DO NOTHING;
       `;
       for (const chapterStr of completedChapters) {
         const [book, chapterNumStr] = chapterStr.split(':');
         const chapterNum = parseInt(chapterNumStr, 10);
         if (book && !isNaN(chapterNum)) {
-          await client.query(chapterInsertQuery, [userId, book, chapterNum]);
+          await client.query(chapterInsertQuery, [userId, book, chapterNum, groupId]);
         }
       }
     }
 
     // 4. Save reading_history (versesReadInSession)
-    // The 'history' from client is an array of {date, book, startChapter, startVerse, endChapter, endVerse, versesRead}
     if (history && history.length > 0) {
       const historyInsertQuery = `
-        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at)
-        VALUES ($1, $2, $3, $4, $5);
+        INSERT INTO reading_history (user_id, book_name, chapter_number, verse_number, read_at, group_id)
+        VALUES ($1, $2, $3, $4, $5, $6);
       `;
-      // Client sends 'date' in history objects, which we use here.
       for (const entry of history) {
         await client.query(historyInsertQuery, [
-          userId, 
-          entry.book, 
-          entry.startChapter, // Use startChapter from client data
-          entry.startVerse,   // Use startVerse from client data
-          new Date(entry.date)  // Use date from client data
+          userId,
+          entry.book,
+          entry.startChapter,
+          entry.startVerse,
+          new Date(entry.date),
+          groupId
         ]);
       }
     }
 
-    await client.query('COMMIT'); // Commit transaction
-    console.log(`[POST DB] Saved progress for ${username} (ID: ${userId})`);
+    await client.query('COMMIT');
+    console.log(`[POST DB] Saved progress for ${username} (ID: ${userId}) in group: ${groupId}`);
     res.status(200).json({ message: 'Progress saved successfully.' });
 
   } catch (error) {
@@ -336,7 +335,7 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
       'SELECT book_name, chapter_number FROM completed_chapters WHERE user_id = $1 ORDER BY book_name, chapter_number',
       [userId]
     );
-    
+
     const completedChapters = completedChaptersResult.rows.map(c => `${c.book_name}:${c.chapter_number}`);
     console.log(`[GET DB] Completed chapters for ${username} (ID: ${userId}):`, completedChapters);
     res.json(completedChapters);
@@ -349,36 +348,53 @@ app.get('/api/progress/:username/completedChapters', async (req, res) => {
 
 // Get all users' progress summary for leaderboard
 app.get('/api/users/all', async (req, res) => {
-try {
-const query = `
-  SELECT
-    u.username,
-    COALESCE(rp.last_read_book, '') AS "lastReadBook",
-    COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
-    COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
-    rp.updated_at AS "lastProgressUpdateDate",
-    (SELECT COUNT(*) FROM completed_chapters cc WHERE cc.user_id = u.id) AS "completedChaptersCount",
-    (SELECT COUNT(*) FROM hall_of_fame hf WHERE hf.user_id = u.id) AS "completed_count"
-  FROM
-    users u
-  LEFT JOIN
-    reading_progress rp ON u.id = rp.user_id
-  ORDER BY
-    u.username;
-`;
-const { rows } = await db.query(query);
-console.log('[GET DB] All users summary for leaderboard:', rows);
-res.json(rows);
-} catch (error) {
-console.error('[GET DB] Error fetching all users summary:', error);
-res.status(500).json({ message: 'Error fetching users summary for leaderboard' });
-}
+  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
+
+  try {
+    // 그룹 ID 조건부 쿼리
+    const query = `
+      SELECT
+        u.username,
+        COALESCE(rp.last_read_book, '') AS "lastReadBook",
+        COALESCE(rp.last_read_chapter, 0) AS "lastReadChapter",
+        COALESCE(rp.last_read_verse, 0) AS "lastReadVerse",
+        rp.updated_at AS "lastProgressUpdateDate",
+        (
+          SELECT COUNT(*) 
+          FROM completed_chapters cc 
+          WHERE cc.user_id = u.id 
+          AND (cc.group_id = $1 OR (cc.group_id IS NULL AND $1 IS NULL))
+        ) AS "completedChaptersCount",
+        (
+          SELECT COUNT(*) 
+          FROM hall_of_fame hf 
+          WHERE hf.user_id = u.id 
+          AND (hf.group_id = $1 OR (hf.group_id IS NULL AND $1 IS NULL))
+        ) AS "completed_count"
+      FROM
+        users u
+      LEFT JOIN
+        reading_progress rp ON u.id = rp.user_id AND (rp.group_id = $1 OR (rp.group_id IS NULL AND $1 IS NULL))
+      WHERE 
+        -- 특정 그룹 조회시 해당 그룹 멤버만, 전체 조회(null)시 모든 사용자
+        ($1 IS NULL OR EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = u.id AND gm.group_id = $1))
+      ORDER BY
+        u.username;
+    `;
+
+    const { rows } = await db.query(query, [groupId]);
+    res.json(rows);
+  } catch (error) {
+    console.error('[GET DB] Error fetching all users summary:', error);
+    res.status(500).json({ message: 'Error fetching users summary for leaderboard' });
+  }
 });
 
 // Hall of Fame 엔드포인트 - 완독자 목록 조회
 app.get('/api/hall-of-fame', async (req, res) => {
+  const groupId = req.query.groupId ? parseInt(req.query.groupId, 10) : null;
   try {
-    const result = await db.query(`
+    let query = `
       SELECT 
         h.user_id, 
         u.username, 
@@ -388,10 +404,19 @@ app.get('/api/hall-of-fame', async (req, res) => {
         hall_of_fame h 
       JOIN 
         users u ON h.user_id = u.id 
-      ORDER BY 
-        h.completed_at DESC
-    `);
-    
+    `;
+    let params = [];
+
+    if (groupId) {
+      query += ` WHERE h.group_id = $1 `;
+      params.push(groupId);
+    } else {
+      query += ` WHERE h.group_id IS NULL `;
+    }
+
+    query += ` ORDER BY h.completed_at DESC `;
+
+    const result = await db.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching hall of fame data:', err);

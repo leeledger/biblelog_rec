@@ -73,7 +73,8 @@ const initializeDatabase = async () => {
       last_read_chapter INTEGER,
       last_read_verse INTEGER,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      group_id INTEGER REFERENCES groups(id)
+      group_id INTEGER REFERENCES groups(id),
+      UNIQUE (user_id, group_id)
     );
   `;
 
@@ -85,11 +86,10 @@ const initializeDatabase = async () => {
       chapter_number INTEGER NOT NULL,
       completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       group_id INTEGER REFERENCES groups(id),
-      UNIQUE (user_id, book_name, chapter_number)
+      UNIQUE (user_id, book_name, chapter_number, group_id)
     );
   `;
 
-  // Reading history for more granular tracking
   const createReadingHistoryTable = `
     CREATE TABLE IF NOT EXISTS reading_history (
       id SERIAL PRIMARY KEY,
@@ -103,7 +103,6 @@ const initializeDatabase = async () => {
     );
   `;
 
-  // Hall of Fame 테이블 - 성경 완독자 기록
   const createHallOfFameTable = `
     CREATE TABLE IF NOT EXISTS hall_of_fame (
       id SERIAL PRIMARY KEY,
@@ -111,7 +110,7 @@ const initializeDatabase = async () => {
       round INTEGER NOT NULL,
       completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       group_id INTEGER REFERENCES groups(id),
-      UNIQUE (user_id, round)
+      UNIQUE (user_id, round, group_id)
     );
   `;
 
@@ -173,6 +172,12 @@ const initializeDatabase = async () => {
     await addGroupIdColumn('reading_history');
     await addGroupIdColumn('hall_of_fame');
 
+    // 성능 최적화를 위한 인덱스 추가
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reading_progress_user_group ON reading_progress (user_id, group_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_completed_chapters_user_group ON completed_chapters (user_id, group_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reading_history_user_group ON reading_history (user_id, group_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_hall_of_fame_user_group ON hall_of_fame (user_id, group_id)');
+
     console.log('Database tables checked/created/altered successfully.');
   } catch (err) {
     console.error('Error initializing database (creating/altering tables):', err);
@@ -180,39 +185,39 @@ const initializeDatabase = async () => {
   }
 };
 
-async function handleBibleCompletion(userId) {
+async function handleBibleCompletion(userId, groupId = null) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // 1. 현재까지의 완독 횟수 확인
+    // 1. 현재까지의 완독 횟수 확인 (특정 그룹 내에서)
     const { rows } = await client.query(
-      'SELECT COALESCE(MAX(round), 0) as last_round FROM hall_of_fame WHERE user_id = $1',
-      [userId]
+      'SELECT COALESCE(MAX(round), 0) as last_round FROM hall_of_fame WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
     );
     const nextRound = rows[0].last_round + 1;
 
-    // 2. hall_of_fame에 insert (중복 방지)
+    // 2. hall_of_fame에 insert
     await client.query(
-      'INSERT INTO hall_of_fame (user_id, round) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [userId, nextRound]
+      'INSERT INTO hall_of_fame (user_id, round, group_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [userId, nextRound, groupId]
     );
 
-    // 3. users.completed_count 업데이트
+    // 3. users.completed_count 업데이트 (전체 완독 횟수 - 이건 사용자별 통합 관리)
     await client.query(
       'UPDATE users SET completed_count = COALESCE(completed_count,0) + 1 WHERE id = $1',
       [userId]
     );
 
-    // 4. completed_chapters 리셋
+    // 4. completed_chapters 리셋 (특정 그룹 내에서만)
     await client.query(
-      'DELETE FROM completed_chapters WHERE user_id = $1',
-      [userId]
+      'DELETE FROM completed_chapters WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
     );
 
-    // 5. reading_progress 리셋 (선택)
+    // 5. reading_progress 리셋 (특정 그룹 내에서만)
     await client.query(
-      'UPDATE reading_progress SET last_read_book = NULL, last_read_chapter = NULL, last_read_verse = NULL WHERE user_id = $1',
-      [userId]
+      'UPDATE reading_progress SET last_read_book = NULL, last_read_chapter = NULL, last_read_verse = NULL WHERE user_id = $1 AND (group_id = $2 OR (group_id IS NULL AND $2 IS NULL))',
+      [userId, groupId]
     );
 
     await client.query('COMMIT');
