@@ -49,6 +49,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const lastRecognitionEventTimeRef = useRef(Date.now());
   const ignoreResultsRef = useRef(false);
   const restartCountRef = useRef(0); // 추가: 무한 루프 방지용
+  const isAbortingRef = useRef(false); // 추가: abort으로 인한 onend인지 구분
 
   const updateTranscript = (newTranscript: string) => {
     setTranscript(newTranscript);
@@ -140,7 +141,14 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
           setIsListening(false);
         }
       } else {
-        // Android는 기존처럼 부드럽게 재시작
+        // Android: abort으로 인한 종료면 자동 재시작 안 함 (App.tsx에서 isRetryingVerse로 관리)
+        if (isAbortingRef.current) {
+          console.log('[useSpeechRecognition] Android: Skipping auto-restart (abort-triggered)');
+          isAbortingRef.current = false;
+          setIsListening(false);
+          return;
+        }
+        // 자연스러운 종료일 때만 부드럽게 재시작
         setTimeout(() => {
           if (recognitionRef.current && !intentionalStopRef.current) {
             try { recognitionRef.current.start(); } catch (e) { setIsListening(false); }
@@ -161,6 +169,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     if (!recognitionRef.current) return;
     try {
       intentionalStopRef.current = false;
+      isAbortingRef.current = false; // abort 플래그도 리셋
       restartCountRef.current = 0;
       setIsStalled(false);
       recognitionRef.current.start();
@@ -179,6 +188,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const abortListening = useCallback(() => {
     if (!recognitionRef.current) return;
     intentionalStopRef.current = true;
+    isAbortingRef.current = true; // abort으로 인한 종료임을 표시
     recognitionRef.current.abort(); // 즉시 중단 및 버퍼 파기
     // setIsListening(false); // Removed: Let onend handle this to avoid race conditions
     setTranscript('');
