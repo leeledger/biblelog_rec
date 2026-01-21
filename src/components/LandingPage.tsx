@@ -266,7 +266,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                                     <p className="text-gray-600 text-sm leading-relaxed break-keep">
                                         바이블로그의 모든 기능은 <span className="font-bold text-green-600">완전히 무료</span>입니다.
                                         광고 없이, 결제 없이, 오직 말씀에만 집중하세요.
-                                        하나님의 말씀을 읽는 데 비용이 들어서는 안 됩니다.
                                     </p>
                                 </div>
                             </div>
@@ -285,7 +284,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                                     </div>
                                     <p className="text-gray-600 text-sm leading-relaxed break-keep">
                                         읽는 구절에 맞춰 <span className="font-bold text-amber-600">19세기 거장 구스타프 도레</span>의
-                                        성경 삽화가 함께합니다. 238점의 명화가 말씀에 생명을 불어넣어,
+                                        성경 삽화가 함께합니다. 100점의 명화가 말씀에 생명을 불어넣어,
                                         눈과 귀와 마음으로 성경 속 장면을 경험하세요.
                                     </p>
                                 </div>
@@ -303,8 +302,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                                 <div className="flex-shrink-0">
                                     <div className="w-40 h-52 md:w-48 md:h-64 rounded-xl overflow-hidden shadow-2xl border-4 border-amber-400/30 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
                                         <img
-                                            src="/images/dore/029.jpg"
-                                            alt="구스타프 도레 성경 삽화 예시"
+                                            src="/img/dore/images/029_RUTH_AND_BOAZ.jpg"
+                                            alt="구스타프 도레 성경 삽화 - 룻과 보아스"
                                             className="w-full h-full object-cover"
                                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
@@ -317,7 +316,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                                         <span className="text-amber-400">명화가 함께합니다</span>
                                     </h3>
                                     <p className="text-slate-400 text-sm leading-relaxed break-keep max-w-md">
-                                        창세기부터 요한계시록까지, 238점의 도레 삽화가 해당 구절에 맞춰 자동으로 표시됩니다.
+                                        창세기부터 요한계시록까지, 100점의 도레 삽화가 해당 구절에 맞춰 자동으로 표시됩니다.
                                         마치 그림책을 읽듯, 성경 속 장면이 눈앞에서 펼쳐집니다.
                                     </p>
                                 </div>
