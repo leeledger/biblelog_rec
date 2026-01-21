@@ -1163,7 +1163,9 @@ const App: React.FC = () => {
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
             onSessionCompleteConfirm={() => {
-              handleStopReadingAndSave(sessionTargetVerses.length, false);
+              // 세션 완료 후 페이지 새로고침하여 음성인식 리소스 정리
+              // 이렇게 하면 다음 세션에서 마이크 버벅임 방지
+              window.location.reload();
             }}
             isResume={isResumeSession}
           />
