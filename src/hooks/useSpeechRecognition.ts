@@ -50,6 +50,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const ignoreResultsRef = useRef(false);
   const restartCountRef = useRef(0); // 추가: 무한 루프 방지용
   const isAbortingRef = useRef(false); // 추가: abort으로 인한 onend인지 구분
+  const isStartingRef = useRef(false); // 추가: 중복 start() 방지
 
   const updateTranscript = (newTranscript: string) => {
     setTranscript(newTranscript);
@@ -70,6 +71,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
     recognition.onstart = () => {
       console.log('[useSpeechRecognition] onstart');
+      isStartingRef.current = false; // start 완료, 플래그 리셋
       setIsListening(true);
       setIsStalled(false);
       intentionalStopRef.current = false;
@@ -167,14 +169,27 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
+    // 중복 start 방지: 이미 시작 중이면 무시
+    if (isStartingRef.current) {
+      console.log('[useSpeechRecognition] start already in progress, skipping');
+      return;
+    }
+    isStartingRef.current = true;
+
+    // 안전장치: 2초 후 자동 리셋 (onstart가 안 오면)
+    setTimeout(() => {
+      isStartingRef.current = false;
+    }, 2000);
+
     try {
       intentionalStopRef.current = false;
-      isAbortingRef.current = false; // abort 플래그도 리셋
+      isAbortingRef.current = false;
       restartCountRef.current = 0;
       setIsStalled(false);
       recognitionRef.current.start();
     } catch (e) {
       console.error('Start failed', e);
+      isStartingRef.current = false; // 실패 시 즉시 리셋
     }
   }, []);
 
