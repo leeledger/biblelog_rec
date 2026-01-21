@@ -52,9 +52,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                     <img
                         src="/images/landing/hero.png"
                         alt="Bible reading journey background"
-                        className="w-full h-full object-cover opacity-40 scale-105"
+                        className="w-full h-full object-cover opacity-70 scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-slate-900/40 to-slate-900/80"></div>
                 </div>
 
                 <div className="relative z-10 max-w-4xl mx-auto space-y-10 animate-fade-in-up px-4">
@@ -65,23 +65,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
 
                     {/* 메인 카피 */}
                     <header className="break-keep space-y-6">
-                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight">
-                            눈으로 읽는 말씀은<br />
+                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight drop-shadow-lg">
+                            <span className="block">눈으로 읽는 말씀은</span>
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-400">50%에 불과합니다</span>
                         </h1>
 
                         {/* 서브 카피 */}
-                        <p className="text-base md:text-xl text-slate-300 font-medium leading-relaxed max-w-2xl mx-auto">
-                            믿음은 들음에서 나고, 들음은 말씀에서 나옵니다.<br className="hidden md:block" />
-                            바이블로그는 당신의 <span className="text-amber-400 font-bold">'목소리'</span>로 나머지 50%를 채웁니다.
+                        <p className="text-base md:text-xl text-white/90 font-medium leading-relaxed max-w-lg mx-auto break-keep drop-shadow">
+                            믿음은 들음에서 나고, 들음은 말씀에서 나옵니다.
+                            <span className="block mt-2">바이블로그는 당신의 <span className="text-amber-400 font-bold">'목소리'</span>로</span>
+                            <span className="block">나머지 50%를 채웁니다.</span>
                         </p>
                     </header>
 
                     {/* 핵심 슬로건 */}
-                    <div className="py-6 px-8 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 max-w-xl mx-auto">
-                        <p className="text-sm md:text-base text-slate-200 font-serif italic leading-relaxed">
-                            "입으로 시인하고, 귀로 듣고, 마음에 새기십시오.<br />
-                            이것이 우리가 <span className="text-amber-400 font-bold">'소리'</span>를 고집하는 이유입니다."
+                    <div className="py-5 px-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 max-w-md mx-auto">
+                        <p className="text-sm md:text-base text-white font-serif italic leading-relaxed break-keep">
+                            "입으로 시인하고, 귀로 듣고,<br className="md:hidden" />
+                            마음에 새기십시오."
+                            <span className="block mt-2 text-amber-300">이것이 우리가 '소리'를 고집하는 이유입니다.</span>
                         </p>
                     </div>
 
