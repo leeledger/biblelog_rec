@@ -248,6 +248,85 @@ const LandingPage: React.FC<LandingPageProps> = ({ authForm }) => {
                 </div>
             </section>
 
+            {/* 무료 & 도레 삽화 섹션 */}
+            <section className="py-20 px-4 bg-gradient-to-b from-slate-50 via-amber-50/30 to-slate-50">
+                <div className="max-w-5xl mx-auto">
+                    <div className="grid md:grid-cols-2 gap-8 items-center">
+                        {/* 무료 서비스 */}
+                        <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 reveal-on-scroll">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <span className="text-2xl">🎁</span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xl font-bold text-gray-800">완전 무료</h3>
+                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">FREE</span>
+                                    </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed break-keep">
+                                        바이블로그의 모든 기능은 <span className="font-bold text-green-600">완전히 무료</span>입니다.
+                                        광고 없이, 결제 없이, 오직 말씀에만 집중하세요.
+                                        하나님의 말씀을 읽는 데 비용이 들어서는 안 됩니다.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 구스타프 도레 삽화 */}
+                        <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 reveal-on-scroll delay-300">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <span className="text-2xl">🖼️</span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-xl font-bold text-gray-800">구스타프 도레 삽화</h3>
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">명화</span>
+                                    </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed break-keep">
+                                        읽는 구절에 맞춰 <span className="font-bold text-amber-600">19세기 거장 구스타프 도레</span>의
+                                        성경 삽화가 함께합니다. 238점의 명화가 말씀에 생명을 불어넣어,
+                                        눈과 귀와 마음으로 성경 속 장면을 경험하세요.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 도레 삽화 미리보기 */}
+                    <div className="mt-12 reveal-on-scroll delay-500">
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 md:p-10 shadow-2xl overflow-hidden relative">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
+
+                            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-10">
+                                <div className="flex-shrink-0">
+                                    <div className="w-40 h-52 md:w-48 md:h-64 rounded-xl overflow-hidden shadow-2xl border-4 border-amber-400/30 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+                                        <img
+                                            src="/images/dore/029.jpg"
+                                            alt="구스타프 도레 성경 삽화 예시"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-center md:text-left space-y-4">
+                                    <p className="text-amber-400 font-bold text-sm tracking-wider uppercase">Gustave Doré Bible Illustrations</p>
+                                    <h3 className="text-xl md:text-2xl font-bold text-white leading-snug break-keep">
+                                        읽는 구절마다<br className="md:hidden" />
+                                        <span className="text-amber-400">명화가 함께합니다</span>
+                                    </h3>
+                                    <p className="text-slate-400 text-sm leading-relaxed break-keep max-w-md">
+                                        창세기부터 요한계시록까지, 238점의 도레 삽화가 해당 구절에 맞춰 자동으로 표시됩니다.
+                                        마치 그림책을 읽듯, 성경 속 장면이 눈앞에서 펼쳐집니다.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Login / Auth Section */}
             <section ref={loginSectionRef} className="py-24 bg-gradient-to-b from-slate-50 to-white">
                 <div className="max-w-md mx-auto px-4 reveal-on-scroll">
