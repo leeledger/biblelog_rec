@@ -31,12 +31,31 @@ interface ActiveReadingSessionProps {
 
 // 성능 최적화: 읽은 누적 구절 영역을 별도 컴포넌트로 분리하여
 // 음성 인식 중(transcript 업데이트 시) 불필요하게 리렌더링되지 않도록 함
+// 추가 최적화: 렌더링 시 최근 10개 구절만 표시 (DOM 부하 감소)
 const MatchedHistoryDisplay = React.memo(({ content }: { content: string }) => {
+  // 전체 내용을 줄 단위로 분리하고 최근 10개만 표시
+  const lines = content ? content.trim().split('\n') : [];
+  const recentLines = lines.slice(-10); // 마지막 10개만
+  const hiddenCount = lines.length - recentLines.length;
+
   return (
     <div>
-      <p className="text-sm text-gray-500 font-medium mb-1">지금까지 읽은 내용:</p>
+      <p className="text-sm text-gray-500 font-medium mb-1">
+        지금까지 읽은 내용: {lines.length > 0 && <span className="text-amber-600">({lines.length}절)</span>}
+      </p>
       <div className="text-sm text-gray-600 whitespace-pre-wrap p-3 bg-gray-50 rounded-xl border border-gray-100 max-h-40 overflow-y-auto shadow-inner">
-        {content || <span className="text-gray-400 italic">아직 읽은 구절이 없습니다.</span>}
+        {lines.length === 0 ? (
+          <span className="text-gray-400 italic">아직 읽은 구절이 없습니다.</span>
+        ) : (
+          <>
+            {hiddenCount > 0 && (
+              <div className="text-xs text-gray-400 mb-2 pb-2 border-b border-gray-200">
+                ⋯ {hiddenCount}절 더 읽음
+              </div>
+            )}
+            {recentLines.join('\n')}
+          </>
+        )}
       </div>
     </div>
   );
