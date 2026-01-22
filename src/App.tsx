@@ -763,13 +763,17 @@ const App: React.FC = () => {
         setMatchedCharCount(0); // 구절 전환 시 리셋
 
         // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
-        // abortListening() 호출 → useSpeechRecognition의 onend에서 자동 재시작됨
+        // abort 후 onend가 완료될 시간을 준 뒤 setRetry로 재시작
         const delayMs = isIOS ? 50 : 200;
         if (currentUser?.id === 100) addDebugLog(`🔄 구절전환 - ${delayMs}ms 후 abort`);
         setTimeout(() => {
-          if (currentUser?.id === 100) addDebugLog('abort 호출 (onend에서 재시작됨)');
+          if (currentUser?.id === 100) addDebugLog('abort 호출');
           abortListening();
-          // setIsRetryingVerse 제거: useSpeechRecognition에서 직접 재시작 처리
+          // abort 후 onend → isListening=false 될 시간을 줌 (300ms)
+          setTimeout(() => {
+            if (currentUser?.id === 100) addDebugLog('setRetry(true) - 300ms 딜레이 후');
+            setIsRetryingVerse(true);
+          }, 300);
         }, delayMs);
       }
     }
