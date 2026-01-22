@@ -92,6 +92,13 @@ const App: React.FC = () => {
   const [footerChurchExpanded, setFooterChurchExpanded] = useState(false);
   const [showMyPage, setShowMyPage] = useState(false);
 
+  // 디버그 로그 (ID 100번 사용자 전용)
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const addDebugLog = useCallback((msg: string) => {
+    const timestamp = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setDebugLogs(prev => [...prev.slice(-15), `${timestamp} ${msg}`]);
+  }, []);
+
 
   // Prevent pull-to-refresh on mobile during speech recognition
   useEffect(() => {
@@ -189,6 +196,13 @@ const App: React.FC = () => {
     markVerseTransition,
     isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
+
+  // 마이크 상태 감지 (ID 100 디버그용)
+  useEffect(() => {
+    if (currentUser?.id === 100) {
+      addDebugLog(`🎤 isListening: ${isListening}`);
+    }
+  }, [isListening, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -296,11 +310,15 @@ const App: React.FC = () => {
 
   // Effect to handle retrying a verse after STT has fully stopped
   useEffect(() => {
+    if (currentUser?.id === 100) {
+      addDebugLog(`retry check - retry:${isRetryingVerse} listen:${isListening}`);
+    }
     if (isRetryingVerse && !isListening) {
+      if (currentUser?.id === 100) addDebugLog('🚀 startListening() 호출');
       startListening();
       setIsRetryingVerse(false);
     }
-  }, [isRetryingVerse, isListening, startListening]);
+  }, [isRetryingVerse, isListening, startListening, currentUser?.id, addDebugLog]);
 
   // Authentication & Session Recovery Effect
   useEffect(() => {
@@ -744,10 +762,13 @@ const App: React.FC = () => {
 
         // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
         // abortListening()을 사용하여 이전 구절의 잔여 인식을 즉시 파기하고 엔진을 초기화함
+        const delay = isIOS ? 50 : 200;
+        if (currentUser?.id === 100) addDebugLog(`🔄 구절 전환 - ${delay}ms 후 abort`);
         setTimeout(() => {
+          if (currentUser?.id === 100) addDebugLog('🛑 abortListening() 호출');
           abortListening();
           setIsRetryingVerse(true);
-        }, isIOS ? 50 : 200);
+        }, delay);
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
@@ -1364,6 +1385,19 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      {/* 디버그 로그 오버레이 (ID 100 사용자 전용) */}
+      {currentUser?.id === 100 && debugLogs.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 text-[10px] p-2 max-h-48 overflow-y-auto z-[9999] font-mono border-t border-green-900/30">
+          <div className="flex justify-between items-center mb-1 pb-1 border-b border-green-900/20">
+            <span className="text-yellow-400 font-bold">🔧 MIC DEBUG PANEL</span>
+            <button onClick={() => setDebugLogs([])} className="text-red-400 px-2 active:bg-red-900/20 rounded">CLEAR</button>
+          </div>
+          {debugLogs.map((log, i) => (
+            <div key={i} className="py-0.5 border-b border-white/5 last:border-0">{log}</div>
+          ))}
+        </div>
+      )}
     </>
   );
 };
