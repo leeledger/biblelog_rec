@@ -296,9 +296,13 @@ const App: React.FC = () => {
 
   // Effect to handle retrying a verse after STT has fully stopped
   useEffect(() => {
+    console.log('[MIC-DEBUG] isRetryingVerse useEffect - isRetryingVerse:', isRetryingVerse, 'isListening:', isListening);
     if (isRetryingVerse && !isListening) {
+      console.log('[MIC-DEBUG] 조건 충족 - startListening() 호출');
       startListening();
       setIsRetryingVerse(false);
+    } else if (isRetryingVerse && isListening) {
+      console.log('[MIC-DEBUG] ⚠️ isRetryingVerse=true but isListening=true - 대기 중');
     }
   }, [isRetryingVerse, isListening, startListening]);
 
@@ -744,10 +748,14 @@ const App: React.FC = () => {
 
         // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
         // abortListening()을 사용하여 이전 구절의 잔여 인식을 즉시 파기하고 엔진을 초기화함
+        const delayMs = isIOS ? 50 : 200;
+        console.log(`[MIC-DEBUG] 구절 전환 시작 - ${delayMs}ms 후 abortListening 호출 예정`);
         setTimeout(() => {
+          console.log('[MIC-DEBUG] abortListening 호출 직전 - isListening:', isListening);
           abortListening();
+          console.log('[MIC-DEBUG] setIsRetryingVerse(true) 설정');
           setIsRetryingVerse(true);
-        }, isIOS ? 50 : 200);
+        }, delayMs);
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);

@@ -50,7 +50,6 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   const ignoreResultsRef = useRef(false);
   const restartCountRef = useRef(0); // 추가: 무한 루프 방지용
   const isAbortingRef = useRef(false); // 추가: abort으로 인한 onend인지 구분
-  const isStartingRef = useRef(false); // 추가: 중복 start() 방지
 
   const updateTranscript = (newTranscript: string) => {
     setTranscript(newTranscript);
@@ -70,12 +69,11 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
     recognition.lang = lang;
 
     recognition.onstart = () => {
-      console.log('[useSpeechRecognition] onstart');
-      isStartingRef.current = false; // start 완료, 플래그 리셋
+      console.log('[MIC-DEBUG] onstart - 마이크 시작됨');
       setIsListening(true);
       setIsStalled(false);
       intentionalStopRef.current = false;
-      restartCountRef.current = 0; // 시작되면 카운트 초기화
+      restartCountRef.current = 0;
     };
 
     recognition.onresult = (event: ISpeechRecognitionEvent) => {
@@ -145,15 +143,22 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       } else {
         // Android: abort으로 인한 종료면 자동 재시작 안 함 (App.tsx에서 isRetryingVerse로 관리)
         if (isAbortingRef.current) {
-          console.log('[useSpeechRecognition] Android: Skipping auto-restart (abort-triggered)');
+          console.log('[MIC-DEBUG] Android onend - abort으로 인한 종료, 재시작 스킵');
           isAbortingRef.current = false;
           setIsListening(false);
           return;
         }
         // 자연스러운 종료일 때만 부드럽게 재시작
+        console.log('[MIC-DEBUG] Android onend - 자연 종료, 100ms 후 재시작 시도');
         setTimeout(() => {
           if (recognitionRef.current && !intentionalStopRef.current) {
-            try { recognitionRef.current.start(); } catch (e) { setIsListening(false); }
+            try {
+              console.log('[MIC-DEBUG] Android - 자동 재시작 실행');
+              recognitionRef.current.start();
+            } catch (e) {
+              console.error('[MIC-DEBUG] Android - 자동 재시작 실패:', e);
+              setIsListening(false);
+            }
           }
         }, 100);
       }
@@ -168,28 +173,21 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   }, [lang, browserSupportsSpeechRecognition, isIOS]);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    // 중복 start 방지: 이미 시작 중이면 무시
-    if (isStartingRef.current) {
-      console.log('[useSpeechRecognition] start already in progress, skipping');
+    console.log('[MIC-DEBUG] startListening 호출됨');
+    if (!recognitionRef.current) {
+      console.log('[MIC-DEBUG] startListening - recognitionRef 없음');
       return;
     }
-    isStartingRef.current = true;
-
-    // 안전장치: 2초 후 자동 리셋 (onstart가 안 오면)
-    setTimeout(() => {
-      isStartingRef.current = false;
-    }, 2000);
-
     try {
       intentionalStopRef.current = false;
       isAbortingRef.current = false;
       restartCountRef.current = 0;
       setIsStalled(false);
+      console.log('[MIC-DEBUG] startListening - start() 호출 직전');
       recognitionRef.current.start();
+      console.log('[MIC-DEBUG] startListening - start() 호출 완료');
     } catch (e) {
-      console.error('Start failed', e);
-      isStartingRef.current = false; // 실패 시 즉시 리셋
+      console.error('[MIC-DEBUG] startListening - start() 실패:', e);
     }
   }, []);
 
@@ -201,11 +199,12 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
   }, []);
 
   const abortListening = useCallback(() => {
+    console.log('[MIC-DEBUG] abortListening 호출됨');
     if (!recognitionRef.current) return;
     intentionalStopRef.current = true;
-    isAbortingRef.current = true; // abort으로 인한 종료임을 표시
-    recognitionRef.current.abort(); // 즉시 중단 및 버퍼 파기
-    // setIsListening(false); // Removed: Let onend handle this to avoid race conditions
+    isAbortingRef.current = true;
+    recognitionRef.current.abort();
+    console.log('[MIC-DEBUG] abortListening - abort() 호출 완료');
     setTranscript('');
     finalTranscriptRef.current = '';
   }, []);

@@ -30,7 +30,7 @@ Bubblewrap 도구를 사용하여 배포용 파일을 생성합니다.
    - Key store 정보: 기존 키가 있다면 경로 지정, 없다면 새로 생성 (비밀번호 안전하게 보관 필수)
 3. 빌드 실행:
    ```bash
-   npx @bubblewrap/cli build
+   npx @bubblewrap/cli build`
    ```
 4. 생성된 `app-release-bundle.aab` 파일을 플레이 콘솔에 업로드합니다.
 
