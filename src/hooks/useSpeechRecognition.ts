@@ -145,6 +145,7 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
         if (isAbortingRef.current) {
           console.log('[MIC-DEBUG] Android onend - abort 후 150ms 뒤 재시작');
           isAbortingRef.current = false;
+          intentionalStopRef.current = false; // 재시작 조건 충족을 위해 리셋!
           setTimeout(() => {
             if (!intentionalStopRef.current && recognitionRef.current) {
               try {
