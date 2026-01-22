@@ -31,6 +31,9 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   // 마이크 권한 상태: 'unknown' | 'granted' | 'denied' | 'prompt'
   const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
 
+  // 최초 1회만 표시되는 마이크 권한 안내 팝업
+  const [showFirstTimeMicGuide, setShowFirstTimeMicGuide] = useState(false);
+
   const [selectedBookName, setSelectedBookName] = useState<string>(defaultBook);
 
   // Derived state for book info
@@ -204,6 +207,23 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
 
   const handleStart = () => {
     setError('');
+
+    // 최초 1회만: 마이크 권한 안내 팝업 표시 (권한이 아직 요청되지 않은 경우)
+    const hasSeenMicGuide = localStorage.getItem('biblelog_hasSeenMicGuide');
+    if (!hasSeenMicGuide && micPermission === 'prompt') {
+      setShowFirstTimeMicGuide(true);
+      return; // 팝업 표시 후 실제 읽기는 팝업에서 진행
+    }
+
+    // 일반적인 경우: 바로 읽기 시작
+    onStartReading(selectedBookName, startChapter, endChapter, defaultStartVerse);
+  };
+
+  // 팝업에서 "이해했습니다" 클릭 시
+  const handleConfirmMicGuide = () => {
+    localStorage.setItem('biblelog_hasSeenMicGuide', 'true');
+    setShowFirstTimeMicGuide(false);
+    // 이제 실제로 읽기 시작
     onStartReading(selectedBookName, startChapter, endChapter, defaultStartVerse);
   };
 
@@ -308,6 +328,32 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
               : '선택 범위 읽기 시작'
           )}
         </button>
+      )}
+
+      {/* 최초 1회 마이크 권한 안내 팝업 */}
+      {showFirstTimeMicGuide && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm shadow-2xl animate-scale-in">
+            <div className="text-center space-y-4">
+              <div className="text-5xl">🎤</div>
+              <h3 className="text-xl font-bold text-gray-800">
+                마이크 권한이 필요합니다
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed break-keep">
+                바이블로그는 소리 내어 읽는 것을 실시간으로 인식합니다.
+                <br /><br />
+                다음 단계에서 브라우저가 마이크 권한을 요청하면
+                <span className="font-bold text-green-600"> 반드시 "허용"</span>을 눌러주세요.
+              </p>
+              <button
+                onClick={handleConfirmMicGuide}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all hover:scale-105 active:scale-95"
+              >
+                이해했습니다
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
