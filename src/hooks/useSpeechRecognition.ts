@@ -141,11 +141,24 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
           setIsListening(false);
         }
       } else {
-        // Android: abort으로 인한 종료면 자동 재시작 안 함 (App.tsx에서 isRetryingVerse로 관리)
+        // Android: abort으로 인한 종료면 직접 150ms 후 재시작 (App.tsx의 retry 로직 대신)
         if (isAbortingRef.current) {
-          console.log('[MIC-DEBUG] Android onend - abort으로 인한 종료, 재시작 스킵');
+          console.log('[MIC-DEBUG] Android onend - abort 후 150ms 뒤 재시작');
           isAbortingRef.current = false;
-          setIsListening(false);
+          setTimeout(() => {
+            if (!intentionalStopRef.current && recognitionRef.current) {
+              try {
+                console.log('[MIC-DEBUG] Android - abort 후 재시작 실행');
+                recognitionRef.current.start();
+              } catch (e) {
+                console.error('[MIC-DEBUG] Android - abort 후 재시작 실패:', e);
+                setIsListening(false);
+              }
+            } else {
+              console.log('[MIC-DEBUG] Android - abort 후 재시작 조건 불만족');
+              setIsListening(false);
+            }
+          }, 150);
           return;
         }
         // 자연스러운 종료일 때만 부드럽게 재시작
