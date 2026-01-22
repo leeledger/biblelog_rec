@@ -83,6 +83,7 @@ const App: React.FC = () => {
   // 점진적 매칭: 현재 구절에서 매칭된 글자 수
   const [matchedCharCount, setMatchedCharCount] = useState(0);
   const [isResumeSession, setIsResumeSession] = useState(false);
+  const [isMicWaiting, setIsMicWaiting] = useState(false); // 마이크 대기 중 여부
 
   // 데이터 로딩 상태
   const [isProgressLoading, setIsProgressLoading] = useState(true);
@@ -197,12 +198,27 @@ const App: React.FC = () => {
     isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
 
-  // 마이크 상태 감지 (ID 100 디버그용)
+  // 마이크 상태 감지 및 와치독 (안드로이드 마이크 멈춤 대응)
   useEffect(() => {
     if (currentUser?.id === 100) {
       addDebugLog(`🎤 isListening: ${isListening}`);
     }
-  }, [isListening, currentUser?.id, addDebugLog]);
+
+    // 통독 중인데 마이크가 꺼졌다면 대기 상태 추적
+    let timer: NodeJS.Timeout;
+    if (readingState === ReadingState.LISTENING && !isListening) {
+      timer = setTimeout(() => {
+        setIsMicWaiting(true);
+        if (currentUser?.id === 100) addDebugLog('⚠️ 마이크 3초 이상 응답 없음 - 자동 재시작 시도');
+        // 강제로 한 번 더 깨우기 시도
+        startListening();
+      }, 3000);
+    } else {
+      setIsMicWaiting(false);
+    }
+
+    return () => clearTimeout(timer);
+  }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -1189,6 +1205,8 @@ const App: React.FC = () => {
               window.location.reload();
             }}
             isResume={isResumeSession}
+            isListening={isListening}
+            isMicWaiting={isMicWaiting}
           />
         )}
 

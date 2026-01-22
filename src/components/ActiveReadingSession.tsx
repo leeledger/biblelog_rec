@@ -27,6 +27,8 @@ interface ActiveReadingSessionProps {
   isStalled: boolean; // 추가
   onSessionCompleteConfirm: () => void;
   isResume?: boolean; // 추가
+  isListening: boolean; // 추가
+  isMicWaiting: boolean; // 추가
 }
 
 // 성능 최적화: 읽은 누적 구절 영역을 별도 컴포넌트로 분리하여
@@ -78,7 +80,9 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   sessionCertificationMessage,
   isStalled, // 추가
   onSessionCompleteConfirm,
-  isResume // 추가
+  isResume, // 추가
+  isListening, // 추가
+  isMicWaiting // 추가
 }) => {
   // 현재 세션 범위 내의 모든 장 정보 추출 및 매칭되는 도레 판화들 찾기
   const matchedDores = React.useMemo(() => {
@@ -195,15 +199,15 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
 
               <p
                 key={currentTargetVerse ? `${currentTargetVerse.book}-${currentTargetVerse.chapter}-${currentTargetVerse.verse}` : 'no-verse'}
-                className="text-xl font-semibold text-black leading-loose relative z-10 animate-fade-in-up"
+                className={`text-xl font-semibold text-black leading-loose relative z-10 animate-fade-in-up transition-opacity duration-300 ${!isListening ? 'opacity-30' : 'opacity-100'}`}
               >
                 {currentTargetVerse ? (
                   <>
                     <span
                       className="text-amber-900 font-bold"
                       style={{
-                        textShadow: '0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(252, 211, 77, 0.3)',
-                        opacity: 0.7,
+                        textShadow: isListening ? '0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(252, 211, 77, 0.3)' : 'none',
+                        opacity: isListening ? 0.7 : 0.3,
                         transition: 'all 0.5s ease-out'
                       }}
                     >
@@ -218,16 +222,17 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                 )}
               </p>
 
-              {/* iOS 마이크 복구 버튼 (Rescue Button) */}
-              {isStalled && (
+              {/* 마이크 복구 버튼 (Android/iOS 공통) */}
+              {(isStalled || isMicWaiting) && (
                 <div className="mt-4 p-4 bg-red-50 border-2 border-red-500 rounded-xl text-center shadow-lg animate-bounce">
-                  <p className="font-bold text-red-700 mb-2">🎤 아이폰 마이크가 잠시 쉬고 있어요!</p>
+                  <p className="font-bold text-red-700 mb-2">🎤 마이크가 응답하지 않아요!</p>
                   <button
                     onClick={onStartListening}
                     className="w-full py-3 bg-red-600 text-white rounded-lg font-bold text-lg shadow-md hover:bg-red-700 transition"
                   >
-                    여기 눌러 다시 깨우기
+                    마이크 다시 깨우기
                   </button>
+                  <p className="mt-2 text-xs text-red-500 opacity-70">안드로이드에서 드물게 발생하는 현상입니다. 눌러주시면 바로 재시작됩니다.</p>
                 </div>
               )}
 
@@ -258,9 +263,17 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
           )}
 
           <div className="mb-4">
-            <p className="text-sm text-gray-500">인식된 음성:</p>
-            <p className="text-md text-gray-700 min-h-[2.5em] p-2 bg-gray-100 rounded-md border">
-              {transcript || <span className="text-gray-400 italic">듣고 있습니다... (말씀해 주세요)</span>}
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-sm text-gray-500 font-medium">인식된 음성:</p>
+              {readingState === ReadingState.LISTENING && (
+                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${isListening ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600 animate-pulse'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  {isListening ? '마이크 활성 중' : '마이크 연결 중...'}
+                </div>
+              )}
+            </div>
+            <p className={`text-md text-gray-700 min-h-[2.5em] p-3 rounded-xl border transition-all duration-300 ${isListening ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+              {transcript || <span className="text-gray-400 italic">{isListening ? '지금 읽어주세요...' : '마이크를 깨우고 있습니다...'}</span>}
             </p>
           </div>
 
