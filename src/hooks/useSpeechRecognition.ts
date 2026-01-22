@@ -149,8 +149,16 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
           return;
         }
         // 자연스러운 종료일 때만 부드럽게 재시작
-        console.log('[MIC-DEBUG] Android onend - 자연 종료, 100ms 후 재시작 시도');
+        console.log('[MIC-DEBUG] Android onend - 자연 종료, intentionalStop:', intentionalStopRef.current);
+        if (intentionalStopRef.current) {
+          console.log('[MIC-DEBUG] Android - intentionalStop=true, 재시작 안 함');
+          setIsListening(false);
+          return;
+        }
+        // 300ms 후 재시작 시도 (100ms → 300ms로 증가)
+        console.log('[MIC-DEBUG] Android - 300ms 후 재시작 시도');
         setTimeout(() => {
+          console.log('[MIC-DEBUG] Android - 재시작 타이머 콜백, intentionalStop:', intentionalStopRef.current);
           if (recognitionRef.current && !intentionalStopRef.current) {
             try {
               console.log('[MIC-DEBUG] Android - 자동 재시작 실행');
@@ -159,8 +167,11 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
               console.error('[MIC-DEBUG] Android - 자동 재시작 실패:', e);
               setIsListening(false);
             }
+          } else {
+            console.log('[MIC-DEBUG] Android - 재시작 조건 불만족');
+            setIsListening(false);
           }
-        }, 100);
+        }, 300);
       }
     };
 
