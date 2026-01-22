@@ -1030,9 +1030,9 @@ const App: React.FC = () => {
     if (readingState === ReadingState.LISTENING && currentTargetVerseForSession) {
       setVerseStartTime(Date.now());
 
-      // 글자 수 기반 동적 대기 시간 계산: 기본 8초 + 글자당 0.2초 (최대 45초 한도)
+      // 글자 수 기반 동적 대기 시간 계산: 기본 5초 + 글자당 0.2초 (최대 45초 한도)
       const verseLength = currentTargetVerseForSession.text.length;
-      const dynamicWaitTime = Math.min(8000 + (verseLength * 200), 45000);
+      const dynamicWaitTime = Math.min(5000 + (verseLength * 200), 45000);
 
       const timeoutId = setTimeout(() => {
         setShowAmenPrompt(true);
