@@ -310,30 +310,14 @@ const App: React.FC = () => {
 
   // Effect to handle retrying a verse after STT has fully stopped
   useEffect(() => {
-    let safetyTimeout: NodeJS.Timeout;
-
     if (currentUser?.id === 100) {
       addDebugLog(`retry check - retry:${isRetryingVerse} listen:${isListening}`);
     }
-
-    if (isRetryingVerse) {
-      if (!isListening) {
-        if (currentUser?.id === 100) addDebugLog('🚀 startListening() 호출');
-        startListening();
-        setIsRetryingVerse(false);
-      } else {
-        // 안드로이드에서 isListening이 끝까지 안꺼지는 경우 대비 (1초 안전장치)
-        safetyTimeout = setTimeout(() => {
-          if (isRetryingVerse) {
-            if (currentUser?.id === 100) addDebugLog('⚠️ 1초 대기 후 강제 restart');
-            startListening();
-            setIsRetryingVerse(false);
-          }
-        }, 1000);
-      }
+    if (isRetryingVerse && !isListening) {
+      if (currentUser?.id === 100) addDebugLog('🚀 startListening() 호출');
+      startListening();
+      setIsRetryingVerse(false);
     }
-
-    return () => clearTimeout(safetyTimeout);
   }, [isRetryingVerse, isListening, startListening, currentUser?.id, addDebugLog]);
 
   // Authentication & Session Recovery Effect
@@ -776,16 +760,15 @@ const App: React.FC = () => {
         resetTranscript();
         setMatchedCharCount(0); // 구절 전환 시 리셋
 
-        // 구절 전환 시 마이크 리셋 (즉시 abort하여 잔상 제거)
-        const safetyDelay = isIOS ? 100 : 400; // 안드로이드는 시스템 정리 시간이 필요함
-
-        if (currentUser?.id === 100) addDebugLog('� 즉시 abortListening()');
-        abortListening(); // 이전 구절의 음성 버퍼를 즉시 파기
-
+        // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
+        // abortListening()을 사용하여 이전 구절의 잔여 인식을 즉시 파기하고 엔진을 초기화함
+        const delay = isIOS ? 50 : 200;
+        if (currentUser?.id === 100) addDebugLog(`🔄 구절 전환 - ${delay}ms 후 abort`);
         setTimeout(() => {
-          if (currentUser?.id === 100) addDebugLog(`� ${safetyDelay}ms 후 setRetry(true)`);
+          if (currentUser?.id === 100) addDebugLog('🛑 abortListening() 호출');
+          abortListening();
           setIsRetryingVerse(true);
-        }, safetyDelay);
+        }, delay);
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
