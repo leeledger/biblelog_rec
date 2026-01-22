@@ -164,8 +164,13 @@ const useSpeechRecognition = (options?: UseSpeechRecognitionOptions): UseSpeechR
       restartCountRef.current = 0;
       setIsStalled(false);
       recognitionRef.current.start();
-    } catch (e) {
-      console.error('Start failed', e);
+    } catch (e: any) {
+      if (e.name === 'InvalidStateError' || e.message?.includes('already started')) {
+        console.warn('[useSpeechRecognition] Already started, syncing state...');
+        setIsListening(true);
+      } else {
+        console.error('[useSpeechRecognition] Start failed', e);
+      }
     }
   }, []);
 
