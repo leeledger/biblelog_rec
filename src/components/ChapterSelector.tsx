@@ -172,8 +172,8 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   useEffect(() => {
     if (micPermission === 'granted' && currentUser?.id) {
       const syncPermissionToServer = async () => {
-        const hasSynced = sessionStorage.getItem(`mic_synced_${currentUser.id}`);
-        if (hasSynced) return; // 이번 세션에서 이미 보냈다면 중단
+        const hasSynced = localStorage.getItem(`mic_synced_${currentUser.id}`);
+        if (hasSynced) return; // 이미 보낸 적이 있다면 중단 (탭 닫아도 기록 유지)
 
         try {
           await fetch(`/api/users/${currentUser.id}/mic-permission`, {
@@ -181,7 +181,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ granted: true })
           });
-          sessionStorage.setItem(`mic_synced_${currentUser.id}`, 'true');
+          localStorage.setItem(`mic_synced_${currentUser.id}`, 'true');
         } catch (e) {
           console.error('Failed to sync mic permission to server', e);
         }
