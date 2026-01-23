@@ -182,6 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             defaultStartVerse={startVerseForSelector}
             completedChapters={userOverallProgress?.completedChapters}
             isLoading={isLoading}
+            currentUser={currentUser}
           />
         </div>
       </div>

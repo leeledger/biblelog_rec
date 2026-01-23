@@ -100,6 +100,23 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Endpoint to update microphone permission status
+app.post('/api/users/:userId/mic-permission', async (req, res) => {
+    const { userId } = req.params;
+    const { granted } = req.body;
+
+    try {
+        await db.query(
+            'UPDATE users SET mic_permission_granted = $1 WHERE id = $2',
+            [granted, userId]
+        );
+        res.status(200).json({ success: true, message: '마이크 권한 상태가 업데이트되었습니다.' });
+    } catch (error) {
+        console.error(`[POST /api/users/${userId}/mic-permission] Error:`, error);
+        res.status(500).json({ message: '권한 업데이트 중 오류가 발생했습니다.' });
+    }
+});
+
 // Endpoint to change user password
 app.post('/api/users/change-password', async (req, res) => {
     const { userId, newPassword } = req.body;

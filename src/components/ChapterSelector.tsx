@@ -10,6 +10,7 @@ interface ChapterSelectorProps {
   defaultStartVerse?: number;
   completedChapters?: string[];
   isLoading?: boolean;
+  currentUser?: any; // 추가
 }
 
 
@@ -21,6 +22,7 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   defaultStartVerse = 1,
   completedChapters = [],
   isLoading = false,
+  currentUser, // 추가
 }) => {
   // 기기 및 브라우저 환경 감지
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
@@ -165,6 +167,28 @@ const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       checkPermission();
     }
   }, [isAndroid, isIOS]);
+
+  // 마이크 허용 시 서버에 기록 (관리자 추적용)
+  useEffect(() => {
+    if (micPermission === 'granted' && currentUser?.id) {
+      const syncPermissionToServer = async () => {
+        const hasSynced = sessionStorage.getItem(`mic_synced_${currentUser.id}`);
+        if (hasSynced) return; // 이번 세션에서 이미 보냈다면 중단
+
+        try {
+          await fetch(`/api/users/${currentUser.id}/mic-permission`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ granted: true })
+          });
+          sessionStorage.setItem(`mic_synced_${currentUser.id}`, 'true');
+        } catch (e) {
+          console.error('Failed to sync mic permission to server', e);
+        }
+      };
+      syncPermissionToServer();
+    }
+  }, [micPermission, currentUser?.id]);
 
   // iOS 전용 이펙트 (기존 유지)
   useEffect(() => {
