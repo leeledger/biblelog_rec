@@ -190,7 +190,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuth, onRegister, title }) => {
             (개역개정 번역본은 별도의 라이센스 비용이 발생하여 사용하지 않습니다)
           </span>
         </div>
-        <div className="italic text-[10px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권승합니다.</div>
+        <div className="italic text-[10px] text-gray-300">음성 인식 정확도를 위해 조용한 환경을 권장합니다.</div>
       </div>
 
     </div>
