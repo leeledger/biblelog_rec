@@ -139,6 +139,30 @@ export const initializeDatabase = async () => {
     await pool.query(createReadingHistoryTable);
     await pool.query(createHallOfFameTable);
 
+    // Migration: Add recording_enabled to users table
+    try {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS recording_enabled BOOLEAN DEFAULT FALSE;`);
+    } catch (err) {
+      console.warn('Migration notice for recording_enabled:', err.message);
+    }
+
+    // Create audio_recordings table
+    const createAudioRecordingsTable = `
+      CREATE TABLE IF NOT EXISTS audio_recordings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+        file_key VARCHAR(512) NOT NULL,
+        book_name VARCHAR(255) NOT NULL,
+        chapter_number INTEGER NOT NULL,
+        verse_number INTEGER DEFAULT 0,
+        duration_seconds NUMERIC(6,1),
+        file_size_bytes INTEGER,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await pool.query(createAudioRecordingsTable);
+
     // Add indexes for performance optimization and resolve ON CONFLICT constraints
     const createIndexes = `
       CREATE INDEX IF NOT EXISTS idx_completed_chapters_user_group ON completed_chapters(user_id, group_id);

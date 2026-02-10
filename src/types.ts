@@ -28,6 +28,7 @@ export interface User {
   username: string;
   must_change_password?: boolean;
   groups?: Group[]; // 가입된 그룹 목록
+  recording_enabled?: boolean; // 녹음 기능 활성화 여부
 }
 
 export interface Group {

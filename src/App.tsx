@@ -7,6 +7,7 @@ import { normalizeText, calculateSimilarity, containsDifficultWord, findMatchedP
 import rawBibleData from './bible_hierarchical.json';
 
 import useSpeechRecognition from './hooks/useSpeechRecognition';
+import useAudioRecorder from './hooks/useAudioRecorder';
 import * as authService from './services/authService';
 import AuthForm from './components/AuthForm';
 import HallOfFame from './components/HallOfFame';
@@ -198,6 +199,22 @@ const App: React.FC = () => {
     isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
 
+  // 녹음 기능 (recording_enabled 유저만 사용)
+  const {
+    isRecording,
+    recordings: audioRecordings,
+    isUploading: isAudioUploading,
+    uploadProgress: audioUploadProgress,
+    startRecording,
+    stopRecording,
+    uploadAllRecordings,
+    clearRecordings,
+    recordingCount,
+  } = useAudioRecorder();
+
+  // 테스트 유저(ID 1, 100)는 강제 활성화
+  const isRecordingEnabled = currentUser?.recording_enabled === true || currentUser?.id === 1 || currentUser?.id === 100;
+
   // 마이크 상태 감지 및 와치독 (안드로이드 마이크 멈춤 대응)
   useEffect(() => {
     if (currentUser?.id === 100) {
@@ -219,6 +236,17 @@ const App: React.FC = () => {
 
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
+
+  // 마이크 충돌 방지: 음성 인식이 성공적으로 시작된 후 2초 뒤에 녹음 시작
+  useEffect(() => {
+    if (readingState === ReadingState.LISTENING && isListening && isRecordingEnabled && !isRecording) {
+      const timer = setTimeout(() => {
+        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ STT 안정화 확인 → 녹음 시작 시도');
+        startRecording();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [readingState, isListening, isRecordingEnabled, isRecording, startRecording, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -904,6 +932,13 @@ const App: React.FC = () => {
       setReadingState(ReadingState.SAVING);
     }
 
+    // 녹음 중이면 녹음 중지
+    if (isRecording && sessionTargetVerses.length > 0) {
+      const firstVerse = sessionTargetVerses[0];
+      const lastVerse = sessionTargetVerses[sessionTargetVerses.length - 1];
+      stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse);
+    }
+
     const currentSessionCompletedVersesCount = (typeof overrideSessionCompletedCount === 'number')
       ? overrideSessionCompletedCount
       : sessionProgress.sessionCompletedVersesCount;
@@ -972,7 +1007,7 @@ const App: React.FC = () => {
         completedChapters: Array.from(newCompletedChaptersInSession)
       };
 
-      // 진도 저장을 먼저 완료한 후 reload
+      // 진도 저장을 먼저 완료한 후 화면 전환
       progressService.saveUserProgress(currentUser.username, updatedUserProgress)
         .then(() => {
           setUserOverallProgress(updatedUserProgress);
@@ -984,19 +1019,15 @@ const App: React.FC = () => {
           setSessionCertificationMessage("⚠️ 저장 실패: 완료 기록이 저장되지 않았습니다.");
         })
         .finally(() => {
-          // 저장 완료(성공/실패 무관) 후 reload
-          if (!isNaturalCompletion) {
-            window.location.reload();
-          }
+          // 저장 완료 후 완료 화면 표시
+          setReadingState(ReadingState.SESSION_COMPLETED);
         });
 
     } else if (versesActuallyReadThisSessionCount <= 0 && !isNaturalCompletion) {
       setSessionCertificationMessage("이번 세션에서 읽은 구절이 없습니다.");
-      // 읽은 구절이 없을 때도 reload
-      window.location.reload();
+      setReadingState(ReadingState.SESSION_COMPLETED);
     }
-
-  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId]);
+  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId, isRecording, stopRecording]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
@@ -1207,6 +1238,17 @@ const App: React.FC = () => {
             isResume={isResumeSession}
             isListening={isListening}
             isMicWaiting={isMicWaiting}
+            // 녹음 관련
+            {...(isRecordingEnabled ? {
+              recordingCount,
+              isAudioUploading,
+              audioUploadProgress,
+              onUploadRecordings: () => {
+                if (currentUser?.id) {
+                  uploadAllRecordings(currentUser.id, selectedGroupId);
+                }
+              },
+            } : {})}
           />
         )}
 

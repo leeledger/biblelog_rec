@@ -4,6 +4,18 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import * as db from './db.js';
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+// R2 Storage configuration
+const r2Client = new S3Client({
+    region: "auto",
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+});
 
 const app = express();
 const saltRounds = 10;
@@ -617,11 +629,67 @@ app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
     }
 });
 
-// Debug logging endpoint for iOS Safari speech recognition
-app.post('/api/debug-log', async (req, res) => {
-    const { event, data, userAgent, timestamp } = req.body;
-    console.log(`[iOS DEBUG] ${timestamp} | Event: ${event} | UserAgent: ${userAgent?.substring(0, 50)} | Data:`, JSON.stringify(data));
-    res.json({ received: true });
+
+
+// --- Audio Recording APIs ---
+
+// 1. Get presigned URL for upload
+app.post('/api/audio/presign', async (req, res) => {
+    try {
+        const { userId, bookName, chapter, verse } = req.body;
+        const timestamp = Date.now();
+        const fileKey = `recordings/${userId}/${bookName}_${chapter}_${verse}_${timestamp}.webm`;
+
+        const command = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: fileKey,
+            ContentType: 'audio/webm',
+        });
+
+        // 1 hour expiration
+        const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+
+        res.json({ uploadUrl, fileKey });
+    } catch (error) {
+        console.error('[POST /api/audio/presign] Error:', error);
+        res.status(500).json({ message: '업로드 URL 생성 중 오류가 발생했습니다.' });
+    }
+});
+
+// 2. Save recording record to DB
+app.post('/api/audio/record', async (req, res) => {
+    try {
+        const { userId, groupId, fileKey, bookName, chapter, verse, durationSeconds, fileSizeBytes } = req.body;
+
+        await db.query(
+            `INSERT INTO audio_recordings (user_id, group_id, file_key, book_name, chapter_number, verse_number, duration_seconds, file_size_bytes) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [userId, groupId, fileKey, bookName, chapter, verse, durationSeconds, fileSizeBytes]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[POST /api/audio/record] Error:', error);
+        res.status(500).json({ message: '녹음 기록 저장 중 오류가 발생했습니다.' });
+    }
+});
+
+// 3. Admin: Toggle recording_enabled
+app.put('/api/users/:userId/recording-enabled', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { enabled } = req.body;
+
+        await db.query(
+            'UPDATE users SET recording_enabled = $1 WHERE id = $2',
+            [enabled, userId]
+        );
+
+        res.json({ success: true, recording_enabled: enabled });
+    } catch (error) {
+        console.error('[PUT /api/users/:userId/recording-enabled] Error:', error);
+        res.status(500).json({ message: '유저 설정 업데이트 중 오류가 발생했습니다.' });
+    }
 });
 
 export default app;

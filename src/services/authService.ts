@@ -33,6 +33,7 @@ export const loginUser = async (username: string, password_provided: string): Pr
       id: responseData.id,
       username: responseData.username,
       must_change_password: responseData.must_change_password,
+      recording_enabled: (responseData as any).recording_enabled || false,
     };
 
     localStorage.setItem(USER_SESSION_KEY, JSON.stringify(loggedInUser));
