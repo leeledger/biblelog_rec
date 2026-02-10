@@ -51,11 +51,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
             // 기존 스트림이 있으면 재사용, 없으면 새로 요청
             if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === 'ended')) {
                 streamRef.current = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
+                    audio: true
                 });
             }
 

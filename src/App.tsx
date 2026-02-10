@@ -237,13 +237,13 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
-  // 마이크 충돌 방지: 음성 인식이 성공적으로 시작된 후 2초 뒤에 녹음 시작
+  // 마이크 충돌 방지: 음성 인식이 완전히 준비된 상태에서만 녹음이 없는 경우 녹음 시작 보조
   useEffect(() => {
     if (readingState === ReadingState.LISTENING && isListening && isRecordingEnabled && !isRecording) {
       const timer = setTimeout(() => {
-        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ STT 안정화 확인 → 녹음 시작 시도');
+        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 녹음 자동 시작 보조 실행');
         startRecording();
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [readingState, isListening, isRecordingEnabled, isRecording, startRecording, currentUser?.id, addDebugLog]);
@@ -912,8 +912,24 @@ const App: React.FC = () => {
       setCurrentVerseIndexInSession(initialSkip);
       setMatchedVersesContentForSession('');
       setTranscriptBuffer('');
-      resetTranscript();
       setMatchedCharCount(0); // 세션 시작 시 리셋
+
+      // 핵심 수정: 녹음을 먼저 켜고, 그 다음에 인식을 켭니다 (충돌 방지 최후의 수단)
+      const startMicAndStt = async () => {
+        if (isRecordingEnabled) {
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [시작] 녹음 마이크 먼저 점유 시도...');
+          await startRecording();
+        }
+
+        // 녹음 마이크가 열린 후 아주 잠깐의 틈을 주고 인식을 시작 (공유 유도)
+        setTimeout(() => {
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [시작] 음성 인식 엔진 가동');
+          resetTranscript();
+        }, 800);
+      };
+
+      startMicAndStt();
+
       setSessionProgress({
         totalVersesInSession: verses.length,
         sessionCompletedVersesCount: initialSkip,
