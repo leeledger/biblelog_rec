@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { progressService } from './services/progressService';
 import { groupService } from './services/groupService';
 import { BibleVerse, SessionReadingProgress, ReadingState, User, UserProgress, UserSessionRecord, Group } from './types';
@@ -1038,15 +1038,28 @@ const App: React.FC = () => {
     );
   }
 
+  // --- Debug & Auxiliary Layout Elements ---
+  const debugPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    (window as any).addDebugLog = addDebugLog;
+  }, [addDebugLog]);
+
+  useEffect(() => {
+    if (debugPanelRef.current) {
+      debugPanelRef.current.scrollTop = debugPanelRef.current.scrollHeight;
+    }
+  }, [debugLogs]);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 relative pb-[120px]">
       <Analytics />
       <BrowserRecommendation />
 
-      {/* 전역 디버그 오버레이 (임시) */}
-      <div className="fixed top-0 left-0 right-0 z-[9999] bg-black text-[10px] text-green-400 p-1 font-mono flex justify-between px-4 pointer-events-none opacity-80">
-        <span>USER: {currentUser?.username || 'GUEST'} | ID: {currentUser?.id || '-'} | STATE: {readingState}</span>
-        <span className={isRecordingEnabled ? 'text-red-500 font-black' : 'text-gray-500'}>
+      {/* Emergency Status Bar - REC_MODE 전용 (상단) */}
+      <div className="bg-yellow-400 text-black text-[10px] font-black p-1 flex justify-around items-center border-b border-black z-[1001]">
+        <span>USER: {currentUser?.username || 'GUEST'} (ID:{currentUser?.id || '-'})</span>
+        <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
           {isRecordingEnabled ? '● REC_MODE_ACTIVE' : '○ REC_MODE_OFF'}
         </span>
       </div>
@@ -1155,31 +1168,38 @@ const App: React.FC = () => {
         />
       )}
 
-      {currentUser?.id === 100 && debugLogs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 text-[10px] p-2 max-h-48 overflow-y-auto z-[9999] font-mono">
-          <div className="flex justify-between border-b border-green-900 mb-1">
-            <span>MIC DEBUG</span>
-            <button onClick={() => setDebugLogs([])}>CLEAR</button>
-          </div>
-          {debugLogs.map((log, i) => <div key={i}>{log}</div>)}
-        </div>
-      )}
-
       <footer className="bg-white border-t border-gray-100 py-6 text-center text-xs text-gray-400">
         <p>&copy; 2026 BibleLog. All rights reserved.</p>
       </footer>
 
-      {/* EMERGENCY MASTER STATUS BAR - ALWAYS VISIBLE */}
-      <div className="fixed bottom-0 left-0 right-0 z-[1000000] bg-yellow-400 text-black text-[10px] font-black p-1 flex justify-around items-center border-t-2 border-black">
-        <span>SYSTEM: {currentUser ? 'LOGGED_IN' : 'GUEST'}</span>
-        <span>USER: {currentUser?.username || '-'} (ID:{currentUser?.id || '-'})</span>
-        <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
-          {isRecordingEnabled ? '[REC_MODE: ACTIVE]' : '[REC_MODE: INACTIVE]'}
-        </span>
-        <span className="opacity-50 text-[8px]">v-emergency-0211-FINAL</span>
+      {/* EMERGENCY MASTER STATUS BAR & DEBUG LOGS */}
+      <div className="fixed bottom-0 left-0 right-0 z-[2000] flex flex-col bg-gray-900 shadow-[0_-4px_10px_rgba(0,0,0,0.3)]">
+        {/* Real-time Logs - All users can see for debugging this session */}
+        <div
+          ref={debugPanelRef}
+          className="h-24 overflow-y-auto px-4 py-2 font-mono text-[10px] bg-black text-green-400 border-b border-gray-700 select-all"
+        >
+          {debugLogs.length === 0 ? ">>> Waiting for system events..." : debugLogs.map((log, i) => (
+            <div key={i}>{log}</div>
+          ))}
+        </div>
+
+        <div className="px-4 py-2 flex items-center justify-between font-black text-[10px]">
+          <div className="flex items-center gap-3">
+            <span className="text-amber-400">ID: {currentUser?.id || 'GUEST'}</span>
+            <span className="text-white opacity-50">/</span>
+            <span className="text-blue-400">STATE: {readingState}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
+              {isRecordingEnabled ? '[REC_MODE: ACTIVE]' : '[REC_MODE: INACTIVE]'}
+            </span>
+            <span className="text-white/40">v-emergency-0211-ULTIMATE</span>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
+}
 
 export default App;

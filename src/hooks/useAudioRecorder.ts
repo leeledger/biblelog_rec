@@ -132,15 +132,17 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
         const recorder = mediaRecorderRef.current;
         console.log('[useAudioRecorder] Stopping recorder, state:', recorder.state);
+        if ((window as any).addDebugLog) (window as any).addDebugLog(`[STOP_REC] Stopping recorder, state: ${recorder.state}`);
 
         recorder.onstop = () => {
             const durationSeconds = (Date.now() - startTimeRef.current) / 1000;
             const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
             const finalDuration = Math.round(durationSeconds * 10) / 10;
 
-            console.log(`[useAudioRecorder] Blob ready: ${blob.size} bytes, duration: ${finalDuration}s, mime: ${recorder.mimeType}`);
+            const log = `[REC_STOP] Size: ${blob.size} bytes, Dur: ${finalDuration}s, Type: ${recorder.mimeType}`;
+            console.log(log);
+            if ((window as any).addDebugLog) (window as any).addDebugLog(log);
 
-            // 0.5초 이상의 유의미한 녹음만 저장 (기존 1초에서 완화)
             if (finalDuration >= 0.5 && blob.size > 0) {
                 const newRec = {
                     blob,
@@ -151,20 +153,18 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     durationSeconds: finalDuration,
                 };
 
-                // Ref를 먼저 업데이트하여 즉시 가용하게 함 (State 업데이트 지연 대비)
                 recordingsRef.current = [...recordingsRef.current, newRec];
                 setRecordings([...recordingsRef.current]);
-                console.log(`[useAudioRecorder] New recording added. Total: ${recordingsRef.current.length}`);
+                if ((window as any).addDebugLog) (window as any).addDebugLog(`[REC_STOP] New recording added. Total: ${recordingsRef.current.length}`);
 
-                // 2. 만약 즉시 처리가 필요하다면 콜백 실행 (Ref가 업데이트된 직후)
                 if (onFinished) {
                     onFinished(blob, finalDuration);
                 }
             } else {
-                console.warn(`[useAudioRecorder] Recording too short or empty (${finalDuration}s), discarding.`);
-                if (onFinished) {
-                    onFinished(blob, finalDuration);
-                }
+                const warn = `[WARN] Recording ignored (too short or empty)`;
+                console.warn(warn);
+                if ((window as any).addDebugLog) (window as any).addDebugLog(warn);
+                if (onFinished) onFinished(blob, finalDuration);
             }
 
             chunksRef.current = [];
@@ -172,13 +172,17 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         };
 
         recorder.stop();
-    }, [updateRecordings]);
+    }, []);
 
     const uploadAllRecordings = useCallback(async (userId: number, groupId: number | null): Promise<boolean> => {
         const currentRecordings = recordingsRef.current;
-        if (currentRecordings.length === 0) return true;
+        if (currentRecordings.length === 0) {
+            if ((window as any).addDebugLog) (window as any).addDebugLog('[UPLOAD] No recordings to upload.');
+            return true;
+        }
 
         setIsUploading(true);
+        if ((window as any).addDebugLog) (window as any).addDebugLog(`[UPLOAD] Starting upload for ${currentRecordings.length} recordings.`);
         try {
             let successCount = 0;
             const totalToUpload = currentRecordings.length;
@@ -196,7 +200,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
-                    // 1. Presigned URL 받기 (파일 타입 포맷 전달)
+                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${rec.blob.type})`;
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(step1);
+
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -205,17 +211,19 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                             bookName: rec.bookName,
                             chapter: rec.chapter,
                             verse: rec.startVerse,
-                            contentType: rec.blob.type, // 실제 Blob 타입 전달
+                            contentType: rec.blob.type,
                         }),
                     });
 
                     if (!presignRes.ok) {
                         const errData = await presignRes.json().catch(() => ({}));
-                        throw new Error(`Presigned URL request failed (${presignRes.status}): ${JSON.stringify(errData)}`);
+                        throw new Error(`Presign Fail (${presignRes.status}): ${JSON.stringify(errData)}`);
                     }
                     const { uploadUrl, fileKey } = await presignRes.json();
 
-                    // 2. R2에 실제 파일 업로드 (PUT)
+                    const step2 = `[STEP 2] Uploading to R2... (Key: ${fileKey})`;
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(step2);
+
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
@@ -223,18 +231,17 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     });
 
                     if (!uploadRes.ok) {
-                        throw new Error(`R2 storage upload failed with status ${uploadRes.status}`);
+                        throw new Error(`R2 PUT Fail (${uploadRes.status}) - CHECK CORS!`);
                     }
-                    console.log(`[useAudioRecorder] Step 2 Success: File uploaded to R2. Key: ${fileKey}`);
 
-                    // 3. DB에 메타데이터 기록
+                    const step3 = `[STEP 3] Recording to DB...`;
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(step3);
+
                     const recordRes = await fetch(`${API_BASE_URL}/audio/record`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            userId,
-                            groupId,
-                            fileKey,
+                            userId, groupId, fileKey,
                             bookName: rec.bookName,
                             chapter: rec.chapter,
                             verse: rec.startVerse,
@@ -244,14 +251,15 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     });
 
                     if (!recordRes.ok) {
-                        const errData = await recordRes.json().catch(() => ({}));
-                        throw new Error(`DB record failed (${recordRes.status}): ${JSON.stringify(errData)}`);
+                        throw new Error(`DB Reg Fail (${recordRes.status})`);
                     }
 
                     successCount++;
-                    console.log(`[useAudioRecorder] Step 3 Success: Metadata recorded in DB.`);
-                } catch (singleErr) {
-                    console.error(`[useAudioRecorder] Failed to upload segment ${i}:`, singleErr);
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(`[SUCCESS] File ${i + 1} uploaded.`);
+                } catch (singleErr: any) {
+                    const msg = `[ERROR] ${singleErr.message}`;
+                    console.error(msg);
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(msg);
                     failedIndices.push(i);
                 }
             }
