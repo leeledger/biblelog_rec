@@ -905,10 +905,18 @@ const App: React.FC = () => {
 
     // 1. 녹음 중지
     if (isRecording && sessionTargetVerses.length > 0) {
+      console.log('[App.tsx] Stopping recording before UI transition...');
       const firstV = sessionTargetVerses[0];
       const lastV = sessionTargetVerses[sessionTargetVerses.length - 1];
-      await new Promise<void>(res => stopRecording(firstV.book, firstV.chapter, firstV.verse, lastV.verse, () => res()));
+
+      await new Promise<void>(res => {
+        stopRecording(firstV.book, firstV.chapter, firstV.verse, lastV.verse, (blob, duration) => {
+          console.log(`[App.tsx] Recording stopped. Duration: ${duration}s, Size: ${blob?.size} bytes`);
+          res();
+        });
+      });
       closeStream();
+      console.log('[App.tsx] Mic stream closed.');
     }
 
     // 2. 오디오 업로드 (R2)

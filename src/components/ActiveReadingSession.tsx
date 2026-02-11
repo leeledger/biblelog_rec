@@ -356,7 +356,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                     {isAudioUploading && audioUploadProgress ? (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm font-black text-indigo-600">
-                          <span>업로드 중...</span>
+                          <span>클라우드 업로드 중...</span>
                           <span>{audioUploadProgress.current} / {audioUploadProgress.total}</span>
                         </div>
                         <div className="w-full bg-indigo-200 h-2 rounded-full overflow-hidden shadow-inner">
@@ -367,15 +367,15 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm font-bold text-indigo-700">
-                        {recordingCount ?? 0}개의 구절 녹음 완료
+                      <p className="text-sm font-bold text-indigo-700 animate-pulse">
+                        {(recordingCount ?? 0) > 0 ? `${recordingCount}개의 말씀 녹음 완료` : '녹음 데이터 정리 중...'}
                       </p>
                     )}
                   </div>
                 )}
 
                 <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                  오늘의 통독 여정을 안전하게<br />기록하고 있습니다. 잠시만 기다려주세요.
+                  {(recordingCount ?? 0) > 0 ? "클라우드 저장소에 안전하게 업로드 중입니다." : "데이터를 안전하게 처리하고 있습니다."}<br />잠시만 기다려주세요.
                 </p>
               </div>
             </div>
@@ -447,10 +447,10 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2">
-                        <div className={`p-4 rounded-2xl flex items-center gap-3 ${(recordingCount ?? 0) === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                          <span className="text-2xl">{(recordingCount ?? 0) === 0 ? '✔️' : '⚠️'}</span>
+                        <div className={`p-4 rounded-2xl flex items-center gap-3 ${(recordingCount ?? 0) === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-700'}`}>
+                          <span className="text-2xl">{(recordingCount ?? 0) === 0 ? '☁️' : '⚠️'}</span>
                           <span className="text-sm font-black">
-                            {(recordingCount ?? 0) === 0 ? "모든 말씀 녹음파일 업로드 완료" : `미업로드 녹음파일 ${recordingCount}개 대기 중`}
+                            {(recordingCount ?? 0) === 0 ? "말씀 녹음 원정이 종료되었습니다." : `미업로드 녹음파일 ${recordingCount}개 대기 중`}
                           </span>
                         </div>
 

@@ -125,10 +125,10 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
             const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
             const finalDuration = Math.round(durationSeconds * 10) / 10;
 
-            console.log(`[useAudioRecorder] Blob ready: ${blob.size} bytes, duration: ${finalDuration}s`);
+            console.log(`[useAudioRecorder] Blob ready: ${blob.size} bytes, duration: ${finalDuration}s, mime: ${recorder.mimeType}`);
 
-            // 1. 상태 업데이트
-            if (finalDuration >= 1 && blob.size > 0) {
+            // 0.5초 이상의 유의미한 녹음만 저장 (기존 1초에서 완화)
+            if (finalDuration >= 0.5 && blob.size > 0) {
                 const newRec = {
                     blob,
                     bookName,
@@ -137,9 +137,18 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     endVerse,
                     durationSeconds: finalDuration,
                 };
-                updateRecordings(prev => [...prev, newRec]);
 
-                // 2. 만약 즉시 처리가 필요하다면 콜백 실행
+                // Ref를 먼저 업데이트하여 즉시 가용하게 함 (State 업데이트 지연 대비)
+                recordingsRef.current = [...recordingsRef.current, newRec];
+                setRecordings([...recordingsRef.current]);
+                console.log(`[useAudioRecorder] New recording added. Total: ${recordingsRef.current.length}`);
+
+                // 2. 만약 즉시 처리가 필요하다면 콜백 실행 (Ref가 업데이트된 직후)
+                if (onFinished) {
+                    onFinished(blob, finalDuration);
+                }
+            } else {
+                console.warn(`[useAudioRecorder] Recording too short or empty (${finalDuration}s), discarding.`);
                 if (onFinished) {
                     onFinished(blob, finalDuration);
                 }
@@ -150,7 +159,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         };
 
         recorder.stop();
-    }, []);
+    }, [updateRecordings]);
 
     const uploadAllRecordings = useCallback(async (userId: number, groupId: number | null): Promise<boolean> => {
         const currentRecordings = recordingsRef.current;
