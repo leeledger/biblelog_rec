@@ -674,10 +674,14 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: fixedContentType,
+            // 중요: 서명 생성 시 ContentType을 아예 포함시키지 않습니다.
+            // 이렇게 하면 클라이언트가 어떤 헤더를 보내든 서명 불일치가 발생하지 않습니다.
         });
 
-        const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        const uploadUrl = await getSignedUrl(r2Client, command, {
+            expiresIn: 3600,
+            signableHeaders: new Set(['host']), // 호스트 헤더만 서명에 포함하여 극강의 호환성 확보
+        });
         console.log(`[AUDIO/PRESIGN] Success: Presigned URL generated.`);
 
         res.json({ uploadUrl, fileKey });
