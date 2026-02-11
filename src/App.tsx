@@ -206,6 +206,7 @@ const App: React.FC = () => {
     isUploading: isAudioUploading,
     uploadProgress: audioUploadProgress,
     startRecording,
+    prepareMic,
     stopRecording,
     uploadAllRecordings,
     clearRecordings,
@@ -934,12 +935,24 @@ const App: React.FC = () => {
       setTranscriptBuffer('');
       setMatchedCharCount(0); // 세션 시작 시 리셋
 
-      // 녹음 기록 초기화 (이전 세션 데이터 삭제)
+      // 0단계: 녹음 기록 초기화
       clearRecordings();
 
-      // 음성 인식만 먼저 시작 (순정 상태 유지)
-      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 엔진 단독 가동 (녹음은 대기)');
-      resetTranscript();
+      // [핵심 조치] 1단계: 마이크 하드웨어 미리 열기 (STT보다 먼저!)
+      const initMicAndStt = async () => {
+        if (isRecordingEnabled) {
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [준비] 마이크 하드웨어 선점 중...');
+          await prepareMic();
+        }
+
+        // 2단계: 하드웨어가 안정화된 후 음성 인식 엔진 가동 (약 1초 뒤)
+        setTimeout(() => {
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [준비] 음성 인식 가동 (공유 모드)');
+          resetTranscript();
+        }, 1000);
+      };
+
+      initMicAndStt();
 
       setSessionProgress({
         totalVersesInSession: verses.length,

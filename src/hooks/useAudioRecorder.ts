@@ -17,6 +17,7 @@ interface UseAudioRecorderReturn {
     isUploading: boolean;
     uploadProgress: { current: number; total: number } | null;
     startRecording: () => Promise<void>;
+    prepareMic: () => Promise<boolean>;
     stopRecording: (bookName: string, chapter: number, startVerse: number, endVerse: number) => void;
     uploadAllRecordings: (userId: number, groupId: number | null) => Promise<boolean>;
     clearRecordings: () => void;
@@ -41,6 +42,21 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
     const startTimeRef = useRef<number>(0);
     const streamRef = useRef<MediaStream | null>(null);
 
+    const prepareMic = useCallback(async () => {
+        try {
+            if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === 'ended')) {
+                console.log('[useAudioRecorder] Requesting fresh mic stream...');
+                streamRef.current = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+            }
+            return true;
+        } catch (err) {
+            console.error('[useAudioRecorder] prepareMic failed:', err);
+            return false;
+        }
+    }, []);
+
     const startRecording = useCallback(async () => {
         if (isRecording) {
             console.log('[useAudioRecorder] Already recording, ignoring start request');
@@ -49,12 +65,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
         try {
             console.log('[useAudioRecorder] Initializing MediaRecorder...');
-            // 기존 스트림이 있으면 재사용, 없으면 새로 요청
-            if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === 'ended')) {
-                streamRef.current = await navigator.mediaDevices.getUserMedia({
-                    audio: true
-                });
-            }
+            // 미리 열어둔 스트림이 있는지 확인하고 없으면 여기서라도 요청
+            const ok = await prepareMic();
+            if (!ok || !streamRef.current) throw new Error('No mic stream available');
 
             chunksRef.current = [];
             startTimeRef.current = Date.now();
@@ -211,6 +224,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         uploadProgress,
         startRecording,
         stopRecording,
+        prepareMic, // 추가
         uploadAllRecordings,
         clearRecordings,
         closeStream,
