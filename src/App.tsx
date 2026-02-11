@@ -975,21 +975,36 @@ const App: React.FC = () => {
 
   const handleManualNextVerse = useCallback(async () => {
     if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) return;
+
     const currentVerse = currentTargetVerseForSession;
+    const isLastVerse = currentVerseIndexInSession >= sessionTargetVerses.length - 1;
+
+    // 1. 녹음 끊기 및 다음 준비
     if (isRecordingEnabled && isRecording) {
       stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
-      setTimeout(() => startRecording(), 300);
+      if (!isLastVerse) {
+        // 마지막이 아니면 바로 다음 녹음 시작 준비
+        setTimeout(() => startRecording(), 300);
+      }
     }
-    setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (녹음됨) ${currentVerse.text}\n`);
-    const nextIdx = currentVerseIndexInSession + 1;
-    setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
-    if (nextIdx >= sessionTargetVerses.length) {
+
+    setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (수동완료) ${currentVerse.text}\n`);
+
+    if (isLastVerse) {
+      // 진짜 마지막 구절일 때만 저장 화면으로 이동
+      const nextIdx = currentVerseIndexInSession + 1;
+      setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
       await handleStopReadingAndSave(nextIdx, true);
     } else {
+      // 마지막이 아니면 그냥 다음 구절로 전환 (저장X, 대기창X)
+      const nextIdx = currentVerseIndexInSession + 1;
+      setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
       setCurrentVerseIndexInSession(nextIdx);
       setMatchedCharCount(0);
+      setTranscriptBuffer('');
+      resetTranscript();
     }
-  }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses.length, handleStopReadingAndSave]);
+  }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses.length, handleStopReadingAndSave, resetTranscript]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
