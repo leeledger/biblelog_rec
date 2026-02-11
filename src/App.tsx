@@ -239,25 +239,8 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
-  // 마이크 충돌 방지: 사용자가 말을 시작해서 텍스트가 나타날 때만 녹음 시작 시도 (실패 시 조용히 포기)
-  useEffect(() => {
-    if (readingState === ReadingState.LISTENING &&
-      sttTranscript.trim().length > 0 &&
-      isRecordingEnabled &&
-      !isRecording) {
-
-      const tryStartRecording = async () => {
-        try {
-          // 마이크를 새로 열지 않고, 이미 STT가 열어놨을 가능성이 있는 상태에서 기록만 시도
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 녹음 시도 (STT 방해 금지 모드)');
-          await startRecording();
-        } catch (e) {
-          console.error("Recording failed to start alongside STT", e);
-        }
-      };
-      tryStartRecording();
-    }
-  }, [sttTranscript, readingState, isRecordingEnabled, isRecording, startRecording, currentUser?.id, addDebugLog]);
+  // [근본 재설계] 중간 트리거 방식(useEffect)을 완전히 제거하여 충돌 변수를 없앱니다.
+  // 녹음 시작은 이제 오직 세션 시작 시점에만 수행됩니다.
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -1242,11 +1225,17 @@ const App: React.FC = () => {
             onStopReading={() => handleStopReadingAndSave(undefined, false)}
             onRetryVerse={handleRetryVerse}
             onExitSession={handleExitSession}
-            onStartListening={() => {
+            onStartListening={async () => {
+              if (isRecordingEnabled) {
+                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [근본설계] 세션 시작 시 녹음 먼저 가동');
+                await startRecording();
+              }
+
               setReadingState(ReadingState.LISTENING);
               setTimeout(() => {
+                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [근본설계] 음성 인식 가동 (마이크 공유)');
                 startListening();
-              }, 0);
+              }, 1000); // 하드웨어가 녹음기 쪽으로 안정화될 시간 부여
             }}
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
