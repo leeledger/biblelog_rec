@@ -141,6 +141,17 @@ const App: React.FC = () => {
     setDebugLogs(prev => [...prev.slice(-15), `${timestamp} ${msg}`]);
   }, []);
 
+  // --- Debug Panel Support (Placed at top to satisfy Hook rules) ---
+  const debugPanelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    (window as any).addDebugLog = addDebugLog;
+  }, [addDebugLog]);
+  useEffect(() => {
+    if (debugPanelRef.current) {
+      debugPanelRef.current.scrollTop = debugPanelRef.current.scrollHeight;
+    }
+  }, [debugLogs]);
+
 
   // Prevent pull-to-refresh on mobile during speech recognition
   useEffect(() => {
@@ -1037,19 +1048,6 @@ const App: React.FC = () => {
       </>
     );
   }
-
-  // --- Debug & Auxiliary Layout Elements ---
-  const debugPanelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    (window as any).addDebugLog = addDebugLog;
-  }, [addDebugLog]);
-
-  useEffect(() => {
-    if (debugPanelRef.current) {
-      debugPanelRef.current.scrollTop = debugPanelRef.current.scrollHeight;
-    }
-  }, [debugLogs]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 relative pb-[120px]">
