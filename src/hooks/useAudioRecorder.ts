@@ -203,46 +203,31 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
-                    const forcedType = 'application/octet-stream';
-
-                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${forcedType})`;
+                    const step1 = `[STEP 1] Proxy Uploading... (${rec.blob.size} bytes)`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step1);
 
-                    const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
+                    // 서버 대리 업로드 엔드포인트 사용
+                    const proxyRes = await fetch(`${API_BASE_URL}/audio/upload-proxy`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId,
-                            bookName: rec.bookName,
-                            chapter: rec.chapter,
-                            verse: rec.startVerse,
-                            contentType: forcedType, // Always use stream type
-                        }),
-                    });
-
-                    if (!presignRes.ok) {
-                        const errData = await presignRes.json().catch(() => ({}));
-                        throw new Error(`Presign Fail (${presignRes.status}): ${JSON.stringify(errData)}`);
-                    }
-                    const { uploadUrl, fileKey } = await presignRes.json();
-                    const step2 = `[STEP 2] Uploading to R2... (URL: ${uploadUrl.substring(0, 250)}...)`;
-                    if ((window as any).addDebugLog) (window as any).addDebugLog(step2);
-
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'PUT',
-                        body: rec.blob,
-                        mode: 'cors',
                         headers: {
-                            'Content-Type': 'application/octet-stream' // 서버 서명과 동일하게 명시
-                        }
+                            'Content-Type': rec.blob.type || 'audio/webm',
+                            'userid': String(userId),
+                            'bookname': encodeURIComponent(rec.bookName),
+                            'chapter': String(rec.chapter),
+                            'verse': String(rec.startVerse),
+                            'contenttype': rec.blob.type || 'audio/webm',
+                            'version': 'v-emergency-0211-PROXY' // Add version header
+                        },
+                        body: rec.blob // Blob 직접 전송
                     });
 
-                    if (!uploadRes.ok) {
-                        const errorBody = await uploadRes.text().catch(() => 'No error body');
-                        throw new Error(`R2 PUT Fail (${uploadRes.status}): ${errorBody}`);
+                    if (!proxyRes.ok) {
+                        const errData = await proxyRes.json().catch(() => ({ message: 'Proxy Fail' }));
+                        throw new Error(`Proxy Fail (${proxyRes.status}): ${JSON.stringify(errData)}`);
                     }
+                    const { fileKey } = await proxyRes.json();
 
-                    const step3 = `[STEP 3] Recording to DB...`;
+                    const step3 = `[STEP 2] Recording to DB...`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step3);
 
                     const recordRes = await fetch(`${API_BASE_URL}/audio/record`, {

@@ -27,7 +27,9 @@ const generateInviteCode = () => {
 };
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+app.use(bodyParser.raw({ type: 'audio/*', limit: '10mb' })); // 오디오 바이너리 직접 수신용
 
 // Initialize DB on first request (simple way for serverless)
 let isDbInitialized = false;
@@ -639,19 +641,11 @@ app.post('/api/audio/presign', async (req, res) => {
     try {
         let { userId, bookName, chapter, verse, contentType } = req.body;
 
-        // 중요: "audio/webm;codecs=opus" 처럼 세부 파라미터가 붙으면 S3 서명이 깨질 수 있으므로
-        // 순수한 mime-type(audio/webm)만 추출합니다.
         if (contentType && contentType.includes(';')) {
             contentType = contentType.split(';')[0].trim();
         }
 
-        // 중요: 모든 파일을 'application/octet-stream'으로 취급하여 서명합니다.
-        // 이렇게 하면 브라우저가 헤더를 추가하거나 수정해서 발생하는 서명 불일치(Signature Mismatch)를 방지할 수 있습니다.
-        const fixedContentType = 'application/octet-stream';
-
         const timestamp = Date.now();
-
-        // 확장자 매핑
         let ext = 'webm';
         if (contentType) {
             if (contentType.includes('mp4')) ext = 'mp4';
@@ -660,8 +654,6 @@ app.post('/api/audio/presign', async (req, res) => {
             else if (contentType.includes('mpeg')) ext = 'mp3';
         }
 
-        // 중요: 한글 파일 이름은 S3 서명 및 브라우저 fetch에서 오류를 유발할 수 있으므로 
-        // 실제 저장 주소(fileKey)는 영문/숫자로만 구성합니다.
         const fileKey = `recordings/${userId}/rec_${timestamp}.${ext}`;
         const bucketName = process.env.R2_BUCKET_NAME;
 
@@ -675,7 +667,7 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: 'application/octet-stream', // 타입을 고정하여 서명과 일치시킴
+            ContentType: 'application/octet-stream', // 명시적으로 타입을 지정하여 서명에 포함
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
@@ -688,11 +680,10 @@ app.post('/api/audio/presign', async (req, res) => {
     }
 });
 
-// 2. Save recording record to DB
+// 2. Record metadata in DB
 app.post('/api/audio/record', async (req, res) => {
     try {
         const { userId, groupId, fileKey, bookName, chapter, verse, durationSeconds, fileSizeBytes } = req.body;
-        console.log(`[AUDIO/RECORD] Finalizing recording for user:${userId}, key:${fileKey}`);
 
         await db.query(
             `INSERT INTO audio_recordings (user_id, group_id, file_key, book_name, chapter_number, verse_number, duration_seconds, file_size_bytes) 
@@ -708,7 +699,48 @@ app.post('/api/audio/record', async (req, res) => {
     }
 });
 
-// 3. Admin: Toggle recording_enabled
+// 3. Proxy Upload: Receive file from client and upload to R2 (CORS Bypass)
+app.post('/api/audio/upload-proxy', async (req, res) => {
+    try {
+        const { userid, bookname, chapter, verse, contenttype } = req.headers;
+        const body = req.body; // bodyParser.raw() 에 의해 Buffer로 들어옴
+
+        if (!body || body.length === 0) {
+            return res.status(400).json({ message: '파일 데이터가 없습니다.' });
+        }
+
+        const timestamp = Date.now();
+        let ext = 'webm';
+        if (contenttype) {
+            if (contenttype.includes('mp4')) ext = 'mp4';
+            else if (contenttype.includes('aac')) ext = 'aac';
+            else if (contenttype.includes('ogg')) ext = 'ogg';
+            else if (contenttype.includes('mpeg')) ext = 'mp3';
+        }
+
+        const fileKey = `recordings/${userid}/rec_${timestamp}.${ext}`;
+        const bucketName = process.env.R2_BUCKET_NAME;
+
+        console.log(`[AUDIO/PROXY] Uploading user:${userid}, key:${fileKey}, size:${body.length} bytes`);
+
+        const command = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: fileKey,
+            ContentType: contenttype || 'application/octet-stream',
+            Body: body, // Buffer 직접 전달
+        });
+
+        await r2Client.send(command);
+        console.log(`[AUDIO/PROXY] Success: Uploaded to R2.`);
+
+        res.json({ success: true, fileKey });
+    } catch (error) {
+        console.error('[POST /api/audio/upload-proxy] Error:', error);
+        res.status(500).json({ message: '서버 대리 업로드 중 오류가 발생했습니다.' });
+    }
+});
+
+// 4. Admin: Toggle recording_enabled
 app.put('/api/users/:userId/recording-enabled', async (req, res) => {
     try {
         const { userId } = req.params;
