@@ -44,10 +44,16 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
     const prepareMic = useCallback(async () => {
         try {
-            if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === 'ended')) {
-                console.log('[useAudioRecorder] Requesting fresh mic stream...');
+            if (!streamRef.current || streamRef.current.getTracks().every(t => (t as any).readyState === 'ended')) {
+                console.log('[useAudioRecorder] Requesting STT-optimized mic stream (16kHz Mono)...');
                 streamRef.current = await navigator.mediaDevices.getUserMedia({
-                    audio: true
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: false,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
                 });
             }
             return true;

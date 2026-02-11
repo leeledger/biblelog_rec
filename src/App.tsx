@@ -239,34 +239,33 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
-  // 마이크 충돌 방지: 사용자가 말을 시작해서 텍스트가 처음 나타날 때 녹음 시작 (트리거 방식)
+  // [근본 설계 1] 트리거: 첫 단어 인식 시 녹음 시작
   useEffect(() => {
-    if (readingState === ReadingState.LISTENING &&
-      sttTranscript.length > 0 &&
+    const shouldTrigger = readingState === ReadingState.LISTENING &&
+      sttTranscript.trim().length > 0 &&
       isRecordingEnabled &&
       !isRecording &&
-      recordingCount === 0) { // 이번 세션에서 아직 녹음 안했을 때만
+      recordingCount === 0;
 
-      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 감지됨 → 녹음 트리거 가동!');
+    if (shouldTrigger) {
+      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [트리거] 첫 음성 감지 → 녹음 엔진 가동');
       startRecording();
     }
-  }, [readingState, sttTranscript, isRecordingEnabled, !isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
+  }, [sttTranscript, readingState, isRecordingEnabled, isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
 
-  // [핵심 해결책] 녹음이 시작된 직후, STT 엔진을 강제로 재부팅하여 마이크 하드웨어에 다시 '부착'시킵니다.
+  // [근본 설계 2] 동기화: 녹음 가동 후 STT 안정화 및 재부착
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isRecording && readingState === ReadingState.LISTENING) {
-      if (currentUser?.id === 1 || currentUser?.id === 100) {
-        addDebugLog('🎙️ 녹음기 가동 확인 → STT 엔진 마이크 재동기화 시도...');
-      }
-
-      // 녹음기가 마이크 하드웨어를 완전히 점유할 시간을 준 뒤 STT 재시작
-      const timer = setTimeout(() => {
-        resetTranscript();
-      }, 500);
-
-      return () => clearTimeout(timer);
+      // 녹음 가동 시 STT가 순간적으로 죽는 것은 불가피함.
+      // 따라서 1.5초 뒤에 "녹음이 열어놓은 마이크 채널"에 STT를 다시 붙임.
+      timer = setTimeout(() => {
+        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [재동기화] STT 엔진 마이크 채널 재부착');
+        startListening();
+      }, 1500);
     }
-  }, [isRecording, readingState, resetTranscript, currentUser?.id, addDebugLog]);
+    return () => clearTimeout(timer);
+  }, [isRecording, readingState, startListening, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
