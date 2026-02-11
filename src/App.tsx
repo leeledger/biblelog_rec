@@ -1204,7 +1204,7 @@ const App: React.FC = () => {
             <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
               {isRecordingEnabled ? '[REC_MODE: ACTIVE]' : '[REC_MODE: INACTIVE]'}
             </span>
-            <span className="text-white/40">v-emergency-0211-PRO</span>
+            <span className="text-white/40">v-emergency-0211-FINAL</span>
           </div>
         </div>
       </div>

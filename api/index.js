@@ -670,7 +670,8 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: contentType || 'audio/webm',
+            // ContentType을 여기에서 지정하지 않으면 서명에 포함되지 않아 
+            // 프론트엔드에서 어떤 타입으로 보내든(또는 안 보내든) 허용됩니다.
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
