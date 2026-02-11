@@ -109,6 +109,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data && event.data.size > 0) {
                     chunksRef.current.push(event.data);
+                    const chunkLog = `[CHUNK] Received: ${event.data.size} bytes. Total chunks: ${chunksRef.current.length}`;
+                    console.log(chunkLog);
+                    if ((window as any).addDebugLog) (window as any).addDebugLog(chunkLog);
                 }
             };
 
@@ -136,10 +139,10 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
         recorder.onstop = () => {
             const durationSeconds = (Date.now() - startTimeRef.current) / 1000;
-            const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
             const finalDuration = Math.round(durationSeconds * 10) / 10;
+            const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
 
-            const log = `[REC_STOP] Size: ${blob.size} bytes, Dur: ${finalDuration}s, Type: ${recorder.mimeType}`;
+            const log = `[REC_STOP] Final Size: ${blob.size} bytes, Dur: ${finalDuration}s, Type: ${recorder.mimeType}`;
             console.log(log);
             if ((window as any).addDebugLog) (window as any).addDebugLog(log);
 

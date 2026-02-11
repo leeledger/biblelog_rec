@@ -1032,10 +1032,22 @@ const App: React.FC = () => {
   }, [currentVerseIndexInSession, readingState, currentTargetVerseForSession]);
 
   useEffect(() => {
-    if (readingState === ReadingState.LISTENING) requestWakeLock();
-    else releaseWakeLock();
+    if (readingState === ReadingState.LISTENING) {
+      requestWakeLock();
+      // 자동 녹음 시작 (녹음 권한이 있는 유저라면)
+      if (isRecordingEnabled && !isRecording) {
+        console.log('[App.tsx] LISTENING state detected. Auto-starting recorder...');
+        if ((window as any).addDebugLog) (window as any).addDebugLog('[SESSION] LISTENING - Auto starting recorder...');
+        startRecording().catch(err => {
+          console.error('Auto start recording failed:', err);
+          if ((window as any).addDebugLog) (window as any).addDebugLog(`[ERROR] Auto start failed: ${err.message}`);
+        });
+      }
+    } else {
+      releaseWakeLock();
+    }
     return () => { releaseWakeLock(); };
-  }, [readingState]);
+  }, [readingState, isRecordingEnabled, isRecording, startRecording, requestWakeLock, releaseWakeLock]);
 
   if (!currentUser) {
     return (
@@ -1192,7 +1204,7 @@ const App: React.FC = () => {
             <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
               {isRecordingEnabled ? '[REC_MODE: ACTIVE]' : '[REC_MODE: INACTIVE]'}
             </span>
-            <span className="text-white/40">v-emergency-0211-ULTIMATE</span>
+            <span className="text-white/40">v-emergency-0211-PRO</span>
           </div>
         </div>
       </div>
