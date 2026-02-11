@@ -139,62 +139,67 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         setUploadProgress({ current: 0, total: recordings.length });
 
         try {
+            let successCount = 0;
             for (let i = 0; i < recordings.length; i++) {
                 const rec = recordings[i];
+                console.log(`[useAudioRecorder] Uploading recording ${i + 1}/${recordings.length}: ${rec.bookName} ${rec.chapter}:${rec.startVerse}`);
                 setUploadProgress({ current: i + 1, total: recordings.length });
 
                 // 1단계: Presigned URL 요청
-                const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId,
-                        bookName: rec.bookName,
-                        chapter: rec.chapter,
-                        verse: rec.startVerse,
-                    }),
-                });
+                try {
+                    const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId,
+                            bookName: rec.bookName,
+                            chapter: rec.chapter,
+                            verse: rec.startVerse,
+                        }),
+                    });
 
-                if (!presignRes.ok) {
-                    console.error('[useAudioRecorder] Failed to get presigned URL');
-                    continue;
+                    if (!presignRes.ok) throw new Error('Presigned URL request failed');
+                    const { uploadUrl, fileKey } = await presignRes.json();
+
+                    // 2단계: R2에 직접 업로드
+                    const uploadRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        body: rec.blob,
+                        headers: { 'Content-Type': 'audio/webm' },
+                    });
+
+                    if (!uploadRes.ok) throw new Error('R2 upload failed');
+                    console.log(`[useAudioRecorder] Success: File uploaded to R2 with key: ${fileKey}`);
+
+                    // 3단계: 메타데이터 DB 저장
+                    const recordRes = await fetch(`${API_BASE_URL}/audio/record`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId,
+                            groupId,
+                            fileKey,
+                            bookName: rec.bookName,
+                            chapter: rec.chapter,
+                            verse: rec.startVerse,
+                            durationSeconds: rec.durationSeconds,
+                            fileSizeBytes: rec.blob.size,
+                        }),
+                    });
+
+                    if (recordRes.ok) successCount++;
+                } catch (singleErr) {
+                    console.error(`[useAudioRecorder] Failed to upload segment ${i}:`, singleErr);
                 }
-
-                const { uploadUrl, fileKey } = await presignRes.json();
-
-                // 2단계: R2에 직접 업로드
-                const uploadRes = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    body: rec.blob,
-                    headers: {
-                        'Content-Type': 'audio/webm',
-                    },
-                });
-
-                if (!uploadRes.ok) {
-                    console.error('[useAudioRecorder] Failed to upload to R2');
-                    continue;
-                }
-
-                // 3단계: 메타데이터 DB 저장
-                await fetch(`${API_BASE_URL}/audio/record`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId,
-                        groupId,
-                        fileKey,
-                        bookName: rec.bookName,
-                        chapter: rec.chapter,
-                        verse: rec.startVerse,
-                        durationSeconds: rec.durationSeconds,
-                        fileSizeBytes: rec.blob.size,
-                    }),
-                });
             }
 
-            // 업로드 완료 후 로컬 데이터 정리
+            // 업로드 완료 후 로컬 데이터 정리 및 알림
             setRecordings([]);
+            if (successCount > 0) {
+                alert(`🎉 [성공] ${successCount}개의 오디오 파일이 Cloudflare R2에 안전하게 전송되었습니다.`);
+            } else if (recordings.length > 0) {
+                alert(`⚠️ [주의] 오디오 업로드에 실패했습니다. 네트워크 상태를 확인해 주세요.`);
+            }
             return true;
         } catch (err) {
             console.error('[useAudioRecorder] Upload error:', err);

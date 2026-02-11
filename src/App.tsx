@@ -1010,9 +1010,15 @@ const App: React.FC = () => {
 
       // 진도 저장을 먼저 완료한 후 화면 전환
       progressService.saveUserProgress(currentUser.username, updatedUserProgress)
-        .then(() => {
+        .then(async () => {
           setUserOverallProgress(updatedUserProgress);
           setOverallCompletedChaptersCount(updatedUserProgress.completedChapters?.length || 0);
+
+          // [추가] 녹음 모드인 경우 오디오 업로드 자동 수행
+          if (isRecordingEnabled && recordingCount > 0 && currentUser?.id) {
+            console.log(`[App] Auto-uploading ${recordingCount} recordings...`);
+            await uploadAllRecordings(currentUser.id, selectedGroupId);
+          }
         })
         .catch(err => {
           console.error(err);
