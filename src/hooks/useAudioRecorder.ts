@@ -18,7 +18,7 @@ interface UseAudioRecorderReturn {
     uploadProgress: { current: number; total: number } | null;
     startRecording: () => Promise<void>;
     prepareMic: () => Promise<boolean>;
-    stopRecording: (bookName: string, chapter: number, startVerse: number, endVerse: number) => void;
+    stopRecording: (bookName: string, chapter: number, startVerse: number, endVerse: number, onFinished?: (readyBlob: Blob, duration: number) => void) => void;
     uploadAllRecordings: (userId: number, groupId: number | null) => Promise<boolean>;
     clearRecordings: () => void;
     closeStream: () => void;
@@ -99,7 +99,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         }
     }, [isRecording]);
 
-    const stopRecording = useCallback((bookName: string, chapter: number, startVerse: number, endVerse: number) => {
+    const stopRecording = useCallback((bookName: string, chapter: number, startVerse: number, endVerse: number, onFinished?: (readyBlob: Blob, duration: number) => void) => {
         if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
             console.log('[useAudioRecorder] stopRecording ignored: recorder missing or inactive');
             setIsRecording(false);
@@ -112,17 +112,26 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         recorder.onstop = () => {
             const durationSeconds = (Date.now() - startTimeRef.current) / 1000;
             const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+            const finalDuration = Math.round(durationSeconds * 10) / 10;
 
-            // 최소 1초 이상의 녹음만 저장
-            if (durationSeconds >= 1 && blob.size > 0) {
-                setRecordings(prev => [...prev, {
+            console.log(`[useAudioRecorder] Blob ready: ${blob.size} bytes, duration: ${finalDuration}s`);
+
+            // 1. 상태 업데이트
+            if (finalDuration >= 1 && blob.size > 0) {
+                const newRec = {
                     blob,
                     bookName,
                     chapter,
                     startVerse,
                     endVerse,
-                    durationSeconds: Math.round(durationSeconds * 10) / 10,
-                }]);
+                    durationSeconds: finalDuration,
+                };
+                setRecordings(prev => [...prev, newRec]);
+
+                // 2. 만약 즉시 처리가 필요하다면 콜백 실행
+                if (onFinished) {
+                    onFinished(blob, finalDuration);
+                }
             }
 
             chunksRef.current = [];

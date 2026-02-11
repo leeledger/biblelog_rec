@@ -936,7 +936,14 @@ const App: React.FC = () => {
     if (isRecording && sessionTargetVerses.length > 0) {
       const firstVerse = sessionTargetVerses[0];
       const lastVerse = sessionTargetVerses[sessionTargetVerses.length - 1];
-      stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse);
+
+      // [수정] 녹음이 완료되는 즉시 업로드를 수행하도록 콜백 연결
+      stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse, () => {
+        if (currentUser?.id) {
+          console.log('[App] Recording finalized. Starting upload...');
+          uploadAllRecordings(currentUser.id, selectedGroupId);
+        }
+      });
     }
     closeStream(); // 세션 종료 시 마이크 스트림을 수동으로 닫아 권한 반납 (중요)
 
@@ -1010,15 +1017,9 @@ const App: React.FC = () => {
 
       // 진도 저장을 먼저 완료한 후 화면 전환
       progressService.saveUserProgress(currentUser.username, updatedUserProgress)
-        .then(async () => {
+        .then(() => {
           setUserOverallProgress(updatedUserProgress);
           setOverallCompletedChaptersCount(updatedUserProgress.completedChapters?.length || 0);
-
-          // [추가] 녹음 모드인 경우 오디오 업로드 자동 수행
-          if (isRecordingEnabled && recordingCount > 0 && currentUser?.id) {
-            console.log(`[App] Auto-uploading ${recordingCount} recordings...`);
-            await uploadAllRecordings(currentUser.id, selectedGroupId);
-          }
         })
         .catch(err => {
           console.error(err);
