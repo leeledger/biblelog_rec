@@ -225,7 +225,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                         throw new Error(`Presign Fail (${presignRes.status}): ${JSON.stringify(errData)}`);
                     }
                     const { uploadUrl, fileKey } = await presignRes.json();
-                    const step2 = `[STEP 2] Uploading to R2... (URL: ${uploadUrl.substring(0, 50)}...)`;
+                    const step2 = `[STEP 2] Uploading to R2... (URL: ${uploadUrl.substring(0, 100)}...)`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step2);
 
                     const uploadRes = await fetch(uploadUrl, {
