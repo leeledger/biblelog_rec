@@ -9,13 +9,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // R2 Storage configuration
 const r2Client = new S3Client({
-    region: "us-east-1", // R2 호환성을 위해 us-east-1로 시도 (SignatureDoesNotMatch 대응)
+    region: "auto",
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: false, // R2는 서브도메인 방식(false)을 권장하는 경우도 있으므로 변경해봄
+    forcePathStyle: true, // R2 경로 스타일 강제 (Signature 이슈 해결 시도)
 });
 
 const app = express();

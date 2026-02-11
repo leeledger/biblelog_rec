@@ -215,8 +215,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                             'bookname': encodeURIComponent(rec.bookName),
                             'chapter': String(rec.chapter),
                             'verse': String(rec.startVerse),
-                            'contenttype': rec.blob.type || 'audio/webm',
-                            'version': 'v-emergency-0211-PROXY' // Add version header
+                            'contenttype': 'audio/webm' // 고정하여 서명 안정성 확보
                         },
                         body: rec.blob // Blob 직접 전송
                     });

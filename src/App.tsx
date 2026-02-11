@@ -930,26 +930,9 @@ const App: React.FC = () => {
       console.log('[App.tsx] Mic stream closed.');
     }
 
-    // 2. 오디오 업로드 (R2) - 비동기로 처리하되 에러가 앱을 멈추지 않게 함
-    if (isRecordingEnabled && currentUser?.id) {
-      try {
-        console.log('[App.tsx] Starting automated upload...');
-        await new Promise(r => setTimeout(r, 600)); // Blob 정착 대기
-
-        // 업로드에 타임아웃 8초 추가 (너무 오래 걸리면 스킵)
-        const uploadWithTimeout = Promise.race([
-          uploadAllRecordings(currentUser.id, selectedGroupId),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Upload Timeout')), 8000))
-        ]);
-
-        await uploadWithTimeout;
-        console.log('[App.tsx] Automated upload finished.');
-      } catch (err: any) {
-        console.error('[App.tsx] Automated upload failed or timed out:', err);
-        addDebugLog(`[UPLOAD] 자동 업로드 실패/지연: ${err.message || 'Unknown'}`);
-        // 업로드 실패해도 계속 진행 (사용자 데이터는 로컬에 남음)
-      }
-    }
+    // [중요 수정] 오디오 자동 업로드를 여기서 제거합니다.
+    // 사용자가 '원정 성공' 화면(SAVING -> SESSION_COMPLETED)으로 즉시 넘어가게 하기 위함입니다.
+    // 미업로드 파일은 결과 화면에서 사용자가 수동으로 '지금 즉시 업로드' 버튼을 눌러 처리하게 합니다.
 
     // 3. 진도 저장
     try {
@@ -982,9 +965,9 @@ const App: React.FC = () => {
       console.error('[App.tsx] Save progress failed:', err);
       setAppError(`진도 저장 실패: ${err.message}`);
     } finally {
-      // 최소 1초간 저장 중 화면 유지 (사용자 인지용)
+      // 최소 0.5초간 저장 중 화면 유지 (사용자 인지용)
       const elapsed = Date.now() - startTime;
-      if (elapsed < 1000) await new Promise(r => setTimeout(r, 1000 - elapsed));
+      if (elapsed < 500) await new Promise(r => setTimeout(r, 500 - elapsed));
 
       setReadingState(ReadingState.SESSION_COMPLETED);
     }
