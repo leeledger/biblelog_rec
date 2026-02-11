@@ -15,6 +15,7 @@ const r2Client = new S3Client({
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
+    forcePathStyle: true, // 안드로이드/모바일 브라우저 CORS 호환성을 위해 경로 스타일 강제
 });
 
 const app = express();
@@ -679,8 +680,7 @@ app.post('/api/audio/presign', async (req, res) => {
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, {
-            expiresIn: 3600,
-            signableHeaders: new Set(['host']), // 호스트 헤더만 서명에 포함하여 극강의 호환성 확보
+            expiresIn: 3600
         });
         console.log(`[AUDIO/PRESIGN] Success: Presigned URL generated.`);
 
