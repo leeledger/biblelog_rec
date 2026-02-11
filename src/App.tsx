@@ -939,9 +939,13 @@ const App: React.FC = () => {
 
       // [수정] 녹음이 완료되는 즉시 업로드를 수행하도록 콜백 연결
       stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse, () => {
-        if (currentUser?.id) {
-          console.log('[App] Recording finalized. Starting upload...');
-          uploadAllRecordings(currentUser.id, selectedGroupId);
+        const userId = currentUser?.id;
+        if (userId) {
+          console.log('[App] Final recording stopped. Waiting for buffer stability (500ms)...');
+          setTimeout(() => {
+            console.log('[App] Starting batch upload to R2...');
+            uploadAllRecordings(userId, selectedGroupId);
+          }, 500);
         }
       });
     }
@@ -1042,6 +1046,16 @@ const App: React.FC = () => {
     if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) return;
 
     const currentVerse = currentTargetVerseForSession;
+
+    // [핵심 보강] 현재 절 녹음 확정 후 다음 절 녹음 즉시 시작
+    if (isRecordingEnabled && isRecording) {
+      stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
+      // 약 300ms 뒤에 다음 절 녹음 시작 (브라우저 마이크 자원 해제 시간 확보)
+      setTimeout(() => {
+        startRecording();
+      }, 300);
+    }
+
     // 수동 이동 시에는 [녹음] 표시와 함께 저장
     setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (녹음됨) ${currentVerse.text}\n`);
 
@@ -1057,7 +1071,7 @@ const App: React.FC = () => {
       setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
       setMatchedCharCount(0);
     }
-  }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave]);
+  }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave, isRecordingEnabled, isRecording, stopRecording, startRecording]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
