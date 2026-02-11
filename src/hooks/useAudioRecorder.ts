@@ -203,9 +203,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
-                    const pureType = rec.blob.type.split(';')[0].trim() || 'audio/webm';
+                    const forcedType = 'application/octet-stream';
 
-                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${pureType})`;
+                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${forcedType})`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step1);
 
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
@@ -216,7 +216,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                             bookName: rec.bookName,
                             chapter: rec.chapter,
                             verse: rec.startVerse,
-                            contentType: pureType, // Use pure mime-type
+                            contentType: forcedType, // Always use stream type
                         }),
                     });
 
@@ -231,10 +231,12 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
-                        body: rec.blob,
+                        // 중요: Blob을 순수 이진 데이터(octet-stream)로 재포장하여 
+                        // 브라우저의 자동 헤더 추가를 차단합니다.
+                        body: new Blob([rec.blob], { type: forcedType }),
                         mode: 'cors',
                         headers: {
-                            'Content-Type': 'application/octet-stream'
+                            'Content-Type': forcedType
                         },
                     });
 
