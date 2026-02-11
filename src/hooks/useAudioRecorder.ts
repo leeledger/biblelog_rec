@@ -230,9 +230,12 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
 
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
-                        body: rec.blob,
+                        // 서버 서명과 100% 일치하도록 타입을 강제 재포장합니다.
+                        body: new Blob([rec.blob], { type: 'application/octet-stream' }),
                         mode: 'cors',
-                        // 헤더를 아예 보내지 않습니다. 서명(Signature)에 영향을 주지 않기 위함입니다.
+                        headers: {
+                            'Content-Type': 'application/octet-stream'
+                        },
                     });
 
                     if (!uploadRes.ok) {
