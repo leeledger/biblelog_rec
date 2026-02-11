@@ -199,7 +199,11 @@ const App: React.FC = () => {
     isStalled // 추가
   } = useSpeechRecognition({ lang: 'ko-KR' });
 
-  // 녹음 기능 (recording_enabled 유저만 사용)
+  // 녹음 기능 (recording_enabled 유저 또는 ID 1번만 사용)
+  const isRecordingEnabled = useMemo(() => {
+    return currentUser?.recording_enabled === true || currentUser?.id === 1 || currentUser?.id === 100;
+  }, [currentUser]);
+
   const {
     isRecording,
     recordings: audioRecordings,
@@ -213,9 +217,6 @@ const App: React.FC = () => {
     closeStream,
     recordingCount,
   } = useAudioRecorder();
-
-  // 테스트 유저(ID 1, 100)는 강제 활성화
-  const isRecordingEnabled = currentUser?.recording_enabled === true || currentUser?.id === 1 || currentUser?.id === 100;
 
   // 마이크 상태 감지 및 와치독 (안드로이드 마이크 멈춤 대응)
   useEffect(() => {
