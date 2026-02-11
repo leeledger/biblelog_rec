@@ -239,36 +239,25 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
-  // [근본 설계 1] 트리거: 첫 단어 인식 시 녹음 시작
+  // 마이크 충돌 방지: 사용자가 말을 시작해서 텍스트가 나타날 때만 녹음 시작 시도 (실패 시 조용히 포기)
   useEffect(() => {
-    const shouldTrigger = readingState === ReadingState.LISTENING &&
+    if (readingState === ReadingState.LISTENING &&
       sttTranscript.trim().length > 0 &&
       isRecordingEnabled &&
-      !isRecording &&
-      recordingCount === 0;
+      !isRecording) {
 
-    if (shouldTrigger) {
-      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [트리거] 첫 음성 감지 → 녹음 엔진 가동');
-      startRecording();
+      const tryStartRecording = async () => {
+        try {
+          // 마이크를 새로 열지 않고, 이미 STT가 열어놨을 가능성이 있는 상태에서 기록만 시도
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 녹음 시도 (STT 방해 금지 모드)');
+          await startRecording();
+        } catch (e) {
+          console.error("Recording failed to start alongside STT", e);
+        }
+      };
+      tryStartRecording();
     }
-  }, [sttTranscript, readingState, isRecordingEnabled, isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
-
-  // [근본 설계 2] 동기화: 녹음 가동 시 STT 세션 강제 리프레시
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isRecording && readingState === ReadingState.LISTENING) {
-      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [리프레시] 녹음 가동 확인 → STT 세션 재연결');
-
-      // STT 세션을 아예 죽였다가 다시 살려야 마이크를 새로 잡을 수 있음
-      abortListening();
-
-      timer = setTimeout(() => {
-        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [리프레시] STT 가동');
-        startListening();
-      }, 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [isRecording, readingState, abortListening, startListening, currentUser?.id, addDebugLog]);
+  }, [sttTranscript, readingState, isRecordingEnabled, isRecording, startRecording, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -607,7 +596,7 @@ const App: React.FC = () => {
                 }
               }
 
-              // [중요] 미래 점프 방지: 
+              // [중요] 미래 점프 방지:
               // 찾은 앵커 위치가 현재 취소선 위치(prev)보다 너무 멀리(10자 이상) 앞서있다면
               // 성경 특성상 '반복되는 다른 단어'를 찾은 것으로 간주하고 무시합니다.
               if (originalStart > prev + 10) {
@@ -940,21 +929,9 @@ const App: React.FC = () => {
       // 0단계: 녹음 기록 초기화
       clearRecordings();
 
-      // [핵심 조치] 1단계: 마이크 하드웨어 미리 열기 (STT보다 먼저!)
-      const initMicAndStt = async () => {
-        if (isRecordingEnabled) {
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [준비] 마이크 하드웨어 선점 중...');
-          await prepareMic();
-        }
-
-        // 2단계: 하드웨어가 안정화된 후 음성 인식 엔진 가동 (약 1.2초 뒤)
-        setTimeout(() => {
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [가동] 음성 인식 시작');
-          startListening(); // resetTranscript가 아니라 startListening을 호출해야 엔진이 켜집니다!
-        }, 1200);
-      };
-
-      initMicAndStt();
+      // [복구] 음성 인식 엔진 즉시 가동 (순정 상태)
+      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 가동 시작');
+      resetTranscript();
 
       setSessionProgress({
         totalVersesInSession: verses.length,
