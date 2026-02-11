@@ -648,7 +648,9 @@ app.post('/api/audio/presign', async (req, res) => {
             else if (contentType.includes('mpeg')) ext = 'mp3';
         }
 
-        const fileKey = `recordings/${userId}/${bookName}_${chapter}_${verse}_${timestamp}.${ext}`;
+        // 중요: 한글 파일 이름은 S3 서명 및 브라우저 fetch에서 오류를 유발할 수 있으므로 
+        // 실제 저장 주소(fileKey)는 영문/숫자로만 구성합니다.
+        const fileKey = `recordings/${userId}/rec_${timestamp}.${ext}`;
         const bucketName = process.env.R2_BUCKET_NAME;
 
         console.log(`[AUDIO/PRESIGN] Request user:${userId}, bucket:${bucketName}, key:${fileKey}, type:${contentType}`);
