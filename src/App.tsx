@@ -528,9 +528,6 @@ const App: React.FC = () => {
 
       handleStopReadingAndSave(newTotalCompletedInSelection, true);
     } else {
-      setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
-      resetTranscript();
-      setTranscriptBuffer('');
       setMatchedCharCount(0); // 구절 전환 시 리셋
     }
   }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, sessionProgress, stopListening, resetTranscript]);
@@ -1032,6 +1029,28 @@ const App: React.FC = () => {
     }
   }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId, isRecording, stopRecording]);
 
+  // 녹음 모드 유저를 위한 수동 다음 절 이동 함수 (정의 위치 중요: handleStopReadingAndSave 이후)
+  const handleManualNextVerse = useCallback(() => {
+    if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) return;
+
+    const currentVerse = currentTargetVerseForSession;
+    // 수동 이동 시에는 [녹음] 표시와 함께 저장
+    setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (녹음됨) ${currentVerse.text}\n`);
+
+    const newTotalCompletedInSelection = currentVerseIndexInSession + 1;
+    setSessionProgress(prev => ({
+      ...prev,
+      sessionCompletedVersesCount: newTotalCompletedInSelection,
+    }));
+
+    if (currentVerseIndexInSession >= sessionTargetVerses.length - 1) {
+      handleStopReadingAndSave(newTotalCompletedInSelection, true);
+    } else {
+      setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
+      setMatchedCharCount(0);
+    }
+  }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave]);
+
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
     setTranscriptBuffer('');
@@ -1226,16 +1245,18 @@ const App: React.FC = () => {
             onRetryVerse={handleRetryVerse}
             onExitSession={handleExitSession}
             onStartListening={async () => {
-              if (isRecordingEnabled) {
-                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [근본설계] 세션 시작 시 녹음 먼저 가동');
-                await startRecording();
-              }
-
               setReadingState(ReadingState.LISTENING);
-              setTimeout(() => {
-                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [근본설계] 음성 인식 가동 (마이크 공유)');
-                startListening();
-              }, 1000); // 하드웨어가 녹음기 쪽으로 안정화될 시간 부여
+
+              if (isRecordingEnabled) {
+                // 특정 유저: 녹음만 가동 (인식 패스)
+                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [모드] 녹음 전용 모드 가동');
+                await startRecording();
+              } else {
+                // 일반 유저: 인식만 가동
+                setTimeout(() => {
+                  startListening();
+                }, 300);
+              }
             }}
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
@@ -1247,18 +1268,18 @@ const App: React.FC = () => {
             isResume={isResumeSession}
             isListening={isListening}
             isMicWaiting={isMicWaiting}
-            sttError={sttError} // 에러 메시지 전달
-            // 녹음 관련
-            {...(isRecordingEnabled ? {
-              recordingCount,
-              isAudioUploading,
-              audioUploadProgress,
-              onUploadRecordings: () => {
-                if (currentUser?.id) {
-                  uploadAllRecordings(currentUser.id, selectedGroupId);
-                }
-              },
-            } : {})}
+            sttError={sttError}
+            // 녹음 모드를 위한 추가 프로퍼티
+            isRecordingEnabled={isRecordingEnabled}
+            onManualNextVerse={handleManualNextVerse}
+            recordingCount={recordingCount}
+            isAudioUploading={isAudioUploading}
+            audioUploadProgress={audioUploadProgress}
+            onUploadRecordings={() => {
+              if (currentUser?.id) {
+                uploadAllRecordings(currentUser.id, selectedGroupId);
+              }
+            }}
           />
         )}
 

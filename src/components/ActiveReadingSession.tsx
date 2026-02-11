@@ -29,6 +29,14 @@ interface ActiveReadingSessionProps {
   isResume?: boolean; // 추가
   isListening: boolean; // 추가
   isMicWaiting: boolean; // 추가
+  sttError?: string | null; // 추가
+  // 녹음 모드 관련
+  isRecordingEnabled?: boolean;
+  onManualNextVerse?: () => void;
+  recordingCount?: number;
+  isAudioUploading?: boolean;
+  audioUploadProgress?: { current: number; total: number } | null;
+  onUploadRecordings?: () => void;
 }
 
 // 성능 최적화: 읽은 누적 구절 영역을 별도 컴포넌트로 분리하여
@@ -82,7 +90,14 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
   onSessionCompleteConfirm,
   isResume, // 추가
   isListening, // 추가
-  isMicWaiting // 추가
+  isMicWaiting,
+  sttError,
+  isRecordingEnabled,
+  onManualNextVerse,
+  recordingCount,
+  isAudioUploading,
+  audioUploadProgress,
+  onUploadRecordings
 }) => {
   // 현재 세션 범위 내의 모든 장 정보 추출 및 매칭되는 도레 판화들 찾기
   const matchedDores = React.useMemo(() => {
