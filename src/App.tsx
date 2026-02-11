@@ -46,6 +46,46 @@ const initialSessionProgress: SessionReadingProgress = {
 
 type ViewState = 'IDLE_SETUP' | 'LEADERBOARD';
 
+// Navbar Component Definition
+const Navbar: React.FC<{
+  currentUser: User;
+  overallCompletedChaptersCount: number;
+  onLogout: () => void;
+  onMyPageClick: () => void;
+  isReadingMode: boolean;
+  recordingEnabled: boolean;
+}> = ({ currentUser, overallCompletedChaptersCount, onLogout, onMyPageClick, isReadingMode, recordingEnabled }) => (
+  <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+    <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl">📖</span>
+        <h1 className="text-xl font-black text-indigo-600 tracking-tight">바이블로그</h1>
+      </div>
+      {!isReadingMode && (
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex flex-col items-end">
+            <div className="flex items-center gap-1.5">
+              {recordingEnabled && <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-md font-black animate-pulse">REC</span>}
+              <p className="text-sm font-bold text-gray-800">{currentUser.username}님</p>
+            </div>
+            <p className="text-[10px] text-gray-400 font-medium">전체 {overallCompletedChaptersCount}장 완료</p>
+          </div>
+          <button onClick={onMyPageClick} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+            👤
+            {recordingEnabled && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>}
+          </button>
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-red-500 transition-colors"
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
+    </div>
+  </header>
+);
+
 const App: React.FC = () => {
   // 플랫폼 감지 로직
   const isIOS = useMemo(() => /iPad|iPhone|iPod/.test(navigator.userAgent), []);
@@ -201,7 +241,10 @@ const App: React.FC = () => {
 
   // 녹음 기능 (recording_enabled 유저 또는 ID 1번만 사용)
   const isRecordingEnabled = useMemo(() => {
-    return currentUser?.recording_enabled === true || currentUser?.id === 1 || currentUser?.id === 100;
+    if (!currentUser) return false;
+    const isSpecialUser = Number(currentUser.id) === 1 || Number(currentUser.id) === 100 || currentUser.username === '테스트';
+    const hasFlag = currentUser.recording_enabled === true || String(currentUser.recording_enabled) === 'true';
+    return hasFlag || isSpecialUser;
   }, [currentUser]);
 
   const {
@@ -794,56 +837,28 @@ const App: React.FC = () => {
 
         setCurrentVerseIndexInSession(prevIdx => prevIdx + 1);
         setTranscriptBuffer('');
-        resetTranscript();
-        setMatchedCharCount(0); // 구절 전환 시 리셋
-
-        // 구절 전환 시 마이크 리셋 (더 강력한 초기화)
-        // abortListening()을 사용하여 이전 구절의 잔여 인식을 즉시 파기하고 엔진을 초기화함
-        const delay = isIOS ? 50 : 200;
-        if (currentUser?.id === 100) addDebugLog(`🔄 구절 전환 - ${delay}ms 후 abort`);
-        setTimeout(() => {
-          if (currentUser?.id === 100) addDebugLog('🛑 abortListening() 호출');
-          abortListening();
-          setIsRetryingVerse(true);
-        }, delay);
       }
     }
   }, [transcriptBuffer, readingState, currentTargetVerseForSession, currentUser, sessionTargetVerses, userOverallProgress]);
 
   // 구절 전환 동기화 로직 (마이크 예열 대기)
   useEffect(() => {
-    // 모든 플랫폼에서 마이크가 실제로 켜졌거나, 인식이 끝난 상태(IDLE 등)면 UI 인덱스를 동기화
-    // 이를 통해 '글자가 보일 때 마이크가 100% 준비됨'을 보장하고 이전 텍스트 잔상을 제거함
     if (isListening || readingState !== ReadingState.LISTENING) {
       setSyncedVerseIndex(currentVerseIndexInSession);
     }
   }, [isListening, currentVerseIndexInSession, readingState]);
-  // -----------------------------------------------------------------------
 
   useEffect(() => {
-    if (sttError) {
-      setAppError(`음성인식 오류: ${sttError}`);
-    }
+    if (sttError) setAppError(`음성인식 오류: ${sttError}`);
   }, [sttError]);
 
-  // Removed automatic startListening useEffect to comply with mobile browser user gesture requirements.
-  // startListening should now be called directly from user-initiated events (buttons).
-
-  /**
-   * 마이크 권한을 선제적으로 확인합니다. (iOS 대응)
-   */
   const checkMicPermission = async (): Promise<boolean> => {
     try {
       setReadingState(ReadingState.PREPARING);
-
-      // 마이크 권한 요청
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // 권한 획득 성공 시 즉시 트랙 중지 (전력 소모 방지)
       stream.getTracks().forEach(track => track.stop());
       return true;
     } catch (err) {
-      console.error('Mic permission check failed:', err);
-      // 권한 거부 시 메시지 처리
       setAppError('마이크 권한이 필요합니다. 브라우저 설정에서 마이크 허용을 확인해주세요.');
       setReadingState(ReadingState.IDLE);
       return false;
@@ -851,370 +866,198 @@ const App: React.FC = () => {
   };
 
   const handleSelectChaptersAndStartReading = useCallback(async (book: string, startCh: number, endCh: number, startVerse?: number) => {
-    // 세션 정보 로컬 스토리지 저장 (리프레시 대비)
-    const sessionParams = { book, startCh, endCh, startVerse: startVerse || selectorState.startVerse };
-    localStorage.setItem('pendingReadingSession', JSON.stringify(sessionParams));
-
-    // iOS인 경우 마이크 권한 선제적 확인
     if (isIOS) {
       const hasPermission = await checkMicPermission();
-      if (!hasPermission) {
-        localStorage.removeItem('pendingReadingSession');
-        return;
-      }
+      if (!hasPermission) return;
     }
 
-    // 권한 확인 완료 후 정상 진행
-    localStorage.removeItem('pendingReadingSession');
-    const verses = getVersesForSelection(book, startCh, endCh);
-    if (verses.length > 0) {
-      let initialSkip = 0;
+    // startVerse를 getVersesForSelection에 전달하여 처음부터 원하는 구절이 나오게 합니다.
+    const requestedStartVerse = startVerse || selectorState.startVerse || 1;
+    const verses = getVersesForSelection(book, startCh, endCh, requestedStartVerse);
 
-      // 전달받은 startVerse가 있거나, selector의 기본값이 있으면 이어 읽기 적용
-      const actualStartVerse = startVerse || selectorState.startVerse;
+    setSessionTargetVerses(verses);
+    setReadingState(ReadingState.LISTENING);
+    setCurrentVerseIndexInSession(0); // getVersesForSelection이 이미 처리함
+    setSyncedVerseIndex(0);
+    setMatchedVersesContentForSession("");
+    setTranscriptBuffer("");
+    setMatchedCharCount(0);
+    clearRecordings();
 
-      if (
-        book === selectorState.book &&
-        startCh === selectorState.startChapter &&
-        endCh === selectorState.startChapter &&
-        actualStartVerse > 1
-      ) {
-        const firstVerseIndex = verses.findIndex(v => v.verse === actualStartVerse);
-        if (firstVerseIndex !== -1) {
-          initialSkip = firstVerseIndex;
-        }
-      }
+    setSessionProgress({
+      totalVersesInSession: verses.length,
+      sessionCompletedVersesCount: 0,
+      sessionInitialSkipCount: 0,
+    });
+    setSessionCertificationMessage("");
+    setAppError(null);
+    resetTranscript();
+  }, [isIOS, checkMicPermission, selectorState.startVerse, clearRecordings, resetTranscript]);
 
-      // 이어서 읽기 여부 판별 (마지막 읽은 위치의 다음 포인트와 현재 선택이 일치하는지)
-      const lastReadPoint = userOverallProgress ? {
-        book: userOverallProgress.lastReadBook || '',
-        chapter: userOverallProgress.lastReadChapter || 1,
-        verse: userOverallProgress.lastReadVerse || 0
-      } : null;
-
-      const nextSuggested = getNextReadingStart(lastReadPoint);
-      const isActuallyNext = nextSuggested &&
-        book === nextSuggested.book &&
-        startCh === nextSuggested.chapter &&
-        actualStartVerse === nextSuggested.verse;
-
-      setIsResumeSession(!!isActuallyNext);
-
-      setSessionTargetVerses(verses);
-      setReadingState(ReadingState.READING);
-      setCurrentVerseIndexInSession(initialSkip);
-      setMatchedVersesContentForSession('');
-      setTranscriptBuffer('');
-      setMatchedCharCount(0); // 세션 시작 시 리셋
-
-      // 0단계: 녹음 기록 초기화
-      clearRecordings();
-
-      // [복구] 음성 인식 엔진 즉시 가동 (순정 상태)
-      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 가동 시작');
-      resetTranscript();
-
-      setSessionProgress({
-        totalVersesInSession: verses.length,
-        sessionCompletedVersesCount: initialSkip,
-        sessionInitialSkipCount: initialSkip,
-      });
-      setSessionCertificationMessage("");
-      setAppError(null);
-    } else {
-      setAppError('선택한 범위의 성경 데이터를 찾을 수 없습니다.');
-    }
-  }, [selectorState, resetTranscript]);
-
-  const handleStopReadingAndSave = useCallback((overrideSessionCompletedCount?: number | React.MouseEvent<HTMLButtonElement>, isNaturalCompletion: boolean = false) => {
-    if (!isNaturalCompletion) {
-      stopListening();
-      setReadingState(ReadingState.SAVING);
-    }
-
-    // 녹음 중이면 녹음 중지
-    if (isRecording && sessionTargetVerses.length > 0) {
-      const firstVerse = sessionTargetVerses[0];
-      const lastVerse = sessionTargetVerses[sessionTargetVerses.length - 1];
-
-      // [수정] 녹음이 완료되는 즉시 업로드를 수행하도록 콜백 연결
-      stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse, () => {
-        const userId = currentUser?.id;
-        if (userId) {
-          console.log('[App] Final recording stopped. Waiting for buffer stability (500ms)...');
-          setTimeout(() => {
-            console.log('[App] Starting batch upload to R2...');
-            uploadAllRecordings(userId, selectedGroupId);
-          }, 500);
-        }
-      });
-    }
-    closeStream(); // 세션 종료 시 마이크 스트림을 수동으로 닫아 권한 반납 (중요)
-
-    const currentSessionCompletedVersesCount = (typeof overrideSessionCompletedCount === 'number')
+  const handleStopReadingAndSave = useCallback(async (overrideSessionCompletedCount?: number | React.MouseEvent<HTMLButtonElement>, isNaturalCompletion: boolean = false) => {
+    const finalCount = typeof overrideSessionCompletedCount === 'number'
       ? overrideSessionCompletedCount
       : sessionProgress.sessionCompletedVersesCount;
 
-    const versesActuallyReadThisSessionCount = currentSessionCompletedVersesCount - sessionProgress.sessionInitialSkipCount;
+    if (!isNaturalCompletion) stopListening();
+    const startTime = Date.now();
+    setReadingState(ReadingState.SAVING);
 
-    let firstEffectivelyReadVerse: BibleVerse | null = null;
-    if (versesActuallyReadThisSessionCount > 0 && sessionTargetVerses.length > sessionProgress.sessionInitialSkipCount) {
-      firstEffectivelyReadVerse = sessionTargetVerses[sessionProgress.sessionInitialSkipCount];
+    // 1. 녹음 중지
+    if (isRecording && sessionTargetVerses.length > 0) {
+      const firstV = sessionTargetVerses[0];
+      const lastV = sessionTargetVerses[sessionTargetVerses.length - 1];
+      await new Promise<void>(res => stopRecording(firstV.book, firstV.chapter, firstV.verse, lastV.verse, () => res()));
+      closeStream();
     }
 
-    let lastEffectivelyReadVerse: BibleVerse | null = null;
-    if (versesActuallyReadThisSessionCount > 0 && currentSessionCompletedVersesCount > 0) {
-      lastEffectivelyReadVerse = sessionTargetVerses[currentSessionCompletedVersesCount - 1];
+    // 2. 오디오 업로드 (R2)
+    if (isRecordingEnabled && currentUser?.id) {
+      await new Promise(r => setTimeout(r, 600)); // Blob 정착 대기
+      await uploadAllRecordings(currentUser.id, selectedGroupId);
     }
 
-    if (currentUser && lastEffectivelyReadVerse && firstEffectivelyReadVerse && versesActuallyReadThisSessionCount > 0) {
-      if (!isNaturalCompletion) {
-        const certMsg = `${firstEffectivelyReadVerse.book} ${firstEffectivelyReadVerse.chapter}장 ${firstEffectivelyReadVerse.verse}절 ~ ${lastEffectivelyReadVerse.book} ${lastEffectivelyReadVerse.chapter}장 ${lastEffectivelyReadVerse.verse}절 (총 ${versesActuallyReadThisSessionCount}절) 읽음 (세션 중단).`;
-        setSessionCertificationMessage(certMsg);
-      }
+    // 3. 진도 저장
+    const readCount = finalCount - sessionProgress.sessionInitialSkipCount;
+    if (currentUser && readCount > 0) {
+      const firstV = sessionTargetVerses[sessionProgress.sessionInitialSkipCount] || sessionTargetVerses[0];
+      const lastV = sessionTargetVerses[finalCount - 1] || firstV;
 
       const historyEntry: UserSessionRecord = {
         date: new Date().toISOString(),
-        book: firstEffectivelyReadVerse.book,
-        startChapter: firstEffectivelyReadVerse.chapter,
-        startVerse: firstEffectivelyReadVerse.verse,
-        endChapter: lastEffectivelyReadVerse.chapter,
-        endVerse: lastEffectivelyReadVerse.verse,
-        versesRead: versesActuallyReadThisSessionCount
+        book: firstV.book, startChapter: firstV.chapter, startVerse: firstV.verse,
+        endChapter: lastV.chapter, endVerse: lastV.verse, versesRead: readCount
       };
 
-      const newCompletedChaptersInSession = new Set<string>(userOverallProgress?.completedChapters || []);
-
-      const versesReadInSession = sessionTargetVerses.slice(
-        sessionProgress.sessionInitialSkipCount,
-        currentSessionCompletedVersesCount
-      );
-
-      const uniqueChaptersInSession = [...new Set(versesReadInSession.map(v => `${v.book}:${v.chapter}`))];
-
-      for (const chapterKey of uniqueChaptersInSession) {
-        const [book, chapterStr] = chapterKey.split(':');
-        const chapterNum = parseInt(chapterStr, 10);
-        const bookInfo = AVAILABLE_BOOKS.find(b => b.name === book);
-        if (bookInfo) {
-          const lastVerseInChapter = bookInfo.versesPerChapter[chapterNum - 1];
-          // 특정 장의 마지막 절이 이번 세션에서 읽은 구절 목록에 포함되어 있는지 확인
-          const readLastVerseOfThisChapter = versesReadInSession.some(
-            v => v.book === book && v.chapter === chapterNum && v.verse === lastVerseInChapter
-          );
-
-          if (readLastVerseOfThisChapter) {
-            newCompletedChaptersInSession.add(chapterKey);
-          }
-        }
-      }
-
-      const updatedUserProgress: UserProgress = {
+      const updatedProgress: UserProgress = {
+        lastReadBook: lastV.book,
+        lastReadChapter: lastV.chapter,
+        lastReadVerse: lastV.verse,
         groupId: selectedGroupId,
-        lastReadBook: lastEffectivelyReadVerse.book,
-        lastReadChapter: lastEffectivelyReadVerse.chapter,
-        lastReadVerse: lastEffectivelyReadVerse.verse,
-        totalSkips: userOverallProgress?.totalSkips || 0,
         history: userOverallProgress?.history ? [...userOverallProgress.history, historyEntry] : [historyEntry],
-        completedChapters: Array.from(newCompletedChaptersInSession)
+        completedChapters: userOverallProgress?.completedChapters || [],
+        totalSkips: userOverallProgress?.totalSkips || 0
       };
 
-      // 진도 저장을 먼저 완료한 후 화면 전환
-      progressService.saveUserProgress(currentUser.username, updatedUserProgress)
-        .then(() => {
-          setUserOverallProgress(updatedUserProgress);
-          setOverallCompletedChaptersCount(updatedUserProgress.completedChapters?.length || 0);
-        })
-        .catch(err => {
-          console.error(err);
-          setAppError("저장에 실패했습니다. 잠시 후 다시 시도하거나, 네트워크 상태를 확인해주세요.");
-          setSessionCertificationMessage("⚠️ 저장 실패: 완료 기록이 저장되지 않았습니다.");
-        })
-        .finally(() => {
-          // 저장 완료 후 완료 화면 표시
-          setReadingState(ReadingState.SESSION_COMPLETED);
-        });
-
-    } else if (versesActuallyReadThisSessionCount <= 0 && !isNaturalCompletion) {
-      setSessionCertificationMessage("이번 세션에서 읽은 구절이 없습니다.");
-      setReadingState(ReadingState.SESSION_COMPLETED);
+      try {
+        await progressService.saveUserProgress(currentUser.username, updatedProgress);
+        setUserOverallProgress(updatedProgress);
+        setOverallCompletedChaptersCount(updatedProgress.completedChapters?.length || 0);
+      } catch (err) { setAppError("진도 저장에 실패했습니다."); }
     }
-  }, [stopListening, sessionProgress, sessionTargetVerses, currentUser, userOverallProgress, selectedGroupId, isRecording, stopRecording]);
 
-  // 녹음 모드 유저를 위한 수동 다음 절 이동 함수 (정의 위치 중요: handleStopReadingAndSave 이후)
-  const handleManualNextVerse = useCallback(() => {
+    // 최소 1초간 저장 중 화면 유지 (사용자 인지용)
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 1000) await new Promise(r => setTimeout(r, 1000 - elapsed));
+
+    setReadingState(ReadingState.SESSION_COMPLETED);
+  }, [stopListening, isRecording, sessionTargetVerses, stopRecording, closeStream, isRecordingEnabled, currentUser, selectedGroupId, uploadAllRecordings, sessionProgress, userOverallProgress]);
+
+  const handleManualNextVerse = useCallback(async () => {
     if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) return;
-
     const currentVerse = currentTargetVerseForSession;
-
-    // [핵심 보강] 현재 절 녹음 확정 후 다음 절 녹음 즉시 시작
     if (isRecordingEnabled && isRecording) {
       stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
-      // 약 300ms 뒤에 다음 절 녹음 시작 (브라우저 마이크 자원 해제 시간 확보)
-      setTimeout(() => {
-        startRecording();
-      }, 300);
+      setTimeout(() => startRecording(), 300);
     }
-
-    // 수동 이동 시에는 [녹음] 표시와 함께 저장
     setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (녹음됨) ${currentVerse.text}\n`);
-
-    const newTotalCompletedInSelection = currentVerseIndexInSession + 1;
-    setSessionProgress(prev => ({
-      ...prev,
-      sessionCompletedVersesCount: newTotalCompletedInSelection,
-    }));
-
-    if (currentVerseIndexInSession >= sessionTargetVerses.length - 1) {
-      handleStopReadingAndSave(newTotalCompletedInSelection, true);
+    const nextIdx = currentVerseIndexInSession + 1;
+    setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
+    if (nextIdx >= sessionTargetVerses.length) {
+      await handleStopReadingAndSave(nextIdx, true);
     } else {
-      setCurrentVerseIndexInSession(prevIndex => prevIndex + 1);
+      setCurrentVerseIndexInSession(nextIdx);
       setMatchedCharCount(0);
     }
-  }, [currentTargetVerseForSession, readingState, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave, isRecordingEnabled, isRecording, stopRecording, startRecording]);
+  }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses.length, handleStopReadingAndSave]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
-    setTranscriptBuffer('');
-    setAppError(null);
-    setMatchedCharCount(0); // 다시 읽기 시 리셋
-    setIsRetryingVerse(true);
-
-    // resetTranscript가 내부적으로 abort/start 사이클을 수행하여 버퍼를 깨끗이 비움
-    resetTranscript();
+    setTranscriptBuffer(''); setAppError(null); setMatchedCharCount(0);
+    resetTranscript(); setIsRetryingVerse(true);
   }, [resetTranscript]);
 
+  const handleLogout = () => {
+    if (readingState === ReadingState.LISTENING) handleStopReadingAndSave();
+    authService.logoutUser();
+    setCurrentUser(null); setUserOverallProgress(null);
+    setReadingState(ReadingState.IDLE); setSessionTargetVerses([]);
+    setCurrentVerseIndexInSession(0); setMatchedVersesContentForSession("");
+    setSessionProgress(initialSessionProgress); setSessionCertificationMessage(""); setShowMyPage(false);
+  };
 
-
-  const checkForDifficultWords = (verse: BibleVerse | null) => {
-    if (!verse) return false;
-    return containsDifficultWord(verse.text);
+  const handleBibleReset = async () => {
+    if (!window.confirm('정말 다시 말씀 원정을 시작하시겠습니까?\n모든 진행률이 초기화됩니다.')) return;
+    setBibleResetLoading(true);
+    try {
+      const success = await progressService.resetBibleProgress(currentUser?.username || '');
+      if (success) {
+        const refreshed = await progressService.loadUserProgress(currentUser?.username || '');
+        setUserOverallProgress(refreshed); setOverallCompletedChaptersCount(0);
+        alert('성경 읽기 진도가 초기화되었습니다.');
+      }
+    } finally { setBibleResetLoading(false); }
   };
 
   useEffect(() => {
     setShowAmenPrompt(false);
-
-    if (verseTimeoutId) {
-      clearTimeout(verseTimeoutId);
-      setVerseTimeoutId(null);
-    }
-
-    const hasDifficult = checkForDifficultWords(currentTargetVerseForSession);
+    if (verseTimeoutId) { clearTimeout(verseTimeoutId); setVerseTimeoutId(null); }
+    const hasDifficult = currentTargetVerseForSession ? containsDifficultWord(currentTargetVerseForSession.text) : false;
     setHasDifficultWords(hasDifficult);
-
     if (readingState === ReadingState.LISTENING && currentTargetVerseForSession) {
       setVerseStartTime(Date.now());
-
-      // 글자 수 기반 동적 대기 시간 계산: 기본 5초 + 글자당 0.2초 (최대 45초 한도)
-      const verseLength = currentTargetVerseForSession.text.length;
-      const dynamicWaitTime = Math.min(5000 + (verseLength * 200), 45000);
-
-      const timeoutId = setTimeout(() => {
-        setShowAmenPrompt(true);
-      }, dynamicWaitTime);
-      setVerseTimeoutId(timeoutId);
+      const waitTime = Math.min(5000 + (currentTargetVerseForSession.text.length * 200), 45000);
+      const tid = setTimeout(() => setShowAmenPrompt(true), waitTime);
+      setVerseTimeoutId(tid);
     }
   }, [currentVerseIndexInSession, readingState, currentTargetVerseForSession]);
 
-  // 화면 꺼짐 방지 (Wake Lock) 트리거
   useEffect(() => {
-    if (readingState === ReadingState.LISTENING) {
-      requestWakeLock();
-    } else {
-      releaseWakeLock();
-    }
-
-    return () => {
-      releaseWakeLock();
-    };
-  }, [readingState, requestWakeLock, releaseWakeLock]);
+    if (readingState === ReadingState.LISTENING) requestWakeLock();
+    else releaseWakeLock();
+    return () => { releaseWakeLock(); };
+  }, [readingState]);
 
   if (!currentUser) {
     return (
       <>
         <BrowserRecommendation />
         <LandingPage
-          authForm={
-            <div className="space-y-4">
-              <div className="mb-6 text-center">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-purple-500 drop-shadow-sm">바이블로그</h2>
-                <p className="text-sm text-gray-500 font-medium">BibleLog Journey</p>
-              </div>
-              <AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />
-              {appError && <p className="mt-4 text-red-500 text-center">{appError}</p>}
-
-
-              {userOverallProgress && (userOverallProgress.lastReadChapter > 0) && readingState === ReadingState.IDLE && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-700 text-center font-medium">
-                  {userOverallProgress.lastReadBook} {userOverallProgress.lastReadChapter}장 {userOverallProgress.lastReadVerse || 1}절에서 이어 읽으실 수 있습니다.
-                </div>
-              )}
-
-              {!browserSupportsSpeechRecognition && (
-                <div className="mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-2xl text-sm">
-                  <p className="font-semibold">음성 인식 미지원</p>
-                  <p className="opacity-80">현재 브라우저에서는 음성 인식 기능을 지원하지 않습니다. Chrome, Safari 최신 버전을 권장합니다.</p>
-                </div>
-              )}
-            </div>
-          }
+          authForm={<AuthForm onAuth={handleAuth} onRegister={handleRegister} title="로그인 또는 회원등록" />}
         />
+        {appError && <p className="fixed bottom-10 left-0 right-0 text-red-500 text-center bg-white/80 p-2">{appError}</p>}
       </>
     );
   }
 
-  // Handle Bible Reset
-  const handleBibleReset = async () => {
-    if (!window.confirm('정말 다시 말씀 원정을 시작하시겠습니까?\n완독 횟수가 증가하고, 모든 진행률이 초기화됩니다.')) return;
-    setBibleResetLoading(true);
-    try {
-      const res = await fetch('/api/bible-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.id, groupId: selectedGroupId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`다시 시작되었습니다! (완독 횟수: ${data.round}회)`);
-        window.location.reload();
-      } else {
-        alert('오류: ' + (data.error || '진행을 실패했습니다.'));
-      }
-    } catch (e) {
-      alert('서버 오류: 잠시 후 다시 시도해주세요.');
-    } finally {
-      setBibleResetLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    if (readingState === ReadingState.LISTENING) {
-      handleStopReadingAndSave();
-    }
-    authService.logoutUser();
-    setCurrentUser(null);
-    setUserOverallProgress(null);
-    setReadingState(ReadingState.IDLE);
-    setSessionTargetVerses([]);
-    setCurrentVerseIndexInSession(0);
-    setMatchedVersesContentForSession('');
-    setSessionProgress(initialSessionProgress);
-    setSessionCertificationMessage('');
-    setShowMyPage(false);
-  };
-
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 relative">
       <Analytics />
       <BrowserRecommendation />
-      <div className="container mx-auto p-4 max-w-4xl bg-amber-50 shadow-lg rounded-lg">
 
-        {/* Dashboard View */}
-        {readingState === ReadingState.IDLE && (
+      {/* 전역 디버그 오버레이 (임시) */}
+      <div className="fixed top-0 left-0 right-0 z-[9999] bg-black text-[10px] text-green-400 p-1 font-mono flex justify-between px-4 pointer-events-none opacity-80">
+        <span>USER: {currentUser?.username || 'GUEST'} | ID: {currentUser?.id || '-'} | STATE: {readingState}</span>
+        <span className={isRecordingEnabled ? 'text-red-500 font-black' : 'text-gray-500'}>
+          {isRecordingEnabled ? '● REC_MODE_ACTIVE' : '○ REC_MODE_OFF'}
+        </span>
+      </div>
+
+      <Navbar
+        currentUser={currentUser}
+        overallCompletedChaptersCount={overallCompletedChaptersCount}
+        onLogout={handleLogout}
+        onMyPageClick={() => setShowMyPage(true)}
+        isReadingMode={readingState !== ReadingState.IDLE}
+        recordingEnabled={isRecordingEnabled}
+      />
+
+      <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl">
+        {readingState === ReadingState.IDLE ? (
           <Dashboard
             currentUser={currentUser}
             userOverallProgress={userOverallProgress}
-            totalBibleChapters={totalBibleChapters}
+            totalBibleChapters={TOTAL_CHAPTERS_IN_BIBLE}
             overallCompletedChaptersCount={overallCompletedChaptersCount}
             selectedBookForSelector={selectorState.book}
             startChapterForSelector={selectorState.startChapter}
@@ -1229,35 +1072,21 @@ const App: React.FC = () => {
             setCurrentView={setCurrentView}
             bibleResetLoading={bibleResetLoading}
             isLoading={isProgressLoading}
-            // Group Props
             userGroups={userGroups}
             selectedGroupId={selectedGroupId}
             onSelectGroup={(id: number | null) => setSelectedGroupId(id)}
-            onGroupAction={async () => {
-              if (currentUser?.id) await loadUserGroups(currentUser.id);
-            }}
+            onGroupAction={async () => { if (currentUser?.id) await loadUserGroups(currentUser.id); }}
+            recordingCount={recordingCount}
+            isAudioUploading={isAudioUploading}
+            audioUploadProgress={audioUploadProgress}
+            onUploadRecordings={() => { if (currentUser?.id) uploadAllRecordings(currentUser.id, selectedGroupId); }}
           />
-        )}
-
-        {/* Hall of Fame Modal */}
-        {showHallOfFame && (
-          <HallOfFame
-            groupId={selectedGroupId}
-            groupName={userGroups.find(g => g.id === selectedGroupId)?.name}
-            onClose={() => setShowHallOfFame(false)}
-          />
-        )}
-
-        {/* Active Reading Session View */}
-        {(readingState !== ReadingState.IDLE) && (
+        ) : (
           <ActiveReadingSession
             readingState={readingState}
             sessionTargetVerses={sessionTargetVerses}
             currentTargetVerse={sessionTargetVerses[syncedVerseIndex] || null}
-            sessionProgress={{
-              ...sessionProgress,
-              sessionCompletedVersesCount: syncedVerseIndex
-            }}
+            sessionProgress={{ ...sessionProgress, sessionCompletedVersesCount: syncedVerseIndex }}
             transcript={sttTranscript}
             matchedVersesContent={matchedVersesContentForSession}
             showAmenPrompt={showAmenPrompt}
@@ -1267,251 +1096,81 @@ const App: React.FC = () => {
             onRetryVerse={handleRetryVerse}
             onExitSession={handleExitSession}
             onStartListening={async () => {
-              setReadingState(ReadingState.LISTENING);
-
-              if (isRecordingEnabled) {
-                // 특정 유저: 녹음만 가동 (인식 패스)
-                if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [모드] 녹음 전용 모드 가동');
-                await startRecording();
-              } else {
-                // 일반 유저: 인식만 가동
-                setTimeout(() => {
-                  startListening();
-                }, 300);
-              }
+              if (isRecordingEnabled) await startRecording();
+              else setTimeout(() => startListening(), 300);
             }}
             sessionCertificationMessage={sessionCertificationMessage}
             isStalled={isStalled}
-            onSessionCompleteConfirm={() => {
-              // 세션 완료 후 페이지 새로고침하여 음성인식 리소스 정리
-              // 이렇게 하면 다음 세션에서 마이크 버벅임 방지
-              window.location.reload();
-            }}
+            onSessionCompleteConfirm={handleExitSession}
             isResume={isResumeSession}
             isListening={isListening}
             isMicWaiting={isMicWaiting}
             sttError={sttError}
-            // 녹음 모드를 위한 추가 프로퍼티
             isRecordingEnabled={isRecordingEnabled}
             onManualNextVerse={handleManualNextVerse}
             recordingCount={recordingCount}
             isAudioUploading={isAudioUploading}
             audioUploadProgress={audioUploadProgress}
-            onUploadRecordings={() => {
-              if (currentUser?.id) {
-                uploadAllRecordings(currentUser.id, selectedGroupId);
-              }
-            }}
+            onUploadRecordings={() => { if (currentUser?.id) uploadAllRecordings(currentUser.id, selectedGroupId); }}
           />
         )}
+      </main>
 
-        {/* Unified Global Footer */}
-        {readingState === ReadingState.IDLE && (
-          <footer className="mt-16 pb-12 px-4 border-t border-gray-100 pt-12 text-center">
-            <div className="max-w-md md:max-w-2xl lg:max-w-full mx-auto space-y-10">
-              {/* Support Section */}
-              {currentUser && (
-                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl border border-indigo-50 shadow-sm overflow-hidden transition-all duration-300">
-                  <button
-                    onClick={() => setFooterSupportExpanded(!footerSupportExpanded)}
-                    className="w-full p-6 flex items-center justify-between group"
-                  >
-                    <h4 className="text-indigo-900 font-black flex items-center gap-2">
-                      <span className="text-xl">❤️</span> 바이블로그를 응원해 주세요
-                    </h4>
-                    <span className={`text-indigo-400 transition-transform duration-300 ${footerSupportExpanded ? 'rotate-180' : ''}`}>
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                    </span>
-                  </button>
+      {showHallOfFame && (
+        <HallOfFame
+          groupId={selectedGroupId}
+          groupName={userGroups.find(g => g.id === selectedGroupId)?.name}
+          onClose={() => setShowHallOfFame(false)}
+        />
+      )}
 
-                  {footerSupportExpanded && (
-                    <div className="px-6 pb-8 animate-fade-in-down">
-                      <p className="text-sm text-indigo-700 opacity-80 mb-6 leading-relaxed break-keep">
-                        성도님들의 따뜻한 후원은 더 나은 바이블로그 서비스 운영을 지속하는 큰 힘이 됩니다.
-                      </p>
+      {showMyPage && (
+        <MyPage
+          isOpen={showMyPage}
+          onClose={() => setShowMyPage(false)}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onPasswordChange={() => setShowPasswordChangePrompt(true)}
+        />
+      )}
 
-                      <div className="flex flex-col items-center gap-6 mb-6">
-                        {/* QR Code Section */}
-                        <div className="bg-white p-6 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center shadow-sm w-full max-w-[240px]">
-                          <img src="/assets/kakao-qr.png" alt="카카오페이 QR" className="w-40 h-40 object-contain mb-3" />
-                          <span className="text-[10px] font-bold text-gray-400">카카오페이 스캔 송금</span>
-                        </div>
+      {showPasswordChangePrompt && (
+        <PasswordChangeModal
+          isOpen={showPasswordChangePrompt}
+          onClose={() => setShowPasswordChangePrompt(false)}
+          currentUser={currentUser}
+          onSuccess={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            setShowPasswordChangePrompt(false);
+            alert('비밀번호가 변경되었습니다.');
+          }}
+        />
+      )}
 
-                        {/* Direct Pay Link Button */}
-                        <a
-                          href="https://qr.kakaopay.com/FPSSoizJo"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full max-w-[240px] py-4 bg-[#FFEB00] text-[#3C1E1E] rounded-2xl text-sm font-black flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-md shadow-yellow-100"
-                        >
-                          <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_small.png" alt="" className="w-5 h-5" />
-                          카카오페이로 지금 송금
-                        </a>
-                      </div>
-
-                      <p className="text-[10px] text-indigo-300 italic text-center">
-                        *후원금은 서비스 고도화와 서버 운영비로 사용됩니다.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Church Custom Solution Promotion */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-50 text-left overflow-hidden transition-all duration-300">
-                <button
-                  onClick={() => setFooterChurchExpanded(!footerChurchExpanded)}
-                  className="w-full p-6 flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">⛪</span>
-                    <div>
-                      <h4 className="text-lg font-black text-gray-900 leading-tight">
-                        우리 교회만을 위한 <br className="md:hidden" />
-                        <span className="text-indigo-600 font-black">특별한 통독 서비스</span>
-                      </h4>
-                      <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Church Custom Solutions</p>
-                    </div>
-                  </div>
-                  <span className={`text-gray-300 transition-transform duration-300 ${footerChurchExpanded ? 'rotate-180' : ''}`}>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                  </span>
-                </button>
-
-                {footerChurchExpanded && (
-                  <div className="px-6 pb-8 space-y-6 animate-fade-in-down">
-                    <div className="h-px bg-gray-50 w-full mb-6"></div>
-                    <ul className="space-y-4">
-                      <li className="flex gap-3">
-                        <span className="text-indigo-500 font-bold">01</span>
-                        <div>
-                          <strong className="text-sm text-gray-800 block mb-1">교회용 관리자 대시보드</strong>
-                          <p className="text-xs text-gray-500 leading-relaxed">전 성도의 통독 현황을 통계로 한눈에 관리하고 엑셀로 다운로드하여 심방 및 양육 자료로 활용하세요.</p>
-                        </div>
-                      </li>
-                      <li className="flex gap-3">
-                        <span className="text-indigo-500 font-bold">02</span>
-                        <div>
-                          <strong className="text-sm text-gray-800 block mb-1">특별 통독 캠페인 패키지</strong>
-                          <p className="text-xs text-gray-500 leading-relaxed">사순절, 연말연시 등 주제별 캠페인을 개설하고 달성도에 따른 자동 수료증 발급 솔루션을 제공합니다.</p>
-                        </div>
-                      </li>
-                      <li className="flex gap-3">
-                        <span className="text-indigo-500 font-bold">03</span>
-                        <div>
-                          <strong className="text-sm text-gray-800 block mb-1">교회 전용 브랜딩 및 커스텀</strong>
-                          <p className="text-xs text-gray-500 leading-relaxed">교회 로고 적용은 물론, 주간 광고와 말씀 요약을 노출하는 전용 커뮤니티 페이지를 구성해 드립니다.</p>
-                        </div>
-                      </li>
-                    </ul>
-
-                    <a
-                      href="mailto:luxual8@gmail.com"
-                      className="w-full flex items-center justify-center py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 group"
-                    >
-                      문의하기 <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {/* Legal & Credits Section */}
-              <div className="space-y-6">
-                {/* Bible Translation Info */}
-                <div className="text-center px-4">
-                  <p className="text-[10px] text-gray-400 leading-relaxed break-keep">
-                    본 서비스는 저작권 정책에 따라 <span className="font-bold text-gray-500">개역한글</span> 번역본을<br />
-                    사용하고 있습니다.
-                    개역개정은 고액의 라이선스 비용이 발생하여 <br />
-                    부득이하게 개역한글로 제공되는 점 양해 부탁드립니다.
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex flex-col items-center gap-4">
-                  <button
-                    onClick={() => setShowMyPage(true)}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 text-gray-500 rounded-full text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
-                  >
-                    <span>👤</span> 마이페이지 (관리)
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  <span>개인정보 처리방침</span>
-                  <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                  <span>이용약관</span>
-                </div>
-
-                <div className="text-[11px] text-gray-400 leading-relaxed space-y-2 font-medium break-keep">
-                  <p>바이블로그는 아이디와 비밀번호 외의 개인정보를 수집하지 않습니다.</p>
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                    <span>포도나무교회</span>
-                    <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                    <span>Dev: 이종림</span>
-                    <span className="w-1 h-1 bg-gray-200 rounded-full"></span>
-                    <a href="mailto:luxual8@gmail.com" className="text-indigo-400 underline decoration-indigo-200 hover:text-indigo-600">문의 및 개선</a>
-                  </div>
-
-                  {/* Patent Pending Info */}
-                  <div className="mt-4 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 inline-block">
-                    <p className="text-[10px] text-indigo-600 font-bold mb-1">특허 출원 중 (제 10-2026-0002574 호)</p>
-                    <p className="text-[9px] text-gray-400 font-medium">실시간 음성 인식 기반의 텍스트 매칭을 이용한 낭독 진도 관리 시스템 및 그 방법</p>
-                  </div>
-
-                  <p className="opacity-70 mt-4">Copyright © 2026 <span className="font-extrabold text-gray-500">bibleLog.kr</span>. All rights reserved.</p>
-                  <p className="italic text-gray-300 text-[10px] mt-2">"음성 인식 정확도를 위해 조용한 환경을 권장합니다"</p>
-                </div>
-              </div>
-            </div>
-          </footer>
-        )}
-        {/* My Page Modal */}
-        {currentUser && (
-          <MyPage
-            isOpen={showMyPage}
-            onClose={() => setShowMyPage(false)}
-            currentUser={currentUser}
-            onLogout={handleLogout}
-            onPasswordChange={() => {
-              setShowPasswordChangePrompt(true);
-            }}
-          />
-        )}
-
-        {/* Password Change Modal */}
-        {currentUser && (
-          <PasswordChangeModal
-            isOpen={showPasswordChangePrompt}
-            onClose={() => {
-              setShowPasswordChangePrompt(false);
-              setPasswordChangeError('');
-              setPasswordChangeSuccess('');
-              setNewPassword('');
-              setConfirmNewPassword('');
-            }}
-            currentUser={currentUser}
-            onSuccess={(updatedUser) => {
-              setCurrentUser(updatedUser);
-              setShowPasswordChangePrompt(false);
-              alert('비밀번호가 안전하게 변경되었습니다.');
-            }}
-          />
-        )}
-      </div>
-
-      {/* 디버그 로그 오버레이 (ID 100 사용자 전용) */}
       {currentUser?.id === 100 && debugLogs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 text-[10px] p-2 max-h-48 overflow-y-auto z-[9999] font-mono border-t border-green-900/30">
-          <div className="flex justify-between items-center mb-1 pb-1 border-b border-green-900/20">
-            <span className="text-yellow-400 font-bold">🔧 MIC DEBUG PANEL</span>
-            <button onClick={() => setDebugLogs([])} className="text-red-400 px-2 active:bg-red-900/20 rounded">CLEAR</button>
+        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 text-[10px] p-2 max-h-48 overflow-y-auto z-[9999] font-mono">
+          <div className="flex justify-between border-b border-green-900 mb-1">
+            <span>MIC DEBUG</span>
+            <button onClick={() => setDebugLogs([])}>CLEAR</button>
           </div>
-          {debugLogs.map((log, i) => (
-            <div key={i} className="py-0.5 border-b border-white/5 last:border-0">{log}</div>
-          ))}
+          {debugLogs.map((log, i) => <div key={i}>{log}</div>)}
         </div>
       )}
-    </>
+
+      <footer className="bg-white border-t border-gray-100 py-6 text-center text-xs text-gray-400">
+        <p>&copy; 2026 BibleLog. All rights reserved.</p>
+      </footer>
+
+      {/* EMERGENCY MASTER STATUS BAR - ALWAYS VISIBLE */}
+      <div className="fixed bottom-0 left-0 right-0 z-[1000000] bg-yellow-400 text-black text-[10px] font-black p-1 flex justify-around items-center border-t-2 border-black">
+        <span>SYSTEM: {currentUser ? 'LOGGED_IN' : 'GUEST'}</span>
+        <span>USER: {currentUser?.username || '-'} (ID:{currentUser?.id || '-'})</span>
+        <span className={isRecordingEnabled ? 'bg-red-600 text-white px-2 rounded-full animate-pulse' : 'text-gray-500'}>
+          {isRecordingEnabled ? '[REC_MODE: ACTIVE]' : '[REC_MODE: INACTIVE]'}
+        </span>
+        <span className="opacity-50 text-[8px]">v-emergency-0211</span>
+      </div>
+    </div>
   );
 };
 

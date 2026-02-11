@@ -61,4 +61,21 @@ export const progressService = {
       return 0;
     }
   },
+
+  async resetBibleProgress(username: string): Promise<boolean> {
+    try {
+      const response = await fetch('/api/bible-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: username }), // 실제 API 스펙에 맞춰 userId 또는 username 전달
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Failed to reset bible progress:', error);
+      return false;
+    }
+  },
 };

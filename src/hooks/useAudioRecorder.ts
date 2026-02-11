@@ -34,6 +34,17 @@ interface UseAudioRecorderReturn {
 const useAudioRecorder = (): UseAudioRecorderReturn => {
     const [isRecording, setIsRecording] = useState(false);
     const [recordings, setRecordings] = useState<AudioRecording[]>([]);
+    const recordingsRef = useRef<AudioRecording[]>([]);
+
+    // State와 Ref 동기화
+    const updateRecordings = useCallback((newRecs: AudioRecording[] | ((prev: AudioRecording[]) => AudioRecording[])) => {
+        setRecordings(prev => {
+            const next = typeof newRecs === 'function' ? newRecs(prev) : newRecs;
+            recordingsRef.current = next;
+            return next;
+        });
+    }, []);
+
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
@@ -126,7 +137,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     endVerse,
                     durationSeconds: finalDuration,
                 };
-                setRecordings(prev => [...prev, newRec]);
+                updateRecordings(prev => [...prev, newRec]);
 
                 // 2. 만약 즉시 처리가 필요하다면 콜백 실행
                 if (onFinished) {
@@ -142,19 +153,25 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
     }, []);
 
     const uploadAllRecordings = useCallback(async (userId: number, groupId: number | null): Promise<boolean> => {
-        if (recordings.length === 0) return true;
+        const currentRecordings = recordingsRef.current;
+        if (currentRecordings.length === 0) return true;
 
         setIsUploading(true);
-        setUploadProgress({ current: 0, total: recordings.length });
-
         try {
             let successCount = 0;
-            for (let i = 0; i < recordings.length; i++) {
-                const rec = recordings[i];
-                console.log(`[useAudioRecorder] Uploading recording ${i + 1}/${recordings.length}: ${rec.bookName} ${rec.chapter}:${rec.startVerse}`);
-                setUploadProgress({ current: i + 1, total: recordings.length });
+            const totalToUpload = currentRecordings.length;
 
-                // 1단계: Presigned URL 요청
+            if (totalToUpload === 0) {
+                console.log('[useAudioRecorder] No recordings to upload.');
+                setIsUploading(false);
+                return true;
+            }
+
+            for (let i = 0; i < totalToUpload; i++) {
+                const rec = currentRecordings[i];
+                console.log(`[useAudioRecorder] Uploading recording ${i + 1}/${totalToUpload}: ${rec.bookName} ${rec.chapter}:${rec.startVerse}`);
+                setUploadProgress({ current: i + 1, total: totalToUpload });
+
                 try {
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
                         method: 'POST',
@@ -170,7 +187,6 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     if (!presignRes.ok) throw new Error('Presigned URL request failed');
                     const { uploadUrl, fileKey } = await presignRes.json();
 
-                    // 2단계: R2에 직접 업로드
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
@@ -180,7 +196,6 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     if (!uploadRes.ok) throw new Error('R2 upload failed');
                     console.log(`[useAudioRecorder] Success: File uploaded to R2 with key: ${fileKey}`);
 
-                    // 3단계: 메타데이터 DB 저장
                     const recordRes = await fetch(`${API_BASE_URL}/audio/record`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -202,16 +217,16 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 }
             }
 
-            // 업로드 완료 후 로컬 데이터 정리 및 알림
-            setRecordings([]);
+            updateRecordings([]);
             if (successCount > 0) {
-                alert(`🎉 [성공] ${successCount}개의 오디오 파일이 Cloudflare R2에 안전하게 전송되었습니다.`);
-            } else if (recordings.length > 0) {
-                alert(`⚠️ [주의] 오디오 업로드에 실패했습니다. 네트워크 상태를 확인해 주세요.`);
+                console.log(`[useAudioRecorder] Upload success: ${successCount} files.`);
+                return true;
+            } else {
+                console.warn(`[useAudioRecorder] Upload failed: 0 files succeeded.`);
+                return false;
             }
-            return true;
         } catch (err) {
-            console.error('[useAudioRecorder] Upload error:', err);
+            console.error('[useAudioRecorder] Upload process error:', err);
             return false;
         } finally {
             setIsUploading(false);
@@ -227,9 +242,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
     }, []);
 
     const clearRecordings = useCallback(() => {
-        setRecordings([]);
+        updateRecordings([]);
         closeStream();
-    }, [closeStream]);
+    }, [closeStream, updateRecordings]);
 
     return {
         isRecording,

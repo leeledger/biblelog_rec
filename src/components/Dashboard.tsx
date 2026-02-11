@@ -36,6 +36,12 @@ interface DashboardProps {
   selectedGroupId: number | null;
   onSelectGroup: (groupId: number | null) => void;
   onGroupAction: () => Promise<void>;
+
+  // Recording & Upload Props
+  recordingCount?: number;
+  isAudioUploading?: boolean;
+  audioUploadProgress?: { current: number; total: number } | null;
+  onUploadRecordings?: () => void;
 }
 
 
@@ -60,13 +66,25 @@ const Dashboard: React.FC<DashboardProps> = ({
   userGroups,
   selectedGroupId,
   onSelectGroup,
-  onGroupAction
+  onGroupAction,
+  recordingCount = 0,
+  isAudioUploading = false,
+  audioUploadProgress = null,
+  onUploadRecordings
 }) => {
   const [showGroupModal, setShowGroupModal] = React.useState(false);
   const activeGroup = userGroups.find(g => g.id === selectedGroupId);
 
   return (
     <>
+      {/* 관리자용 디버그 배너 */}
+      {(currentUser.id === 1 || currentUser.id === 100) && (
+        <div className="mb-4 p-2 bg-black text-green-400 text-[10px] font-mono rounded-lg border border-green-900 flex justify-between items-center">
+          <span>[DEBUG] ID: {currentUser.id} | REC_MODE: {recordingCount >= 0 ? 'ACTIVE' : 'INACTIVE'} | COUNT: {recordingCount}</span>
+          <span className="animate-pulse">● SYSTEM LIVE</span>
+        </div>
+      )}
+
       {/* 말씀의 열매 맺기 진행률 - 새로운 테마 적용 */}
       {currentUser && totalBibleChapters > 0 && (
         <div className="my-3 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-100 rounded-[1.5rem] shadow-lg shadow-emerald-100/30 relative overflow-hidden group">
@@ -102,6 +120,48 @@ const Dashboard: React.FC<DashboardProps> = ({
               전체 1,189장 중 <span className="text-emerald-900 underline decoration-amber-400 decoration-2 underline-offset-4">{overallCompletedChaptersCount}장</span> 결실
             </p>
           </div>
+        </div>
+      )}
+
+      {/* 미업로드 녹음 파일 안내 (녹음 모드 사용자용) */}
+      {recordingCount > 0 && (
+        <div className="my-4 p-5 bg-indigo-50 border-2 border-indigo-200 rounded-[2rem] shadow-xl animate-in slide-in-from-top duration-500 overflow-hidden relative group">
+          <div className="absolute -right-4 -top-4 text-6xl opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">🎙️</div>
+
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-indigo-100">
+              {isAudioUploading ? '📤' : '🎙️'}
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-indigo-900 tracking-tight">미업로드 말씀 녹음</h3>
+              <p className="text-xs text-indigo-500 font-bold">현재 {recordingCount}개의 녹음 파일이 업로드 대기 중입니다.</p>
+            </div>
+          </div>
+
+          <button
+            disabled={isAudioUploading}
+            onClick={onUploadRecordings}
+            className={`w-full py-4 rounded-2xl text-lg font-black shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${isAudioUploading
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+              }`}
+          >
+            {isAudioUploading ? (
+              <>
+                <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                업로드 중... ({audioUploadProgress?.current} / {audioUploadProgress?.total})
+              </>
+            ) : (
+              <>
+                <span>🚀</span>
+                지금 클라우드에 업로드하기
+              </>
+            )}
+          </button>
+
+          <p className="mt-3 text-[10px] text-center text-indigo-400 font-medium">
+            * 앱을 새로고침하거나 로그아웃하면 녹음 파일이 사라집니다. 지금 바로 업로드하세요!
+          </p>
         </div>
       )}
 

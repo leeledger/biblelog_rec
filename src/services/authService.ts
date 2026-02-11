@@ -101,14 +101,19 @@ export const changePassword = async (userId: number, newPassword_provided: strin
     }
 
     console.log('Password change successful:', responseData.message);
+    const currentUser = getCurrentUser();
+
     // The backend might return the updated user object, including must_change_password: false
     const updatedUser: User = {
       id: responseData.user.id,
       username: responseData.user.username,
       must_change_password: responseData.user.must_change_password,
+      recording_enabled: responseData.user.recording_enabled !== undefined
+        ? responseData.user.recording_enabled
+        : (currentUser?.recording_enabled || false)
     };
-    // Update sessionStorage if the user object is returned and matches current user
-    const currentUser = getCurrentUser();
+
+    // Update localStorage if the user object is returned and matches current user
     if (currentUser && currentUser.id === updatedUser.id) {
       localStorage.setItem(USER_SESSION_KEY, JSON.stringify(updatedUser));
     }

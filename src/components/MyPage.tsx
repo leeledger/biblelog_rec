@@ -56,8 +56,15 @@ const MyPage: React.FC<MyPageProps> = ({ isOpen, onClose, currentUser, onLogout,
                             👤
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black tracking-tight">마이페이지</h2>
-                            <p className="text-indigo-100 opacity-80 font-medium">{currentUser.username} 성도님</p>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-2xl font-black tracking-tight">{currentUser.username} 성도님</h2>
+                                {currentUser.recording_enabled && (
+                                    <span className="px-2 py-0.5 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-sm border border-white/20">REC MODE</span>
+                                )}
+                            </div>
+                            <p className="text-indigo-100 opacity-80 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                                {currentUser.recording_enabled ? '🎙️ 고품질 녹음 및 업로드 기능 활성화됨' : '📖 표준 통독 모드 사용 중'}
+                            </p>
                         </div>
                     </div>
                 </div>

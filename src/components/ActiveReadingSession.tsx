@@ -287,6 +287,11 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                     <span className="text-sm font-bold text-indigo-900">고품질 녹음 중...</span>
                   </div>
                   <p className="text-xs text-indigo-400">말씀을 다 읽으셨다면 아래 버튼을 눌러주세요</p>
+                  {recordingCount !== undefined && recordingCount > 0 && (
+                    <div className="mt-2 px-3 py-1 bg-white rounded-full border border-indigo-100 shadow-sm">
+                      <p className="text-[10px] font-black text-indigo-600">현재 {recordingCount}개 구절 녹음됨</p>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -327,15 +332,52 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
         )}
 
         {readingState === ReadingState.SAVING && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center max-w-xs w-full mx-4 transform animate-in zoom-in-95 duration-300">
-              <div className="mb-4 flex justify-center">
-                <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-fade-in duration-300">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center max-w-sm w-full mx-4 transform animate-in zoom-in-95 duration-300">
+              <div className="mb-6 flex justify-center">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                  {isAudioUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xl animate-bounce">📤</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <h2 className="text-xl font-black text-gray-800 mb-2">진도 저장 중</h2>
-              <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                오늘의 통독 여정을 안전하게<br />기록하고 있습니다. 잠시만 기다려주세요.
-              </p>
+
+              <h2 className="text-2xl font-black text-gray-900 mb-2">
+                {isAudioUploading ? '오디오 업로드 중' : '진도 저장 중'}
+              </h2>
+
+              <div className="space-y-4">
+                {isRecordingEnabled && (
+                  <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                    <p className="text-xs font-bold text-indigo-900 mb-2 uppercase tracking-widest opacity-60">Recording Status</p>
+                    {isAudioUploading && audioUploadProgress ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm font-black text-indigo-600">
+                          <span>업로드 중...</span>
+                          <span>{audioUploadProgress.current} / {audioUploadProgress.total}</span>
+                        </div>
+                        <div className="w-full bg-indigo-200 h-2 rounded-full overflow-hidden shadow-inner">
+                          <div
+                            className="bg-indigo-600 h-full transition-all duration-500 shadow-lg"
+                            style={{ width: `${(audioUploadProgress.current / audioUploadProgress.total) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-bold text-indigo-700">
+                        {recordingCount ?? 0}개의 구절 녹음 완료
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                  오늘의 통독 여정을 안전하게<br />기록하고 있습니다. 잠시만 기다려주세요.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -366,15 +408,73 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
         )}
 
         {readingState === ReadingState.SESSION_COMPLETED && (
-          <div className="fixed top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 text-center p-6 bg-green-100 border-2 border-green-600 rounded-lg shadow-xl max-w-md w-11/12">
-            <h2 className="text-2xl font-bold text-green-700 mb-3">이번 세션 읽기 완료!</h2>
-            <p className="text-lg text-gray-700 mb-4 whitespace-pre-wrap">{sessionCertificationMessage}</p>
-            <button
-              onClick={onSessionCompleteConfirm}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg shadow transition duration-150 ease-in-out"
-            >
-              다른 범위 읽기 또는 메뉴 보기
-            </button>
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center space-y-8 animate-fade-in-up border-8 border-indigo-50">
+              <div className="relative inline-block">
+                <div className="text-7xl animate-bounce-subtle">👑</div>
+                <div className="absolute -top-2 -right-2 text-2xl animate-pulse">✨</div>
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">원정 성공!</h2>
+                <p className="text-sm text-gray-500 font-bold leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
+                  "{sessionCertificationMessage || "오늘의 말씀 원정을 훌륭하게 마치셨습니다."}"
+                </p>
+              </div>
+
+              {/* 녹음 파일 업로드 결과/상태 표시 - 더 강조된 UI */}
+              {isRecordingEnabled && (
+                <div className="p-6 bg-gradient-to-br from-indigo-50 to-white rounded-[2rem] border-2 border-indigo-100 shadow-inner relative overflow-hidden group">
+                  <div className="absolute -right-2 -bottom-2 text-4xl opacity-5 group-hover:rotate-12 transition-transform duration-700">🎙️</div>
+
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-indigo-100">
+                      Recording Archive
+                    </div>
+
+                    {isAudioUploading ? (
+                      <div className="w-full space-y-3">
+                        <div className="flex justify-between items-end">
+                          <span className="text-xs font-black text-indigo-900 animate-pulse">클라우드 전송 중...</span>
+                          <span className="text-xl font-black text-indigo-600">{(audioUploadProgress?.current ?? 0)}<span className="text-xs text-indigo-300"> / {(audioUploadProgress?.total ?? 0)}</span></span>
+                        </div>
+                        <div className="h-3 w-full bg-indigo-100 rounded-full overflow-hidden shadow-inner p-0.5">
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-full transition-all duration-700 shadow-md"
+                            style={{ width: `${audioUploadProgress ? (audioUploadProgress.current / audioUploadProgress.total) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`p-4 rounded-2xl flex items-center gap-3 ${(recordingCount ?? 0) === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          <span className="text-2xl">{(recordingCount ?? 0) === 0 ? '✔️' : '⚠️'}</span>
+                          <span className="text-sm font-black">
+                            {(recordingCount ?? 0) === 0 ? "모든 말씀 녹음파일 업로드 완료" : `미업로드 녹음파일 ${recordingCount}개 대기 중`}
+                          </span>
+                        </div>
+
+                        {(recordingCount ?? 0) > 0 && (
+                          <button
+                            onClick={onUploadRecordings}
+                            className="mt-2 w-full py-3 bg-indigo-600 text-white text-sm font-black rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 active:scale-95"
+                          >
+                            🚀 지금 즉시 업로드 {recordingCount}개
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={onSessionCompleteConfirm}
+                className="w-full py-5 bg-gray-900 text-white text-lg font-black rounded-[1.5rem] shadow-xl hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-3 border-b-4 border-gray-700"
+              >
+                <span>👣</span> 여정 계속하기 (메뉴로)
+              </button>
+            </div>
           </div>
         )}
       </>
