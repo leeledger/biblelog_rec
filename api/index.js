@@ -639,15 +639,23 @@ app.post('/api/audio/presign', async (req, res) => {
         const { userId, bookName, chapter, verse } = req.body;
         const timestamp = Date.now();
         const fileKey = `recordings/${userId}/${bookName}_${chapter}_${verse}_${timestamp}.webm`;
+        const bucketName = process.env.R2_BUCKET_NAME;
+
+        console.log(`[AUDIO/PRESIGN] Request for user:${userId}, bucket:${bucketName}, key:${fileKey}`);
+
+        if (!bucketName) {
+            console.error('[AUDIO/PRESIGN] Critical error: R2_BUCKET_NAME is not defined!');
+            return res.status(500).json({ message: 'Storage configuration missing (Bucket)' });
+        }
 
         const command = new PutObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME,
+            Bucket: bucketName,
             Key: fileKey,
             ContentType: 'audio/webm',
         });
 
-        // 1 hour expiration
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        console.log(`[AUDIO/PRESIGN] Success: Presigned URL generated.`);
 
         res.json({ uploadUrl, fileKey });
     } catch (error) {
@@ -660,6 +668,7 @@ app.post('/api/audio/presign', async (req, res) => {
 app.post('/api/audio/record', async (req, res) => {
     try {
         const { userId, groupId, fileKey, bookName, chapter, verse, durationSeconds, fileSizeBytes } = req.body;
+        console.log(`[AUDIO/RECORD] Finalizing recording for user:${userId}, key:${fileKey}`);
 
         await db.query(
             `INSERT INTO audio_recordings (user_id, group_id, file_key, book_name, chapter_number, verse_number, duration_seconds, file_size_bytes) 
@@ -667,6 +676,7 @@ app.post('/api/audio/record', async (req, res) => {
             [userId, groupId, fileKey, bookName, chapter, verse, durationSeconds, fileSizeBytes]
         );
 
+        console.log(`[AUDIO/RECORD] Success: Metadata saved to DB.`);
         res.json({ success: true });
     } catch (error) {
         console.error('[POST /api/audio/record] Error:', error);

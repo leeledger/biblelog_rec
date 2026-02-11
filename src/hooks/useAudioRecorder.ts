@@ -167,12 +167,14 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 return true;
             }
 
+            const failedIndices: number[] = [];
             for (let i = 0; i < totalToUpload; i++) {
                 const rec = currentRecordings[i];
                 console.log(`[useAudioRecorder] Uploading recording ${i + 1}/${totalToUpload}: ${rec.bookName} ${rec.chapter}:${rec.startVerse}`);
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
+                    // 1. Presigned URL 받기
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -184,18 +186,25 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                         }),
                     });
 
-                    if (!presignRes.ok) throw new Error('Presigned URL request failed');
+                    if (!presignRes.ok) {
+                        const errData = await presignRes.json().catch(() => ({}));
+                        throw new Error(`Presigned URL request failed (${presignRes.status}): ${JSON.stringify(errData)}`);
+                    }
                     const { uploadUrl, fileKey } = await presignRes.json();
 
+                    // 2. R2에 실제 파일 업로드 (PUT)
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
                         headers: { 'Content-Type': 'audio/webm' },
                     });
 
-                    if (!uploadRes.ok) throw new Error('R2 upload failed');
-                    console.log(`[useAudioRecorder] Success: File uploaded to R2 with key: ${fileKey}`);
+                    if (!uploadRes.ok) {
+                        throw new Error(`R2 storage upload failed with status ${uploadRes.status}`);
+                    }
+                    console.log(`[useAudioRecorder] Step 2 Success: File uploaded to R2. Key: ${fileKey}`);
 
+                    // 3. DB에 메타데이터 기록
                     const recordRes = await fetch(`${API_BASE_URL}/audio/record`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -211,28 +220,42 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                         }),
                     });
 
-                    if (recordRes.ok) successCount++;
+                    if (!recordRes.ok) {
+                        const errData = await recordRes.json().catch(() => ({}));
+                        throw new Error(`DB record failed (${recordRes.status}): ${JSON.stringify(errData)}`);
+                    }
+
+                    successCount++;
+                    console.log(`[useAudioRecorder] Step 3 Success: Metadata recorded in DB.`);
                 } catch (singleErr) {
                     console.error(`[useAudioRecorder] Failed to upload segment ${i}:`, singleErr);
+                    failedIndices.push(i);
                 }
             }
 
-            updateRecordings([]);
-            if (successCount > 0) {
-                console.log(`[useAudioRecorder] Upload success: ${successCount} files.`);
+            // 오직 성공한 것만 제거하거나, 혹은 전체 성공 시에만 비움
+            if (successCount === totalToUpload) {
+                updateRecordings([]);
+                console.log(`[useAudioRecorder] All ${successCount} files uploaded successfully.`);
+                return true;
+            } else if (successCount > 0) {
+                // 일부 성공한 경우 실패한 것들만 남김
+                const remaining = currentRecordings.filter((_, idx) => failedIndices.includes(idx));
+                updateRecordings(remaining);
+                console.warn(`[useAudioRecorder] Partial success: ${successCount}/${totalToUpload} uploaded.`);
                 return true;
             } else {
-                console.warn(`[useAudioRecorder] Upload failed: 0 files succeeded.`);
+                console.error(`[useAudioRecorder] Critical failure: 0/${totalToUpload} files uploaded.`);
                 return false;
             }
         } catch (err) {
-            console.error('[useAudioRecorder] Upload process error:', err);
+            console.error('[useAudioRecorder] Global upload process error:', err);
             return false;
         } finally {
             setIsUploading(false);
             setUploadProgress(null);
         }
-    }, [recordings]);
+    }, [updateRecordings]);
 
     const closeStream = useCallback(() => {
         if (streamRef.current) {

@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.714.0",
+    "@aws-sdk/s3-request-presigner": "^3.714.0",
     "@google/genai": "^1.4.0",
     "@vercel/analytics": "^1.6.1",
     "bcrypt": "^6.0.0",
