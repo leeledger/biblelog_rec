@@ -253,19 +253,22 @@ const App: React.FC = () => {
     }
   }, [sttTranscript, readingState, isRecordingEnabled, isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
 
-  // [근본 설계 2] 동기화: 녹음 가동 후 STT 안정화 및 재부착
+  // [근본 설계 2] 동기화: 녹음 가동 시 STT 세션 강제 리프레시
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isRecording && readingState === ReadingState.LISTENING) {
-      // 녹음 가동 시 STT가 순간적으로 죽는 것은 불가피함.
-      // 따라서 1.5초 뒤에 "녹음이 열어놓은 마이크 채널"에 STT를 다시 붙임.
+      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [리프레시] 녹음 가동 확인 → STT 세션 재연결');
+
+      // STT 세션을 아예 죽였다가 다시 살려야 마이크를 새로 잡을 수 있음
+      abortListening();
+
       timer = setTimeout(() => {
-        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [재동기화] STT 엔진 마이크 채널 재부착');
+        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [리프레시] STT 가동');
         startListening();
-      }, 1500);
+      }, 1000);
     }
     return () => clearTimeout(timer);
-  }, [isRecording, readingState, startListening, currentUser?.id, addDebugLog]);
+  }, [isRecording, readingState, abortListening, startListening, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
@@ -944,11 +947,11 @@ const App: React.FC = () => {
           await prepareMic();
         }
 
-        // 2단계: 하드웨어가 안정화된 후 음성 인식 엔진 가동 (약 1초 뒤)
+        // 2단계: 하드웨어가 안정화된 후 음성 인식 엔진 가동 (약 1.2초 뒤)
         setTimeout(() => {
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [준비] 음성 인식 가동 (공유 모드)');
-          resetTranscript();
-        }, 1000);
+          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [가동] 음성 인식 시작');
+          startListening(); // resetTranscript가 아니라 startListening을 호출해야 엔진이 켜집니다!
+        }, 1200);
       };
 
       initMicAndStt();
