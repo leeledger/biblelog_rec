@@ -83,18 +83,31 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
             chunksRef.current = [];
             startTimeRef.current = Date.now();
 
-            // WebM이 가장 널리 지원되는 포맷
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-                ? 'audio/webm;codecs=opus'
-                : 'audio/webm';
+            // 기기별 지원 포맷 확인 (WebM 우선, 아이폰은 mp4/aac 등)
+            const supportedTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/mp4',
+                'audio/aac',
+                'audio/ogg;codecs=opus'
+            ];
+            let mimeType = '';
+            for (const type of supportedTypes) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    mimeType = type;
+                    break;
+                }
+            }
+
+            console.log(`[useAudioRecorder] Selected MIME type: ${mimeType}`);
 
             const mediaRecorder = new MediaRecorder(streamRef.current, {
                 mimeType,
-                audioBitsPerSecond: 32000, // 32kbps로 파일 크기 최소화
+                audioBitsPerSecond: 64000, // 음질 향상을 위해 64kbps로 상향
             });
 
             mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
+                if (event.data && event.data.size > 0) {
                     chunksRef.current.push(event.data);
                 }
             };
@@ -183,7 +196,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
-                    // 1. Presigned URL 받기
+                    // 1. Presigned URL 받기 (파일 타입 포맷 전달)
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -192,6 +205,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                             bookName: rec.bookName,
                             chapter: rec.chapter,
                             verse: rec.startVerse,
+                            contentType: rec.blob.type, // 실제 Blob 타입 전달
                         }),
                     });
 
@@ -205,7 +219,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
-                        headers: { 'Content-Type': 'audio/webm' },
+                        headers: { 'Content-Type': rec.blob.type },
                     });
 
                     if (!uploadRes.ok) {

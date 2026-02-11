@@ -636,12 +636,22 @@ app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
 // 1. Get presigned URL for upload
 app.post('/api/audio/presign', async (req, res) => {
     try {
-        const { userId, bookName, chapter, verse } = req.body;
+        const { userId, bookName, chapter, verse, contentType } = req.body;
         const timestamp = Date.now();
-        const fileKey = `recordings/${userId}/${bookName}_${chapter}_${verse}_${timestamp}.webm`;
+
+        // 확장자 매핑
+        let ext = 'webm';
+        if (contentType) {
+            if (contentType.includes('mp4')) ext = 'mp4';
+            else if (contentType.includes('aac')) ext = 'aac';
+            else if (contentType.includes('ogg')) ext = 'ogg';
+            else if (contentType.includes('mpeg')) ext = 'mp3';
+        }
+
+        const fileKey = `recordings/${userId}/${bookName}_${chapter}_${verse}_${timestamp}.${ext}`;
         const bucketName = process.env.R2_BUCKET_NAME;
 
-        console.log(`[AUDIO/PRESIGN] Request for user:${userId}, bucket:${bucketName}, key:${fileKey}`);
+        console.log(`[AUDIO/PRESIGN] Request user:${userId}, bucket:${bucketName}, key:${fileKey}, type:${contentType}`);
 
         if (!bucketName) {
             console.error('[AUDIO/PRESIGN] Critical error: R2_BUCKET_NAME is not defined!');
@@ -651,7 +661,7 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: 'audio/webm',
+            ContentType: contentType || 'audio/webm',
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
