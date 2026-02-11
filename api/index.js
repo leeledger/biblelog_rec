@@ -15,7 +15,7 @@ const r2Client = new S3Client({
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
-    // forcePathStyle을 제거하여 표준 가상 호스트 방식으로 복귀
+    forcePathStyle: true, // 안드로이드/모바일 브라우저 보안 호환성을 위해 경로 스타일 주소 강제
 });
 
 const app = express();
@@ -675,8 +675,7 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            // 중요: ContentType을 서명에 포함하지 않습니다. (Zero-Header 전략)
-            // 이렇게 하면 브라우저가 자동으로 어떤 헤더를 붙이든 서명 불일치가 발생하지 않습니다.
+            ContentType: 'application/octet-stream', // 타입을 고정하여 서명과 일치시킴
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });

@@ -225,15 +225,16 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                         throw new Error(`Presign Fail (${presignRes.status}): ${JSON.stringify(errData)}`);
                     }
                     const { uploadUrl, fileKey } = await presignRes.json();
-                    const step2 = `[STEP 2] Uploading to R2... (URL: ${uploadUrl.substring(0, 100)}...)`;
+                    const step2 = `[STEP 2] Uploading to R2... (URL: ${uploadUrl.substring(0, 250)}...)`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step2);
 
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
                         mode: 'cors',
-                        // 헤더를 완전히 비웁니다. 브라우저가 자동으로 무엇을 붙이든 
-                        // 서버 서명에 타입이 포함되지 않았으므로 무방합니다.
+                        headers: {
+                            'Content-Type': 'application/octet-stream' // 서버 서명과 동일하게 명시
+                        }
                     });
 
                     if (!uploadRes.ok) {
