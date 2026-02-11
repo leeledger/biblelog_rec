@@ -20,6 +20,7 @@ interface UseAudioRecorderReturn {
     stopRecording: (bookName: string, chapter: number, startVerse: number, endVerse: number) => void;
     uploadAllRecordings: (userId: number, groupId: number | null) => Promise<boolean>;
     clearRecordings: () => void;
+    closeStream: () => void;
     recordingCount: number;
 }
 
@@ -191,14 +192,17 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         }
     }, [recordings]);
 
-    const clearRecordings = useCallback(() => {
-        setRecordings([]);
-        // 스트림 정리
+    const closeStream = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
         }
     }, []);
+
+    const clearRecordings = useCallback(() => {
+        setRecordings([]);
+        closeStream();
+    }, [closeStream]);
 
     return {
         isRecording,
@@ -209,6 +213,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
         stopRecording,
         uploadAllRecordings,
         clearRecordings,
+        closeStream,
         recordingCount: recordings.length,
     };
 };

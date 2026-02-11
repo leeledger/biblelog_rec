@@ -209,6 +209,7 @@ const App: React.FC = () => {
     stopRecording,
     uploadAllRecordings,
     clearRecordings,
+    closeStream,
     recordingCount,
   } = useAudioRecorder();
 
@@ -237,20 +238,23 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isListening, readingState, currentUser?.id, addDebugLog]);
 
-  // 마이크 충돌 방지: 음성 인식이 완전히 준비된 상태에서만 녹음이 없는 경우 녹음 시작 보조
+  // 마이크 충돌 방지: 사용자가 말을 시작해서 텍스트가 처음 나타날 때 녹음 시작 (트리거 방식)
   useEffect(() => {
-    if (readingState === ReadingState.LISTENING && isListening && isRecordingEnabled && !isRecording) {
-      const timer = setTimeout(() => {
-        if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 녹음 자동 시작 보조 실행');
-        startRecording();
-      }, 3000);
-      return () => clearTimeout(timer);
+    if (readingState === ReadingState.LISTENING &&
+      sttTranscript.length > 0 &&
+      isRecordingEnabled &&
+      !isRecording &&
+      recordingCount === 0) { // 이번 세션에서 아직 녹음 안했을 때만
+
+      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 감지됨 → 녹음 트리거 가동!');
+      startRecording();
     }
-  }, [readingState, isListening, isRecordingEnabled, isRecording, startRecording, currentUser?.id, addDebugLog]);
+  }, [readingState, sttTranscript, isRecordingEnabled, isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
     stopListening();
+    closeStream(); // 녹음기 마이크 세션도 함께 닫기
     setReadingState(ReadingState.IDLE);
     setSessionTargetVerses([]);
     setCurrentVerseIndexInSession(0);
@@ -262,7 +266,7 @@ const App: React.FC = () => {
     setTranscriptBuffer('');
     // 세션 복구 정보 삭제
     localStorage.removeItem('pendingReadingSession');
-  }, [stopListening]);
+  }, [stopListening, closeStream, setReadingState]);
 
   // 안드로이드 뒤로가기 버튼 인터셉트 로직
   useEffect(() => {
@@ -914,21 +918,12 @@ const App: React.FC = () => {
       setTranscriptBuffer('');
       setMatchedCharCount(0); // 세션 시작 시 리셋
 
-      // 핵심 수정: 녹음을 먼저 켜고, 그 다음에 인식을 켭니다 (충돌 방지 최후의 수단)
-      const startMicAndStt = async () => {
-        if (isRecordingEnabled) {
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [시작] 녹음 마이크 먼저 점유 시도...');
-          await startRecording();
-        }
+      // 녹음 기록 초기화 (이전 세션 데이터 삭제)
+      clearRecordings();
 
-        // 녹음 마이크가 열린 후 아주 잠깐의 틈을 주고 인식을 시작 (공유 유도)
-        setTimeout(() => {
-          if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ [시작] 음성 인식 엔진 가동');
-          resetTranscript();
-        }, 800);
-      };
-
-      startMicAndStt();
+      // 음성 인식만 먼저 시작 (순정 상태 유지)
+      if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 엔진 단독 가동 (녹음은 대기)');
+      resetTranscript();
 
       setSessionProgress({
         totalVersesInSession: verses.length,
@@ -954,6 +949,7 @@ const App: React.FC = () => {
       const lastVerse = sessionTargetVerses[sessionTargetVerses.length - 1];
       stopRecording(firstVerse.book, firstVerse.chapter, firstVerse.verse, lastVerse.verse);
     }
+    closeStream(); // 세션 종료 시 마이크 스트림을 수동으로 닫아 권한 반납 (중요)
 
     const currentSessionCompletedVersesCount = (typeof overrideSessionCompletedCount === 'number')
       ? overrideSessionCompletedCount
@@ -1254,6 +1250,7 @@ const App: React.FC = () => {
             isResume={isResumeSession}
             isListening={isListening}
             isMicWaiting={isMicWaiting}
+            sttError={sttError} // 에러 메시지 전달
             // 녹음 관련
             {...(isRecordingEnabled ? {
               recordingCount,
