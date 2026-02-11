@@ -977,34 +977,43 @@ const App: React.FC = () => {
     if (!currentTargetVerseForSession || readingState !== ReadingState.LISTENING) return;
 
     const currentVerse = currentTargetVerseForSession;
-    const isLastVerse = currentVerseIndexInSession >= sessionTargetVerses.length - 1;
 
-    // 1. 녹음 끊기 및 다음 준비
+    // 이 구절이 해당 장(Chapter)의 마지막 구절인지 확인
+    const bookInfo = AVAILABLE_BOOKS.find(b => b.name === currentVerse.book);
+    const isChapterEnd = bookInfo && currentVerse.verse === bookInfo.versesPerChapter[currentVerse.chapter - 1];
+
+    // 전체 세션의 마지막인지도 확인
+    const isSessionEnd = currentVerseIndexInSession >= sessionTargetVerses.length - 1;
+
+    // 1. 녹음 끊기
     if (isRecordingEnabled && isRecording) {
       stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
-      if (!isLastVerse) {
-        // 마지막이 아니면 바로 다음 녹음 시작 준비
-        setTimeout(() => startRecording(), 300);
-      }
     }
 
     setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (수동완료) ${currentVerse.text}\n`);
 
-    if (isLastVerse) {
-      // 진짜 마지막 구절일 때만 저장 화면으로 이동
+    // [사용자 요청] 장의 마지막 구절일 때만 저장 화면으로 이동
+    if (isChapterEnd || isSessionEnd) {
+      console.log('[App.tsx] Chapter/Session ended. Moving to crown screen.');
       const nextIdx = currentVerseIndexInSession + 1;
       setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
       await handleStopReadingAndSave(nextIdx, true);
     } else {
-      // 마지막이 아니면 그냥 다음 구절로 전환 (저장X, 대기창X)
+      // 장의 중간일 때는 조용히 다음 구절로만 전환 (저장X, 대기창X)
+      console.log('[App.tsx] Moving to next verse in same chapter.');
       const nextIdx = currentVerseIndexInSession + 1;
       setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
       setCurrentVerseIndexInSession(nextIdx);
       setMatchedCharCount(0);
       setTranscriptBuffer('');
       resetTranscript();
+
+      // 녹음 바로 다시 시작
+      if (isRecordingEnabled) {
+        setTimeout(() => startRecording(), 300);
+      }
     }
-  }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses.length, handleStopReadingAndSave, resetTranscript]);
+  }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave, resetTranscript, AVAILABLE_BOOKS]);
 
   const handleRetryVerse = useCallback(() => {
     setReadingState(ReadingState.LISTENING);
