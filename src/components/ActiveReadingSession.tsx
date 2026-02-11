@@ -277,19 +277,46 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
             </div>
           )}
 
+          {/* [녹음 특화 UI] 녹음 모드라면 수동 이동 버튼 표시, 아니면 기존 STT 창 표시 */}
           <div className="mb-4">
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-sm text-gray-500 font-medium">인식된 음성:</p>
-              {readingState === ReadingState.LISTENING && (
-                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${isListening ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600 animate-pulse'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  {isListening ? '마이크 활성 중' : '마이크 연결 중...'}
+            {isRecordingEnabled ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 bg-red-500 rounded-full animate-ping"></span>
+                    <span className="text-sm font-bold text-indigo-900">고품질 녹음 중...</span>
+                  </div>
+                  <p className="text-xs text-indigo-400">말씀을 다 읽으셨다면 아래 버튼을 눌러주세요</p>
                 </div>
-              )}
-            </div>
-            <p className={`text-md text-gray-700 min-h-[2.5em] p-3 rounded-xl border transition-all duration-300 ${isListening ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-              {transcript || <span className="text-gray-400 italic">{isListening ? '지금 읽어주세요...' : '마이크를 깨우고 있습니다...'}</span>}
-            </p>
+
+                <button
+                  onClick={onManualNextVerse}
+                  className="w-full py-8 bg-indigo-600 text-white rounded-3xl text-2xl font-black shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-3 hover:bg-indigo-700"
+                >
+                  <span className="text-3xl">✅</span> 다음 절 읽기 완료
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-sm text-gray-500 font-medium">인식된 음성:</p>
+                  {readingState === ReadingState.LISTENING && (
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${isListening ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600 animate-pulse'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                      {isListening ? '마이크 활성 중' : '마이크 연결 중...'}
+                    </div>
+                  )}
+                </div>
+                <p className={`text-md text-gray-700 min-h-[2.5em] p-3 rounded-xl border transition-all duration-300 ${isListening ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                  {transcript || <span className="text-gray-400 italic">{isListening ? '지금 읽어주세요...' : '마이크를 깨우고 있습니다...'}</span>}
+                </p>
+              </>
+            )}
+            {sttError && !isRecordingEnabled && (
+              <div className="mt-2 text-xs text-red-500 font-bold animate-pulse text-center">
+                ⚠️ {sttError}
+              </div>
+            )}
           </div>
 
           <MatchedHistoryDisplay content={matchedVersesContent} />
