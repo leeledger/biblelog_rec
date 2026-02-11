@@ -27,9 +27,10 @@ const generateInviteCode = () => {
 };
 
 app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
-app.use(bodyParser.raw({ type: 'audio/*', limit: '10mb' })); // 오디오 바이너리 직접 수신용
+app.use(bodyParser.json({ limit: '20mb' }));
+app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
+// 오디오/비디오 바이너리를 좀 더 유연하게 수신하기 위해 타입 확장
+app.use(bodyParser.raw({ type: ['audio/*', 'video/*', 'application/octet-stream'], limit: '20mb' }));
 
 // Initialize DB on first request (simple way for serverless)
 let isDbInitialized = false;
@@ -703,40 +704,54 @@ app.post('/api/audio/record', async (req, res) => {
 app.post('/api/audio/upload-proxy', async (req, res) => {
     try {
         const { userid, bookname, chapter, verse, contenttype } = req.headers;
-        const body = req.body; // bodyParser.raw() 에 의해 Buffer로 들어옴
+        const body = req.body;
 
-        if (!body || body.length === 0) {
-            return res.status(400).json({ message: '파일 데이터가 없습니다.' });
+        // 상세 로깅 (서버 로그용)
+        console.log(`[AUDIO/PROXY] Request info - user:${userid}, type:${contenttype}, size:${body?.length}`);
+
+        if (!body || body.length === 0 || !Buffer.isBuffer(body)) {
+            const errorMsg = !body ? 'No body' : (body.length === 0 ? 'Empty body' : 'Not a Buffer');
+            console.error(`[AUDIO/PROXY] Data error: ${errorMsg}`);
+            return res.status(400).json({ message: `파일 데이터 이상: ${errorMsg}` });
         }
 
         const timestamp = Date.now();
         let ext = 'webm';
-        if (contenttype) {
-            if (contenttype.includes('mp4')) ext = 'mp4';
-            else if (contenttype.includes('aac')) ext = 'aac';
-            else if (contenttype.includes('ogg')) ext = 'ogg';
-            else if (contenttype.includes('mpeg')) ext = 'mp3';
-        }
+        const contentTypeStr = String(contenttype || '');
+        if (contentTypeStr.includes('mp4')) ext = 'mp4';
+        else if (contentTypeStr.includes('aac')) ext = 'aac';
+        else if (contentTypeStr.includes('ogg')) ext = 'ogg';
+        else if (contentTypeStr.includes('mpeg')) ext = 'mp3';
 
-        const fileKey = `recordings/${userid}/rec_${timestamp}.${ext}`;
+        const fileKey = `recordings/${userid || 'unknown'}/rec_${timestamp}.${ext}`;
         const bucketName = process.env.R2_BUCKET_NAME;
 
-        console.log(`[AUDIO/PROXY] Uploading user:${userid}, key:${fileKey}, size:${body.length} bytes`);
+        if (!bucketName) {
+            console.error('[AUDIO/PROXY] Error: R2_BUCKET_NAME is missing');
+            return res.status(500).json({ message: '서버 설정 오류 (Bucket name missing)' });
+        }
+
+        console.log(`[AUDIO/PROXY] Attempting R2 upload: ${fileKey} (${body.length} bytes)`);
 
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
             ContentType: contenttype || 'application/octet-stream',
-            Body: body, // Buffer 직접 전달
+            Body: body,
         });
 
-        await r2Client.send(command);
-        console.log(`[AUDIO/PROXY] Success: Uploaded to R2.`);
+        const r2Response = await r2Client.send(command);
+        console.log(`[AUDIO/PROXY] Success: Uploaded to R2. ETag: ${r2Response.ETag}`);
 
         res.json({ success: true, fileKey });
     } catch (error) {
-        console.error('[POST /api/audio/upload-proxy] Error:', error);
-        res.status(500).json({ message: '서버 대리 업로드 중 오류가 발생했습니다.' });
+        console.error('[POST /api/audio/upload-proxy] Full Error:', error);
+        // 에러 메시지를 좀 더 상세히 내려주어 폰에서 확인 가능하게 함
+        res.status(500).json({
+            message: '서버 대리 업로드 오류',
+            details: error.message,
+            code: error.code || error.name
+        });
     }
 });
 
