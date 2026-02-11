@@ -644,6 +644,10 @@ app.post('/api/audio/presign', async (req, res) => {
             contentType = contentType.split(';')[0].trim();
         }
 
+        // 중요: 모든 파일을 'application/octet-stream'으로 취급하여 서명합니다.
+        // 이렇게 하면 브라우저가 헤더를 추가하거나 수정해서 발생하는 서명 불일치(Signature Mismatch)를 방지할 수 있습니다.
+        const fixedContentType = 'application/octet-stream';
+
         const timestamp = Date.now();
 
         // 확장자 매핑
@@ -670,8 +674,7 @@ app.post('/api/audio/presign', async (req, res) => {
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            // ContentType을 여기에서 지정하지 않으면 서명에 포함되지 않아 
-            // 프론트엔드에서 어떤 타입으로 보내든(또는 안 보내든) 허용됩니다.
+            ContentType: fixedContentType,
         });
 
         const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });

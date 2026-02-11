@@ -232,8 +232,10 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
-                        // Content-Type 헤더를 제거합니다. 브라우저가 Blob의 타입을 자동으로 설정하거나 
-                        // 헤더 없이 보내도 서버(R2) 서명에 포함되지 않았으므로 무방합니다.
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'application/octet-stream'
+                        },
                     });
 
                     if (!uploadRes.ok) {
