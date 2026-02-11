@@ -930,46 +930,64 @@ const App: React.FC = () => {
       console.log('[App.tsx] Mic stream closed.');
     }
 
-    // 2. 오디오 업로드 (R2)
+    // 2. 오디오 업로드 (R2) - 비동기로 처리하되 에러가 앱을 멈추지 않게 함
     if (isRecordingEnabled && currentUser?.id) {
-      await new Promise(r => setTimeout(r, 600)); // Blob 정착 대기
-      await uploadAllRecordings(currentUser.id, selectedGroupId);
+      try {
+        console.log('[App.tsx] Starting automated upload...');
+        await new Promise(r => setTimeout(r, 600)); // Blob 정착 대기
+
+        // 업로드에 타임아웃 8초 추가 (너무 오래 걸리면 스킵)
+        const uploadWithTimeout = Promise.race([
+          uploadAllRecordings(currentUser.id, selectedGroupId),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Upload Timeout')), 8000))
+        ]);
+
+        await uploadWithTimeout;
+        console.log('[App.tsx] Automated upload finished.');
+      } catch (err: any) {
+        console.error('[App.tsx] Automated upload failed or timed out:', err);
+        addDebugLog(`[UPLOAD] 자동 업로드 실패/지연: ${err.message || 'Unknown'}`);
+        // 업로드 실패해도 계속 진행 (사용자 데이터는 로컬에 남음)
+      }
     }
 
     // 3. 진도 저장
-    const readCount = finalCount - sessionProgress.sessionInitialSkipCount;
-    if (currentUser && readCount > 0) {
-      const firstV = sessionTargetVerses[sessionProgress.sessionInitialSkipCount] || sessionTargetVerses[0];
-      const lastV = sessionTargetVerses[finalCount - 1] || firstV;
+    try {
+      const readCount = finalCount - sessionProgress.sessionInitialSkipCount;
+      if (currentUser && readCount > 0) {
+        const firstV = sessionTargetVerses[sessionProgress.sessionInitialSkipCount] || sessionTargetVerses[0];
+        const lastV = sessionTargetVerses[finalCount - 1] || firstV;
 
-      const historyEntry: UserSessionRecord = {
-        date: new Date().toISOString(),
-        book: firstV.book, startChapter: firstV.chapter, startVerse: firstV.verse,
-        endChapter: lastV.chapter, endVerse: lastV.verse, versesRead: readCount
-      };
+        const historyEntry: UserSessionRecord = {
+          date: new Date().toISOString(),
+          book: firstV.book, startChapter: firstV.chapter, startVerse: firstV.verse,
+          endChapter: lastV.chapter, endVerse: lastV.verse, versesRead: readCount
+        };
 
-      const updatedProgress: UserProgress = {
-        lastReadBook: lastV.book,
-        lastReadChapter: lastV.chapter,
-        lastReadVerse: lastV.verse,
-        groupId: selectedGroupId,
-        history: userOverallProgress?.history ? [...userOverallProgress.history, historyEntry] : [historyEntry],
-        completedChapters: userOverallProgress?.completedChapters || [],
-        totalSkips: userOverallProgress?.totalSkips || 0
-      };
+        const updatedProgress: UserProgress = {
+          lastReadBook: lastV.book,
+          lastReadChapter: lastV.chapter,
+          lastReadVerse: lastV.verse,
+          groupId: selectedGroupId,
+          history: userOverallProgress?.history ? [...userOverallProgress.history, historyEntry] : [historyEntry],
+          completedChapters: userOverallProgress?.completedChapters || [],
+          totalSkips: userOverallProgress?.totalSkips || 0
+        };
 
-      try {
         await progressService.saveUserProgress(currentUser.username, updatedProgress);
         setUserOverallProgress(updatedProgress);
         setOverallCompletedChaptersCount(updatedProgress.completedChapters?.length || 0);
-      } catch (err) { setAppError("진도 저장에 실패했습니다."); }
+      }
+    } catch (err: any) {
+      console.error('[App.tsx] Save progress failed:', err);
+      setAppError(`진도 저장 실패: ${err.message}`);
+    } finally {
+      // 최소 1초간 저장 중 화면 유지 (사용자 인지용)
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 1000) await new Promise(r => setTimeout(r, 1000 - elapsed));
+
+      setReadingState(ReadingState.SESSION_COMPLETED);
     }
-
-    // 최소 1초간 저장 중 화면 유지 (사용자 인지용)
-    const elapsed = Date.now() - startTime;
-    if (elapsed < 1000) await new Promise(r => setTimeout(r, 1000 - elapsed));
-
-    setReadingState(ReadingState.SESSION_COMPLETED);
   }, [stopListening, isRecording, sessionTargetVerses, stopRecording, closeStream, isRecordingEnabled, currentUser, selectedGroupId, uploadAllRecordings, sessionProgress, userOverallProgress]);
 
   const handleManualNextVerse = useCallback(async () => {
