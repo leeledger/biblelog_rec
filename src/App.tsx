@@ -249,7 +249,23 @@ const App: React.FC = () => {
       if (currentUser?.id === 1 || currentUser?.id === 100) addDebugLog('🎙️ 음성 인식 감지됨 → 녹음 트리거 가동!');
       startRecording();
     }
-  }, [readingState, sttTranscript, isRecordingEnabled, isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
+  }, [readingState, sttTranscript, isRecordingEnabled, !isRecording, recordingCount, startRecording, currentUser?.id, addDebugLog]);
+
+  // [핵심 해결책] 녹음이 시작된 직후, STT 엔진을 강제로 재부팅하여 마이크 하드웨어에 다시 '부착'시킵니다.
+  useEffect(() => {
+    if (isRecording && readingState === ReadingState.LISTENING) {
+      if (currentUser?.id === 1 || currentUser?.id === 100) {
+        addDebugLog('🎙️ 녹음기 가동 확인 → STT 엔진 마이크 재동기화 시도...');
+      }
+
+      // 녹음기가 마이크 하드웨어를 완전히 점유할 시간을 준 뒤 STT 재시작
+      const timer = setTimeout(() => {
+        resetTranscript();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isRecording, readingState, resetTranscript, currentUser?.id, addDebugLog]);
 
   // 세션 종료(뒤로가기 포함) 통합 처리 함수
   const handleExitSession = useCallback(() => {
