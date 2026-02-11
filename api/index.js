@@ -10,12 +10,12 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // R2 Storage configuration
 const r2Client = new S3Client({
     region: "auto",
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint: `https://${(process.env.R2_ACCOUNT_ID || '').trim()}.r2.cloudflarestorage.com`,
     credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        accessKeyId: (process.env.R2_ACCESS_KEY_ID || '').trim(),
+        secretAccessKey: (process.env.R2_SECRET_ACCESS_KEY || '').trim(),
     },
-    forcePathStyle: true, // R2 경로 스타일 강제 (Signature 이슈 해결 시도)
+    forcePathStyle: true,
 });
 
 const app = express();
@@ -724,16 +724,17 @@ app.post('/api/audio/upload-proxy', async (req, res) => {
         else if (contentTypeStr.includes('mpeg')) ext = 'mp3';
 
         const fileKey = `recordings/${userid || 'unknown'}/rec_${timestamp}.${ext}`;
-        const bucketName = process.env.R2_BUCKET_NAME;
+        const bucketName = (process.env.R2_BUCKET_NAME || '').trim();
 
         if (!bucketName) {
-            console.error('[AUDIO/PROXY] Error: R2_BUCKET_NAME is missing');
+            console.error('[AUDIO/PROXY] Error: R2_BUCKET_NAME is missing or empty');
             return res.status(500).json({ message: '서버 설정 오류 (Bucket name missing)' });
         }
 
         const safeContentType = contentTypeStr.split(';')[0].trim() || 'application/octet-stream';
 
-        console.log(`[AUDIO/PROXY] Attempting R2 upload: ${fileKey} (${body.length} bytes), Type: ${safeContentType}`);
+        console.log(`[AUDIO/PROXY] R2 Env Check - AccountID: ${!!process.env.R2_ACCOUNT_ID}, AccessKey: ${!!process.env.R2_ACCESS_KEY_ID}, Bucket: ${!!bucketName}`);
+        console.log(`[AUDIO/PROXY] Uploading: ${fileKey} (${body.length} bytes), Type: ${safeContentType}`);
 
         const command = new PutObjectCommand({
             Bucket: bucketName,
