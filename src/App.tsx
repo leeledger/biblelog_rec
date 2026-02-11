@@ -985,33 +985,31 @@ const App: React.FC = () => {
     // 전체 세션의 마지막인지도 확인
     const isSessionEnd = currentVerseIndexInSession >= sessionTargetVerses.length - 1;
 
-    // 1. 녹음 끊기
-    if (isRecordingEnabled && isRecording) {
-      stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
-    }
+    // [중요] 세션의 진행률 인덱스를 먼저 올립니다.
+    const nextIdx = currentVerseIndexInSession + 1;
 
-    setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (수동완료) ${currentVerse.text}\n`);
-
-    // [사용자 요청] 장의 마지막 구절일 때만 저장 화면으로 이동
     if (isChapterEnd || isSessionEnd) {
-      console.log('[App.tsx] Chapter/Session ended. Moving to crown screen.');
-      const nextIdx = currentVerseIndexInSession + 1;
+      // 장의 마지막이거나 세션 종료라면 '중단' 버튼과 동일하게 저장 프로세스 진입
+      console.log('[App.tsx] End of chapter/session. Saving progress...');
       setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
-      await handleStopReadingAndSave(nextIdx, true);
+      // handleStopReadingAndSave 내부에서 녹음 중지를 처리하므로 여기서 중복 호출 금지
+      await handleStopReadingAndSave(nextIdx);
     } else {
-      // 장의 중간일 때는 조용히 다음 구절로만 전환 (저장X, 대기창X)
-      console.log('[App.tsx] Moving to next verse in same chapter.');
-      const nextIdx = currentVerseIndexInSession + 1;
+      // 장의 중간일 때는 조용히 다음 구절로만 전환
+      console.log('[App.tsx] Transitioning to next verse.');
+
+      // 녹음 끊고 다음 구절 녹음 바로 시작 (중간 구절이므로 여기서 처리)
+      if (isRecordingEnabled && isRecording) {
+        stopRecording(currentVerse.book, currentVerse.chapter, currentVerse.verse, currentVerse.verse);
+        setTimeout(() => startRecording(), 300);
+      }
+
+      setMatchedVersesContentForSession(prev => prev + `${currentVerse.book} ${currentVerse.chapter}:${currentVerse.verse} - (수동완료) ${currentVerse.text}\n`);
       setSessionProgress(prev => ({ ...prev, sessionCompletedVersesCount: nextIdx }));
       setCurrentVerseIndexInSession(nextIdx);
       setMatchedCharCount(0);
       setTranscriptBuffer('');
       resetTranscript();
-
-      // 녹음 바로 다시 시작
-      if (isRecordingEnabled) {
-        setTimeout(() => startRecording(), 300);
-      }
     }
   }, [currentTargetVerseForSession, readingState, isRecordingEnabled, isRecording, stopRecording, startRecording, currentVerseIndexInSession, sessionTargetVerses, handleStopReadingAndSave, resetTranscript, AVAILABLE_BOOKS]);
 

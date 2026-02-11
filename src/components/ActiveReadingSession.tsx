@@ -298,7 +298,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({
                   onClick={onManualNextVerse}
                   className="w-full py-8 bg-indigo-600 text-white rounded-3xl text-2xl font-black shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-3 hover:bg-indigo-700"
                 >
-                  <span className="text-3xl">✅</span> 다음 절 읽기 완료
+                  <span className="text-3xl">✅</span> 다음 절로 이동
                 </button>
               </div>
             ) : (
