@@ -9,13 +9,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // R2 Storage configuration
 const r2Client = new S3Client({
-    region: "auto",
+    region: "us-east-1", // R2 호환성을 위해 us-east-1로 시도 (SignatureDoesNotMatch 대응)
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: true, // 안드로이드/모바일 브라우저 보안 호환성을 위해 경로 스타일 주소 강제
+    forcePathStyle: false, // R2는 서브도메인 방식(false)을 권장하는 경우도 있으므로 변경해봄
 });
 
 const app = express();
@@ -731,12 +731,14 @@ app.post('/api/audio/upload-proxy', async (req, res) => {
             return res.status(500).json({ message: '서버 설정 오류 (Bucket name missing)' });
         }
 
-        console.log(`[AUDIO/PROXY] Attempting R2 upload: ${fileKey} (${body.length} bytes)`);
+        const safeContentType = contentTypeStr.split(';')[0].trim() || 'application/octet-stream';
+
+        console.log(`[AUDIO/PROXY] Attempting R2 upload: ${fileKey} (${body.length} bytes), Type: ${safeContentType}`);
 
         const command = new PutObjectCommand({
             Bucket: bucketName,
             Key: fileKey,
-            ContentType: contenttype || 'application/octet-stream',
+            ContentType: safeContentType,
             Body: body,
         });
 
