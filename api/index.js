@@ -636,7 +636,14 @@ app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
 // 1. Get presigned URL for upload
 app.post('/api/audio/presign', async (req, res) => {
     try {
-        const { userId, bookName, chapter, verse, contentType } = req.body;
+        let { userId, bookName, chapter, verse, contentType } = req.body;
+
+        // 중요: "audio/webm;codecs=opus" 처럼 세부 파라미터가 붙으면 S3 서명이 깨질 수 있으므로
+        // 순수한 mime-type(audio/webm)만 추출합니다.
+        if (contentType && contentType.includes(';')) {
+            contentType = contentType.split(';')[0].trim();
+        }
+
         const timestamp = Date.now();
 
         // 확장자 매핑

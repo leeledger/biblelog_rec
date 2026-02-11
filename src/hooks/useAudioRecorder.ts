@@ -203,7 +203,9 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                 setUploadProgress({ current: i + 1, total: totalToUpload });
 
                 try {
-                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${rec.blob.type})`;
+                    const pureType = rec.blob.type.split(';')[0].trim() || 'audio/webm';
+
+                    const step1 = `[STEP 1] Getting presigned URL... (Type: ${pureType})`;
                     if ((window as any).addDebugLog) (window as any).addDebugLog(step1);
 
                     const presignRes = await fetch(`${API_BASE_URL}/audio/presign`, {
@@ -214,7 +216,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                             bookName: rec.bookName,
                             chapter: rec.chapter,
                             verse: rec.startVerse,
-                            contentType: rec.blob.type,
+                            contentType: pureType, // Use pure mime-type
                         }),
                     });
 
@@ -230,7 +232,7 @@ const useAudioRecorder = (): UseAudioRecorderReturn => {
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
                         body: rec.blob,
-                        headers: { 'Content-Type': rec.blob.type },
+                        headers: { 'Content-Type': pureType }, // Use pure mime-type
                     });
 
                     if (!uploadRes.ok) {
